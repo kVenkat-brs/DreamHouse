@@ -1,0 +1,29 @@
+.rating {
+    display: inline-flex;
+    gap: 0.25rem;
+}
+
+.rating__star {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    color: var(--slds-c-icon-color-foreground, #ffb75d);
+}
+
+.rating__star:focus {
+    outline: 2px solid var(--lwc-colorBorderBrand, #1589ee);
+    outline-offset: 2px;
+}
+
+.rating__star--filled {
+    color: var(--slds-c-icon-color-foreground, #ffb75d);
+}
+
+.rating[role='slider'] {
+    min-width: 10rem;
+}
+
+.rating button[disabled] {
+    cursor: default;
+}
