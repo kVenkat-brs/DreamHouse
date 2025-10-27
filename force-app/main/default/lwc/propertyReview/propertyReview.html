@@ -1,0 +1,97 @@
+<template>
+    <article class="slds-card">
+        <div class="slds-card__header slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                <div class="slds-media__figure">
+                    <span class="slds-icon_container slds-icon-standard-feedback" title="Feedback">
+                        <svg class="slds-icon slds-icon_small" aria-hidden="true">
+                            <use xlink:href="/assets/icons/standard-sprite/svg/symbols.svg#feedback"></use>
+                        </svg>
+                    </span>
+                </div>
+                <div class="slds-media__body">
+                    <h2 class="slds-card__header-title slds-truncate" title="Property Reviews">
+                        Property Reviews
+                    </h2>
+                    <p class="slds-text-body_small">Share your experience with this property</p>
+                </div>
+            </header>
+            <lightning-button
+                if:true={canSubmit}
+                variant="brand"
+                label="Add Review"
+                onclick={toggleForm}
+            ></lightning-button>
+        </div>
+
+        <div class="slds-card__body slds-card__body_inner">
+            <template lwc:if={reviews.length}>
+                <ul class="slds-has-dividers_around-space slds-scrollable_y">
+                    <template for:each={reviews} for:item="review">
+                        <li key={review.id} class="slds-item">
+                            <div class="slds-grid slds-gutters slds-wrap">
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_4-of-12">
+                                    <lightning-formatted-text
+                                        class="slds-text-heading_small"
+                                        value={review.reviewer}
+                                    ></lightning-formatted-text>
+                                    <lightning-formatted-date-time
+                                        value={review.createdDate}
+                                        year="numeric"
+                                        month="short"
+                                        day="2-digit"
+                                    ></lightning-formatted-date-time>
+                                </div>
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_8-of-12">
+                                    <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_xx-small">
+                                        <c-star-rating rating={review.rating}></c-star-rating>
+                                        <template lwc:if={review.title}>
+                                            <span class="slds-text-heading_small slds-m-left_small">{review.title}</span>
+                                        </template>
+                                    </div>
+                                    <p class="slds-text-longform">{review.comment}</p>
+                                </div>
+                            </div>
+                        </li>
+                    </template>
+                </ul>
+            </template>
+            <template lwc:else>
+                <div class="slds-align_absolute-center slds-text-color_weak slds-m-vertical_medium">
+                    <lightning-icon icon-name="utility:feedback" size="medium"></lightning-icon>
+                    <span class="slds-m-left_small">No reviews yet. Be the first to share your feedback.</span>
+                </div>
+            </template>
+        </div>
+
+        <template lwc:if={showForm}>
+            <div class="slds-card__footer">
+                <lightning-record-edit-form
+                    object-api-name="Property_Review__c"
+                    onsuccess={handleSuccess}
+                    onerror={handleError}
+                >
+                    <div class="slds-grid slds-wrap slds-gutters">
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_6-of-12">
+                            <lightning-input-field field-name="Property__c" value={propertyId}></lightning-input-field>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_6-of-12">
+                            <c-star-rating rating={draftRating} onchange={handleRatingChange}></c-star-rating>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1">
+                            <lightning-input-field field-name="Title__c"></lightning-input-field>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1">
+                            <lightning-input-field field-name="Comment__c"></lightning-input-field>
+                        </div>
+                    </div>
+                    <div class="slds-modal__footer slds-grid slds-grid_align-end slds-p-top_small">
+                        <lightning-button variant="neutral" label="Cancel" onclick={cancelForm}></lightning-button>
+                        <lightning-button variant="brand" type="submit" label="Submit Review" class="slds-m-left_small"></lightning-button>
+                    </div>
+                    <lightning-messages></lightning-messages>
+                </lightning-record-edit-form>
+            </div>
+        </template>
+    </article>
+</template>
