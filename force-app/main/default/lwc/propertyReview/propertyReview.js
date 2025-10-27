@@ -14,7 +14,7 @@ const FIELDS = [
 
 export default class PropertyReview extends LightningElement {
     @api propertyId;
-    @api canSubmit = true;
+    @api canSubmit;
 
     @track reviews = [];
     showForm = false;
@@ -29,6 +29,10 @@ export default class PropertyReview extends LightningElement {
 
     get hasReviews() {
         return this.reviews.length > 0;
+    }
+
+    get canSubmitVisible() {
+        return this.canSubmit !== false;
     }
 
     connectedCallback() {
