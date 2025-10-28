@@ -44,7 +44,7 @@
                                 </div>
                                 <div class="slds-col slds-size_1-of-1 slds-medium-size_8-of-12">
                                     <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_xx-small">
-                                        <c-star-rating rating={review.rating}></c-star-rating>
+                                        <c-star-rating rating={review.rating} read-only></c-star-rating>
                                         <template lwc:if={review.title}>
                                             <span class="slds-text-heading_small slds-m-left_small">{review.title}</span>
                                         </template>
@@ -71,12 +71,23 @@
                     onsuccess={handleSuccess}
                     onerror={handleError}
                 >
+                    <lightning-messages></lightning-messages>
                     <div class="slds-grid slds-wrap slds-gutters">
                         <div class="slds-col slds-size_1-of-1 slds-medium-size_6-of-12">
                             <lightning-input-field field-name="Property__c" value={propertyId}></lightning-input-field>
                         </div>
                         <div class="slds-col slds-size_1-of-1 slds-medium-size_6-of-12">
-                            <c-star-rating rating={draftRating} onchange={handleRatingChange}></c-star-rating>
+                            <c-star-rating
+                                rating={draftRating}
+                                onchange={handleRatingChange}
+                                data-field="rating"
+                            ></c-star-rating>
+                            <lightning-input-field
+                                field-name="Rating__c"
+                                value={draftRating}
+                                class="slds-hide"
+                                data-field="rating"
+                            ></lightning-input-field>
                         </div>
                         <div class="slds-col slds-size_1-of-1">
                             <lightning-input-field field-name="Title__c"></lightning-input-field>
@@ -89,7 +100,6 @@
                         <lightning-button variant="neutral" label="Cancel" onclick={cancelForm}></lightning-button>
                         <lightning-button variant="brand" type="submit" label="Submit Review" class="slds-m-left_small"></lightning-button>
                     </div>
-                    <lightning-messages></lightning-messages>
                 </lightning-record-edit-form>
             </div>
         </template>

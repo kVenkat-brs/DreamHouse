@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Comment__c</fullName>
+    <description>Detailed review comments</description>
+    <externalId>false</externalId>
+    <inlineHelpText>Share the details of your experience with the property.</inlineHelpText>
+    <label>Comment</label>
+    <trackFeedHistory>true</trackFeedHistory>
+    <type>LongTextArea</type>
+    <visibleLines>5</visibleLines>
+</CustomField>

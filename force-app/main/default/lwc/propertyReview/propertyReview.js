@@ -2,15 +2,7 @@ import { LightningElement, api, wire, track } from 'lwc';
 import { getRecord } from 'lightning/uiRecordApi';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 
-import PROPERTY_OBJECT from '@salesforce/schema/Property__c';
-import PROPERTY_REVIEW_OBJECT from '@salesforce/schema/Property_Review__c';
-import PROPERTY_FIELD from '@salesforce/schema/Property_Review__c.Property__c';
-import RATING_FIELD from '@salesforce/schema/Property_Review__c.Rating__c';
-
-const FIELDS = [
-    'Property__c.Id',
-    'Property__c.Name'
-];
+const PROPERTY_FIELDS = ['Property__c.Name'];
 
 export default class PropertyReview extends LightningElement {
     @api propertyId;
@@ -20,7 +12,7 @@ export default class PropertyReview extends LightningElement {
     showForm = false;
     draftRating = 0;
 
-    @wire(getRecord, { recordId: '$propertyId', fields: FIELDS })
+    @wire(getRecord, { recordId: '$propertyId', fields: PROPERTY_FIELDS })
     property;
 
     get propertyName() {
@@ -50,11 +42,20 @@ export default class PropertyReview extends LightningElement {
 
     handleRatingChange(event) {
         this.draftRating = event.detail;
+        this.syncRatingField();
+    }
+
+    syncRatingField() {
+        const ratingField = this.template.querySelector('lightning-input-field[data-field="rating"]');
+        if (ratingField) {
+            ratingField.value = this.draftRating;
+        }
     }
 
     cancelForm() {
         this.toggleForm();
         this.draftRating = 0;
+        this.syncRatingField();
     }
 
     handleSuccess() {
@@ -78,5 +79,9 @@ export default class PropertyReview extends LightningElement {
                 variant: 'error'
             })
         );
+    }
+
+    renderedCallback() {
+        this.syncRatingField();
     }
 }
