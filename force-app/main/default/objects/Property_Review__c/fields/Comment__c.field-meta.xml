@@ -8,4 +8,5 @@
     <trackFeedHistory>true</trackFeedHistory>
     <type>LongTextArea</type>
     <visibleLines>5</visibleLines>
+    <length>32000</length>
 </CustomField>

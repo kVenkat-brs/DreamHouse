@@ -10,4 +10,5 @@
     <required>true</required>
     <trackFeedHistory>true</trackFeedHistory>
     <type>Lookup</type>
+    <deleteConstraint>Restrict</deleteConstraint>
 </CustomField>
