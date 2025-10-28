@@ -8,7 +8,13 @@
     border: none;
     cursor: pointer;
     padding: 0;
-    color: var(--slds-c-icon-color-foreground, #ffb75d);
+    color: #d8dde6; /* SLDS gray outline */
+    transition: color 120ms ease;
+}
+
+.rating__star:hover,
+.rating__star:focus {
+    color: #f5c542;
 }
 
 .rating__star:focus {
@@ -17,13 +23,14 @@
 }
 
 .rating__star--filled {
-    color: var(--slds-c-icon-color-foreground, #ffb75d);
+    color: #facc2e; /* Gold for selected stars */
 }
 
 .rating[role='slider'] {
     min-width: 10rem;
 }
 
-.rating button[disabled] {
+.rating button[disabled],
+.rating__star.read-only {
     cursor: default;
 }
