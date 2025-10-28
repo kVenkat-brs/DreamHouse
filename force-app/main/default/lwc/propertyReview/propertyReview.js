@@ -42,20 +42,44 @@ export default class PropertyReview extends LightningElement {
 
     handleRatingChange(event) {
         this.draftRating = event.detail;
-        this.syncRatingField();
     }
 
-    syncRatingField() {
-        const ratingField = this.template.querySelector('lightning-input-field[data-field="rating"]');
-        if (ratingField) {
-            ratingField.value = this.draftRating;
+    handleSubmit(event) {
+        event.preventDefault();
+        if (!this.propertyId) {
+            this.dispatchEvent(
+                new ShowToastEvent({
+                    title: 'Missing property context',
+                    message: 'Select a property before leaving a review.',
+                    variant: 'error'
+                })
+            );
+            return;
         }
+
+        if (!this.draftRating || this.draftRating < 1) {
+            this.dispatchEvent(
+                new ShowToastEvent({
+                    title: 'Rating required',
+                    message: 'Please choose a star rating before submitting.',
+                    variant: 'error'
+                })
+            );
+            return;
+        }
+
+        const fields = { ...event.detail.fields };
+        fields.Property__c = this.propertyId;
+        fields.Rating__c = this.draftRating;
+
+        this.template
+            .querySelector('lightning-record-edit-form')
+            .submit(fields);
     }
 
     cancelForm() {
         this.toggleForm();
         this.draftRating = 0;
-        this.syncRatingField();
     }
 
     handleSuccess() {
@@ -79,9 +103,5 @@ export default class PropertyReview extends LightningElement {
                 variant: 'error'
             })
         );
-    }
-
-    renderedCallback() {
-        this.syncRatingField();
     }
 }

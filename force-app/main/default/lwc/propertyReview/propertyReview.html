@@ -68,28 +68,25 @@
             <div class="slds-card__footer">
                 <lightning-record-edit-form
                     object-api-name="Property_Review__c"
+                    onsubmit={handleSubmit}
                     onsuccess={handleSuccess}
                     onerror={handleError}
                 >
                     <lightning-messages></lightning-messages>
                     <div class="slds-grid slds-wrap slds-gutters">
                         <div class="slds-col slds-size_1-of-1 slds-medium-size_6-of-12">
-                            <lightning-input-field field-name="Property__c" value={propertyId}></lightning-input-field>
+                            <div class="slds-form-element">
+                                <label class="slds-form-element__label" for="rating-control">Rating</label>
+                                <div class="slds-form-element__control">
+                                    <c-star-rating
+                                        rating={draftRating}
+                                        onchange={handleRatingChange}
+                                        aria-labelledby="rating-control"
+                                    ></c-star-rating>
+                                </div>
+                            </div>
                         </div>
                         <div class="slds-col slds-size_1-of-1 slds-medium-size_6-of-12">
-                            <c-star-rating
-                                rating={draftRating}
-                                onchange={handleRatingChange}
-                                data-field="rating"
-                            ></c-star-rating>
-                            <lightning-input-field
-                                field-name="Rating__c"
-                                value={draftRating}
-                                class="slds-hide"
-                                data-field="rating"
-                            ></lightning-input-field>
-                        </div>
-                        <div class="slds-col slds-size_1-of-1">
                             <lightning-input-field field-name="Title__c"></lightning-input-field>
                         </div>
                         <div class="slds-col slds-size_1-of-1">
