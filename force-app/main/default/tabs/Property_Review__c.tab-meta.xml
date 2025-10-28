@@ -3,6 +3,5 @@
     <customObject>true</customObject>
     <icon>/img/icon/t4v35/custom/custom64_120.png</icon>
     <label>Property Reviews</label>
-    <mobileReady>true</mobileReady>
     <motif>Custom64: Bar graph</motif>
 </CustomTab>
