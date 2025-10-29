@@ -1,6 +1,10 @@
 import { LightningElement, api, wire, track } from 'lwc';
 import { getRecord } from 'lightning/uiRecordApi';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import { loadStyle, loadScript } from 'lightning/platformResourceLoader';
+
+import SHOELACE_JS from '@salesforce/resourceUrl/shoelace_js';
+import SHOELACE_CSS from '@salesforce/resourceUrl/shoelace_css';
 
 const PROPERTY_FIELDS = ['Property__c.Name'];
 
@@ -12,8 +16,33 @@ export default class PropertyReview extends LightningElement {
     showForm = false;
     draftRating = 0;
 
+    shoelaceInitialized = false;
+
     @wire(getRecord, { recordId: '$propertyId', fields: PROPERTY_FIELDS })
     property;
+
+    connectedCallback() {
+        this.loadReviews();
+    }
+
+    renderedCallback() {
+        if (this.shoelaceInitialized) {
+            return;
+        }
+        this.shoelaceInitialized = true;
+        Promise.all([
+            loadScript(this, SHOELACE_JS),
+            loadStyle(this, SHOELACE_CSS)
+        ]).catch((error) => {
+            this.dispatchEvent(
+                new ShowToastEvent({
+                    title: 'Unable to load rating control',
+                    message: error.message,
+                    variant: 'error'
+                })
+            );
+        });
+    }
 
     get propertyName() {
         return this.property?.data?.fields?.Name?.value;
@@ -27,10 +56,6 @@ export default class PropertyReview extends LightningElement {
         return this.canSubmit !== false;
     }
 
-    connectedCallback() {
-        this.loadReviews();
-    }
-
     loadReviews() {
         // Placeholder: replace with server call to fetch reviews
         this.reviews = [];
@@ -41,7 +66,7 @@ export default class PropertyReview extends LightningElement {
     }
 
     handleRatingChange(event) {
-        this.draftRating = event.detail;
+        this.draftRating = event.target.value;
     }
 
     handleSubmit(event) {

@@ -44,7 +44,13 @@
                                 </div>
                                 <div class="slds-col slds-size_1-of-1 slds-medium-size_8-of-12">
                                     <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_xx-small">
-                                        <c-star-rating rating={review.rating} read-only></c-star-rating>
+                                    <sl-rating
+                                        value={review.rating}
+                                        max="5"
+                                        readonly
+                                        precision="1"
+                                        class="property-review__rating"
+                                    ></sl-rating>
                                         <template lwc:if={review.title}>
                                             <span class="slds-text-heading_small slds-m-left_small">{review.title}</span>
                                         </template>
@@ -78,11 +84,13 @@
                             <div class="slds-form-element">
                                 <label class="slds-form-element__label" for="rating-control">Rating</label>
                                 <div class="slds-form-element__control">
-                                    <c-star-rating
-                                        rating={draftRating}
+                                    <sl-rating
+                                        max="5"
+                                        precision="1"
+                                        value={draftRating}
                                         onchange={handleRatingChange}
                                         aria-labelledby="rating-control"
-                                    ></c-star-rating>
+                                    ></sl-rating>
                                 </div>
                             </div>
                         </div>
