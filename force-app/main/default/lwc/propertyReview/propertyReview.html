@@ -44,13 +44,12 @@
                                 </div>
                                 <div class="slds-col slds-size_1-of-1 slds-medium-size_8-of-12">
                                     <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_xx-small">
-                                    <sl-rating
-                                        value={review.rating}
-                                        max="5"
-                                        readonly
-                                        precision="1"
-                                        class="property-review__rating"
-                                    ></sl-rating>
+                                        <c-shoelace-rating
+                                            value={review.rating}
+                                            max="5"
+                                            read-only
+                                            class="property-review__rating"
+                                        ></c-shoelace-rating>
                                         <template lwc:if={review.title}>
                                             <span class="slds-text-heading_small slds-m-left_small">{review.title}</span>
                                         </template>
@@ -84,13 +83,12 @@
                             <div class="slds-form-element">
                                 <label class="slds-form-element__label" for="rating-control">Rating</label>
                                 <div class="slds-form-element__control">
-                                    <sl-rating
+                                    <c-shoelace-rating
                                         max="5"
-                                        precision="1"
                                         value={draftRating}
                                         onchange={handleRatingChange}
                                         aria-labelledby="rating-control"
-                                    ></sl-rating>
+                                    ></c-shoelace-rating>
                                 </div>
                             </div>
                         </div>
