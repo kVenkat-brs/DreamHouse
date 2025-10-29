@@ -1,0 +1,31 @@
+.rating {
+    display: inline-flex;
+    gap: 0.25rem;
+}
+
+.rating__star {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    color: #d8dde6;
+    transition: color 120ms ease;
+}
+
+.rating__star:hover,
+.rating__star:focus {
+    color: #f5c542;
+}
+
+.rating__star--filled {
+    color: #facc2e;
+}
+
+.rating__star:focus {
+    outline: 2px solid var(--lwc-colorBorderBrand, #1589ee);
+    outline-offset: 2px;
+}
+
+.rating button[disabled] {
+    cursor: default;
+}

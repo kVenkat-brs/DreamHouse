@@ -44,12 +44,10 @@
                                 </div>
                                 <div class="slds-col slds-size_1-of-1 slds-medium-size_8-of-12">
                                     <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_xx-small">
-                                        <c-shoelace-rating
+                                        <c-rating-picker
                                             value={review.rating}
-                                            max="5"
-                                            read-only
-                                            class="property-review__rating"
-                                        ></c-shoelace-rating>
+                                            readonly
+                                        ></c-rating-picker>
                                         <template lwc:if={review.title}>
                                             <span class="slds-text-heading_small slds-m-left_small">{review.title}</span>
                                         </template>
@@ -79,20 +77,20 @@
                 >
                     <lightning-messages></lightning-messages>
                     <div class="slds-grid slds-wrap slds-gutters">
-                        <div class="slds-col slds-size_1-of-1 slds-medium-size_6-of-12">
+                        <div class="slds-col slds-size_1-of-1">
                             <div class="slds-form-element">
-                                <label class="slds-form-element__label" for="rating-control">Rating</label>
+                                <label class="slds-form-element__label" id="rating-control">Rating</label>
                                 <div class="slds-form-element__control">
-                                    <c-shoelace-rating
+                                    <c-rating-picker
                                         max="5"
                                         value={draftRating}
                                         onchange={handleRatingChange}
                                         aria-labelledby="rating-control"
-                                    ></c-shoelace-rating>
+                                    ></c-rating-picker>
                                 </div>
                             </div>
                         </div>
-                        <div class="slds-col slds-size_1-of-1 slds-medium-size_6-of-12">
+                        <div class="slds-col slds-size_1-of-1">
                             <lightning-input-field field-name="Title__c"></lightning-input-field>
                         </div>
                         <div class="slds-col slds-size_1-of-1">

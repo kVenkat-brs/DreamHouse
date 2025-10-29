@@ -41,7 +41,7 @@ export default class PropertyReview extends LightningElement {
     }
 
     handleRatingChange(event) {
-        this.draftRating = event.detail.value;
+        this.draftRating = Number(event.detail.value);
     }
 
     handleSubmit(event) {
