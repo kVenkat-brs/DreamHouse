@@ -8,17 +8,23 @@ export default class RatingPicker extends LightningElement {
     @api value = DEFAULT_VALUE;
     @api readOnly = false;
 
-    get normalizedMax() {
-        const parsed = Number(this.max);
-        return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_MAX;
+    normalizedMax = DEFAULT_MAX;
+    normalizedValue = DEFAULT_VALUE;
+
+    renderedCallback() {
+        this.normalizeValues();
     }
 
-    get normalizedValue() {
-        const parsed = Number(this.value);
-        if (!Number.isFinite(parsed)) {
-            return DEFAULT_VALUE;
+    normalizeValues() {
+        const maxParsed = Number(this.max);
+        this.normalizedMax = Number.isFinite(maxParsed) && maxParsed > 0 ? maxParsed : DEFAULT_MAX;
+
+        const valueParsed = Number(this.value);
+        if (!Number.isFinite(valueParsed)) {
+            this.normalizedValue = DEFAULT_VALUE;
+        } else {
+            this.normalizedValue = Math.min(Math.max(valueParsed, 0), this.normalizedMax);
         }
-        return Math.min(Math.max(parsed, 0), this.normalizedMax);
     }
 
     get displayValue() {
@@ -26,7 +32,11 @@ export default class RatingPicker extends LightningElement {
     }
 
     get tabIndex() {
-        return this.readOnly ? -1 : 0;
+        return this.isReadOnly ? -1 : 0;
+    }
+
+    get isReadOnly() {
+        return this.readOnly === true || this.readOnly === 'true';
     }
 
     get stars() {
@@ -45,7 +55,7 @@ export default class RatingPicker extends LightningElement {
     }
 
     handleClick(event) {
-        if (this.readOnly) {
+        if (this.isReadOnly) {
             return;
         }
         const value = Number(event.currentTarget.dataset.value);
@@ -53,7 +63,7 @@ export default class RatingPicker extends LightningElement {
     }
 
     handleFocus(event) {
-        if (this.readOnly) {
+        if (this.isReadOnly) {
             return;
         }
         const value = Number(event.currentTarget.dataset.value);
@@ -63,7 +73,7 @@ export default class RatingPicker extends LightningElement {
     }
 
     handleKeydown(event) {
-        if (this.readOnly) {
+        if (this.isReadOnly) {
             return;
         }
 
@@ -89,6 +99,7 @@ export default class RatingPicker extends LightningElement {
             return;
         }
         this.value = newValue;
+        this.normalizeValues();
         if (fireEvent) {
             this.dispatchEvent(
                 new CustomEvent('change', {

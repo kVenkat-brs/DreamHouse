@@ -1,5 +1,14 @@
 <template>
-    <div class="rating" role="slider" aria-valuemin="1" aria-valuemax={max} aria-valuenow={displayValue} aria-label="Star rating" tabindex={tabIndex} onkeydown={handleKeydown}>
+    <div
+        class="rating"
+        role="slider"
+        aria-valuemin="1"
+        aria-valuemax={max}
+        aria-valuenow={displayValue}
+        aria-label="Star rating"
+        tabindex={tabIndex}
+        onkeydown={handleKeydown}
+    >
         <template for:each={stars} for:item="star">
             <button
                 key={star.value}
@@ -8,7 +17,7 @@
                 type="button"
                 onclick={handleClick}
                 onfocus={handleFocus}
-                disabled={readOnly}
+                disabled={isReadOnly}
                 aria-label={star.ariaLabel}
             >
                 <lightning-icon icon-name={star.icon} size="small" alternative-text={star.ariaLabel}></lightning-icon>
