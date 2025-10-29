@@ -91,10 +91,21 @@
                             </div>
                         </div>
                         <div class="slds-col slds-size_1-of-1">
-                            <lightning-input-field field-name="Title__c"></lightning-input-field>
+                            <lightning-input
+                                type="text"
+                                label="Title"
+                                value={title}
+                                onchange={handleTitleChange}
+                                required
+                            ></lightning-input>
                         </div>
                         <div class="slds-col slds-size_1-of-1">
-                            <lightning-input-field field-name="Comment__c"></lightning-input-field>
+                            <lightning-textarea
+                                label="Comment"
+                                value={comment}
+                                onchange={handleCommentChange}
+                                required
+                            ></lightning-textarea>
                         </div>
                     </div>
                     <div class="slds-modal__footer slds-grid slds-grid_align-end slds-p-top_small">

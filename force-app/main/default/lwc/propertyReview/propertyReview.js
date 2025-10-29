@@ -11,6 +11,8 @@ export default class PropertyReview extends LightningElement {
     @track reviews = [];
     showForm = false;
     draftRating = 0;
+    title = '';
+    comment = '';
 
     @wire(getRecord, { recordId: '$propertyId', fields: PROPERTY_FIELDS })
     property;
@@ -38,10 +40,21 @@ export default class PropertyReview extends LightningElement {
 
     toggleForm() {
         this.showForm = !this.showForm;
+        if (!this.showForm) {
+            this.resetDraft();
+        }
     }
 
     handleRatingChange(event) {
         this.draftRating = Number(event.detail.value);
+    }
+
+    handleTitleChange(event) {
+        this.title = event.target.value;
+    }
+
+    handleCommentChange(event) {
+        this.comment = event.target.value;
     }
 
     handleSubmit(event) {
@@ -68,9 +81,33 @@ export default class PropertyReview extends LightningElement {
             return;
         }
 
+        if (!this.title?.trim()) {
+            this.dispatchEvent(
+                new ShowToastEvent({
+                    title: 'Title required',
+                    message: 'Please provide a short title for your review.',
+                    variant: 'error'
+                })
+            );
+            return;
+        }
+
+        if (!this.comment?.trim()) {
+            this.dispatchEvent(
+                new ShowToastEvent({
+                    title: 'Comment required',
+                    message: 'Tell us a bit about your experience before submitting.',
+                    variant: 'error'
+                })
+            );
+            return;
+        }
+
         const fields = { ...event.detail.fields };
         fields.Property__c = this.propertyId;
         fields.Rating__c = this.draftRating;
+        fields.Title__c = this.title;
+        fields.Comment__c = this.comment;
 
         this.template
             .querySelector('lightning-record-edit-form')
@@ -79,7 +116,7 @@ export default class PropertyReview extends LightningElement {
 
     cancelForm() {
         this.toggleForm();
-        this.draftRating = 0;
+        this.resetDraft();
     }
 
     handleSuccess() {
@@ -91,7 +128,7 @@ export default class PropertyReview extends LightningElement {
             })
         );
         this.toggleForm();
-        this.draftRating = 0;
+        this.resetDraft();
         this.loadReviews();
     }
 
@@ -103,5 +140,11 @@ export default class PropertyReview extends LightningElement {
                 variant: 'error'
             })
         );
+    }
+
+    resetDraft() {
+        this.draftRating = 0;
+        this.title = '';
+        this.comment = '';
     }
 }
