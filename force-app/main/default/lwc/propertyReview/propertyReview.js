@@ -31,8 +31,8 @@ export default class PropertyReview extends LightningElement {
         }
         this.shoelaceInitialized = true;
         Promise.all([
-            loadScript(this, `${SHOELACE_JS}/shoelace.js`),
-            loadStyle(this, `${SHOELACE_CSS}`)
+            loadScript(this, SHOELACE_JS),
+            loadStyle(this, SHOELACE_CSS)
         ]).catch((error) => {
             this.dispatchEvent(
                 new ShowToastEvent({

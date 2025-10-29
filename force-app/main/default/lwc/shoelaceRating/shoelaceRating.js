@@ -6,27 +6,36 @@ export default class ShoelaceRating extends LightningElement {
     @api value = 0;
     @api readOnly = false;
 
+    ratingEl;
+
     renderedCallback() {
-        this.applyValue();
+        if (!this.ratingEl) {
+            this.createRating();
+        }
+        this.syncAttributes();
     }
 
-    applyValue() {
-        const rating = this.template.querySelector('sl-rating');
-        if (!rating) {
+    createRating() {
+        this.ratingEl = document.createElement('sl-rating');
+        this.ratingEl.classList.add('shoelace-rating');
+        this.ratingEl.addEventListener('sl-change', (event) => {
+            this.value = event.target.value;
+            this.dispatchEvent(
+                new CustomEvent('change', {
+                    detail: { value: this.value }
+                })
+            );
+        });
+        this.template.querySelector('.shoelace-rating-host').appendChild(this.ratingEl);
+    }
+
+    syncAttributes() {
+        if (!this.ratingEl) {
             return;
         }
-        rating.max = this.max;
-        rating.precision = this.precision;
-        rating.value = this.value;
-        rating.readonly = this.readOnly;
-    }
-
-    handleChange(event) {
-        this.value = event.target.value;
-        this.dispatchEvent(
-            new CustomEvent('change', {
-                detail: { value: this.value }
-            })
-        );
+        this.ratingEl.max = this.max;
+        this.ratingEl.precision = this.precision;
+        this.ratingEl.value = this.value;
+        this.ratingEl.readonly = this.readOnly;
     }
 }
