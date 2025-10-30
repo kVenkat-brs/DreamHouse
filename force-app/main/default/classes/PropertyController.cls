@@ -113,7 +113,7 @@ public with sharing class PropertyController {
     /**
      * Retrieves reviews for a property ordered by most recent first.
      */
-    @AuraEnabled(cacheable=true scope='global')
+    @AuraEnabled(cacheable=true)
     public static List<PropertyReviewDTO> getPropertyReviews(Id propertyId) {
         if (propertyId == null) {
             return new List<PropertyReviewDTO>();
@@ -135,14 +135,14 @@ public with sharing class PropertyController {
 
         List<PropertyReviewDTO> dtos = new List<PropertyReviewDTO>();
         for (Property_Review__c review : rawReviews) {
-            PropertyReviewDTO dto = new PropertyReviewDTO();
-            dto.id = review.Id;
-            dto.propertyId = review.Property__c;
-            dto.rating = review.Rating__c;
-            dto.comment = review.Comment__c;
-            dto.createdDate = review.CreatedDate;
-            dto.reviewerName = review.CreatedBy?.Name;
-            dtos.add(dto);
+            PropertyReviewDTO dtoInstance = new PropertyReviewDTO();
+            dtoInstance.id = review.Id;
+            dtoInstance.propertyId = review.Property__c;
+            dtoInstance.rating = review.Rating__c;
+            dtoInstance.comment = review.Comment__c;
+            dtoInstance.createdDate = review.CreatedDate;
+            dtoInstance.reviewerName = review.CreatedBy?.Name;
+            dtos.add(dtoInstance);
         }
 
         return dtos;
@@ -178,13 +178,12 @@ public with sharing class PropertyController {
 
         return review.Id;
     }
-}
-
-public class PropertyReviewDTO {
-    @AuraEnabled public Id id;
-    @AuraEnabled public Id propertyId;
-    @AuraEnabled public Decimal rating;
-    @AuraEnabled public String comment;
-    @AuraEnabled public Datetime createdDate;
-    @AuraEnabled public String reviewerName;
+    public class PropertyReviewDTO {
+        @AuraEnabled public Id id;
+        @AuraEnabled public Id propertyId;
+        @AuraEnabled public Decimal rating;
+        @AuraEnabled public String comment;
+        @AuraEnabled public Datetime createdDate;
+        @AuraEnabled public String reviewerName;
+    }
 }
