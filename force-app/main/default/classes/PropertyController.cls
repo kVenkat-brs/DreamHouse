@@ -111,6 +111,44 @@ public with sharing class PropertyController {
     }
 
     /**
+     * Retrieves reviews for a property ordered by most recent first.
+     */
+    @AuraEnabled(cacheable=true scope='global')
+    public static List<PropertyReviewDTO> getPropertyReviews(Id propertyId) {
+        if (propertyId == null) {
+            return new List<PropertyReviewDTO>();
+        }
+
+        List<Property_Review__c> rawReviews = [
+            SELECT Id,
+                Property__c,
+                Rating__c,
+                Comment__c,
+                CreatedDate,
+                CreatedBy.Name
+            FROM Property_Review__c
+            WHERE Property__c = :propertyId
+            WITH USER_MODE
+            ORDER BY CreatedDate DESC
+            LIMIT 200
+        ];
+
+        List<PropertyReviewDTO> dtos = new List<PropertyReviewDTO>();
+        for (Property_Review__c review : rawReviews) {
+            PropertyReviewDTO dto = new PropertyReviewDTO();
+            dto.id = review.Id;
+            dto.propertyId = review.Property__c;
+            dto.rating = review.Rating__c;
+            dto.comment = review.Comment__c;
+            dto.createdDate = review.CreatedDate;
+            dto.reviewerName = review.CreatedBy?.Name;
+            dtos.add(dto);
+        }
+
+        return dtos;
+    }
+
+    /**
      * Creates a new review for the provided property.
      * @param propertyId Id of the Property__c record being reviewed.
      * @param rating Number of stars (1-5) the reviewer selected.
@@ -140,4 +178,13 @@ public with sharing class PropertyController {
 
         return review.Id;
     }
+}
+
+public class PropertyReviewDTO {
+    @AuraEnabled public Id id;
+    @AuraEnabled public Id propertyId;
+    @AuraEnabled public Decimal rating;
+    @AuraEnabled public String comment;
+    @AuraEnabled public Datetime createdDate;
+    @AuraEnabled public String reviewerName;
 }

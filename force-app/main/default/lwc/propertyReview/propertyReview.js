@@ -2,6 +2,7 @@ import { LightningElement, api, wire, track } from 'lwc';
 import { subscribe, unsubscribe, MessageContext } from 'lightning/messageService';
 import { getRecord } from 'lightning/uiRecordApi';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import getPropertyReviews from '@salesforce/apex/PropertyController.getPropertyReviews';
 import savePropertyReview from '@salesforce/apex/PropertyController.savePropertyReview';
 
 import PROPERTY_SELECTED from '@salesforce/messageChannel/PropertySelected__c';
@@ -83,8 +84,34 @@ export default class PropertyReview extends LightningElement {
     }
 
     loadReviews() {
-        // Placeholder: replace with server call to fetch reviews
-        this.reviews = [];
+        const activePropertyId = this.activePropertyId;
+        if (!activePropertyId) {
+            this.reviews = [];
+            return;
+        }
+
+        getPropertyReviews({ propertyId: activePropertyId })
+            .then((records) => {
+                this.reviews = (records || []).map((record) => ({
+                    id: record.id,
+                    propertyId: record.propertyId,
+                    rating: record.rating,
+                    comment: record.comment,
+                    reviewer: record.reviewerName || 'Anonymous',
+                    createdDate: record.createdDate,
+                    title: null
+                }));
+            })
+            .catch((error) => {
+                this.reviews = [];
+                this.dispatchEvent(
+                    new ShowToastEvent({
+                        title: 'Unable to load reviews',
+                        message: error?.body?.message || error?.message || 'Try again later.',
+                        variant: 'error'
+                    })
+                );
+            });
     }
 
     toggleForm() {
