@@ -18,6 +18,7 @@ export default class PropertyReview extends LightningElement {
     title = '';
     comment = '';
     subscription;
+    selectedPropertyId;
 
     @wire(getRecord, { recordId: '$propertyIdForWire', fields: PROPERTY_FIELDS })
     property;
@@ -29,6 +30,7 @@ export default class PropertyReview extends LightningElement {
     }
 
     connectedCallback() {
+        this.selectedPropertyId = this.propertyId || this.recordId || null;
         this.loadReviews();
     }
 
@@ -53,7 +55,7 @@ export default class PropertyReview extends LightningElement {
 
     handlePropertySelected(message) {
         if (message?.propertyId) {
-            this.propertyId = message.propertyId;
+            this.selectedPropertyId = message.propertyId;
             this.loadReviews();
         }
     }
@@ -63,7 +65,7 @@ export default class PropertyReview extends LightningElement {
     }
 
     get propertyIdForWire() {
-        return this.propertyId || this.recordId || null;
+        return this.selectedPropertyId || this.propertyId || this.recordId || null;
     }
 
     get activePropertyId() {
