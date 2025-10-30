@@ -12,7 +12,7 @@ public with sharing class PropertyController {
      * @param pageNumber Page number
      * @return PagedResult object holding the paged and filtered list of properties
      */
-    @AuraEnabled(cacheable=true scope='global')
+    @AuraEnabled(cacheable=true)
     public static PagedResult getPagedPropertyList(
         String searchKey,
         Decimal maxPrice,
@@ -80,7 +80,7 @@ public with sharing class PropertyController {
      * @param propertyId Property Id
      * @return List of ContentVersion holding the pictures
      */
-    @AuraEnabled(cacheable=true scope='global')
+    @AuraEnabled(cacheable=true)
     public static List<ContentVersion> getPictures(Id propertyId) {
         List<ContentDocumentLink> links = [
             SELECT Id, LinkedEntityId, ContentDocument.Title
@@ -154,7 +154,7 @@ public with sharing class PropertyController {
      * @param rating Number of stars (1-5) the reviewer selected.
      * @param comment Body of the review text.
      */
-    @AuraEnabled(scope='global')
+    @AuraEnabled
     public static Id savePropertyReview(Id propertyId, Decimal rating, String comment) {
         if (propertyId == null) {
             throw new AuraHandledException('Property Id is required.');
