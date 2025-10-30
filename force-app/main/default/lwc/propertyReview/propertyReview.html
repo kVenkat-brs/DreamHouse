@@ -24,51 +24,52 @@
             ></lightning-button>
         </div>
 
-        <div class="slds-card__body slds-card__body_inner">
+        <div class="slds-card__body slds-p-around_medium property-review">
             <template lwc:if={reviews.length}>
-                <ul class="slds-has-dividers_around-space slds-scrollable_y">
+                <div class="property-review__list">
                     <template for:each={reviews} for:item="review">
-                        <li key={review.id} class="slds-item">
-                            <div class="slds-grid slds-gutters slds-wrap">
-                                <div class="slds-col slds-size_1-of-1 slds-medium-size_4-of-12">
-                                    <lightning-formatted-text
-                                        class="slds-text-heading_small"
-                                        value={review.reviewer}
-                                    ></lightning-formatted-text>
-                                    <lightning-formatted-date-time
-                                        value={review.createdDate}
-                                        year="numeric"
-                                        month="short"
-                                        day="2-digit"
-                                    ></lightning-formatted-date-time>
-                                </div>
-                                <div class="slds-col slds-size_1-of-1 slds-medium-size_8-of-12">
-                                    <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_xx-small">
-                                        <c-rating-picker
-                                            value={review.rating}
-                                            readonly
-                                        ></c-rating-picker>
-                                        <template lwc:if={review.title}>
-                                            <span class="slds-text-heading_small slds-m-left_small">{review.title}</span>
-                                        </template>
+                        <article key={review.id} class="property-review__tile slds-media">
+                            <div class="slds-media__body">
+                                <div class="property-review__tile-header">
+                                    <div>
+                                        <lightning-formatted-text
+                                            class="slds-text-title_bold"
+                                            value={review.reviewer}
+                                        ></lightning-formatted-text>
+                                        <lightning-formatted-date-time
+                                            value={review.createdDate}
+                                            year="numeric"
+                                            month="short"
+                                            day="2-digit"
+                                            hour="2-digit"
+                                            minute="2-digit"
+                                        ></lightning-formatted-date-time>
                                     </div>
-                                    <p class="slds-text-longform">{review.comment}</p>
+                                    <c-rating-picker
+                                        value={review.rating}
+                                        readonly
+                                        class="property-review__rating"
+                                    ></c-rating-picker>
                                 </div>
+                                <template lwc:if={review.title}>
+                                    <h3 class="slds-text-heading_small slds-m-bottom_x-small">{review.title}</h3>
+                                </template>
+                                <p class="slds-text-longform">{review.comment}</p>
                             </div>
-                        </li>
+                        </article>
                     </template>
-                </ul>
+                </div>
             </template>
             <template lwc:else>
-                <div class="slds-align_absolute-center slds-text-color_weak slds-m-vertical_medium">
-                    <lightning-icon icon-name="utility:feedback" size="medium"></lightning-icon>
-                    <span class="slds-m-left_small">No reviews yet. Be the first to share your feedback.</span>
+                <div class="property-review__empty slds-text-color_weak">
+                    <lightning-icon icon-name="utility:feedback" size="small"></lightning-icon>
+                    <p class="slds-m-top_small">No reviews yet. Be the first to share your feedback.</p>
                 </div>
             </template>
         </div>
 
         <template lwc:if={showForm}>
-            <div class="slds-card__footer">
+            <div class="property-review__form">
                 <lightning-record-edit-form
                     object-api-name="Property_Review__c"
                     onsubmit={handleSubmit}
@@ -76,41 +77,32 @@
                     onerror={handleError}
                 >
                     <lightning-messages></lightning-messages>
-                    <div class="slds-grid slds-wrap slds-gutters">
-                        <div class="slds-col slds-size_1-of-1">
-                            <div class="slds-form-element">
-                                <label class="slds-form-element__label" id="rating-control">Rating</label>
-                                <div class="slds-form-element__control">
-                                    <c-rating-picker
-                                        max="5"
-                                        value={draftRating}
-                                        onchange={handleRatingChange}
-                                        aria-labelledby="rating-control"
-                                    ></c-rating-picker>
-                                </div>
+
+                    <div class="slds-form slds-form_stacked slds-p-around_medium">
+                        <fieldset class="slds-form-element slds-m-bottom_medium">
+                            <legend class="slds-form-element__legend slds-form-element__label">Rating</legend>
+                            <div class="slds-form-element__control">
+                                <c-rating-picker
+                                    max="5"
+                                    value={draftRating}
+                                    onchange={handleRatingChange}
+                                    class="property-review__rating"
+                                ></c-rating-picker>
                             </div>
-                        </div>
-                        <div class="slds-col slds-size_1-of-1">
-                            <lightning-input
-                                type="text"
-                                label="Title"
-                                value={title}
-                                onchange={handleTitleChange}
-                                required
-                            ></lightning-input>
-                        </div>
-                        <div class="slds-col slds-size_1-of-1">
-                            <lightning-textarea
-                                label="Comment"
-                                value={comment}
-                                onchange={handleCommentChange}
-                                required
-                            ></lightning-textarea>
-                        </div>
+                        </fieldset>
+
+                        <lightning-textarea
+                            label="Comment"
+                            value={comment}
+                            onchange={handleCommentChange}
+                            class="slds-m-bottom_medium"
+                            required
+                        ></lightning-textarea>
                     </div>
-                    <div class="slds-modal__footer slds-grid slds-grid_align-end slds-p-top_small">
+
+                    <div class="property-review__footer">
                         <lightning-button variant="neutral" label="Cancel" onclick={cancelForm}></lightning-button>
-                        <lightning-button variant="brand" type="submit" label="Submit Review" class="slds-m-left_small"></lightning-button>
+                        <lightning-button variant="brand" type="submit" label="Submit Review"></lightning-button>
                     </div>
                 </lightning-record-edit-form>
             </div>
