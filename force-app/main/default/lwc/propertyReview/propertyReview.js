@@ -1,6 +1,9 @@
 import { LightningElement, api, wire, track } from 'lwc';
+import { subscribe, unsubscribe, MessageContext } from 'lightning/messageService';
 import { getRecord } from 'lightning/uiRecordApi';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+
+import PROPERTY_SELECTED from '@salesforce/messageChannel/PropertySelected__c';
 
 const PROPERTY_FIELDS = ['Property__c.Name'];
 
@@ -14,12 +17,43 @@ export default class PropertyReview extends LightningElement {
     draftRating = 0;
     title = '';
     comment = '';
+    subscription;
 
     @wire(getRecord, { recordId: '$propertyIdForWire', fields: PROPERTY_FIELDS })
     property;
 
+    @wire(MessageContext)
+    messageContext;
+
     connectedCallback() {
         this.loadReviews();
+        this.subscribeToSelection();
+    }
+
+    disconnectedCallback() {
+        if (this.subscription) {
+            unsubscribe(this.subscription);
+            this.subscription = null;
+        }
+    }
+
+    subscribeToSelection() {
+        if (this.subscription || !this.messageContext) {
+            return;
+        }
+
+        this.subscription = subscribe(
+            this.messageContext,
+            PROPERTY_SELECTED,
+            (message) => this.handlePropertySelected(message)
+        );
+    }
+
+    handlePropertySelected(message) {
+        if (message?.propertyId) {
+            this.propertyId = message.propertyId;
+            this.loadReviews();
+        }
     }
 
     get propertyName() {
