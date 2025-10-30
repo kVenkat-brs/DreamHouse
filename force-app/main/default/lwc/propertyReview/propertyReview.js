@@ -23,11 +23,13 @@ export default class PropertyReview extends LightningElement {
     property;
 
     @wire(MessageContext)
-    messageContext;
+    setMessageContext(context) {
+        this.messageContext = context;
+        this.subscribeToSelection();
+    }
 
     connectedCallback() {
         this.loadReviews();
-        this.subscribeToSelection();
     }
 
     disconnectedCallback() {
@@ -85,6 +87,15 @@ export default class PropertyReview extends LightningElement {
         this.showForm = !this.showForm;
         if (!this.showForm) {
             this.resetDraft();
+        } else if (!this.activePropertyId) {
+            this.dispatchEvent(
+                new ShowToastEvent({
+                    title: 'No property selected',
+                    message: 'Pick a property on the map or list before leaving a review.',
+                    variant: 'error'
+                })
+            );
+            this.showForm = false;
         }
     }
 
