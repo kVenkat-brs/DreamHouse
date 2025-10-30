@@ -6,6 +6,7 @@ const PROPERTY_FIELDS = ['Property__c.Name'];
 
 export default class PropertyReview extends LightningElement {
     @api propertyId;
+    @api recordId;
     @api canSubmit;
 
     @track reviews = [];
@@ -14,7 +15,7 @@ export default class PropertyReview extends LightningElement {
     title = '';
     comment = '';
 
-    @wire(getRecord, { recordId: '$propertyId', fields: PROPERTY_FIELDS })
+    @wire(getRecord, { recordId: '$propertyIdForWire', fields: PROPERTY_FIELDS })
     property;
 
     connectedCallback() {
@@ -23,6 +24,14 @@ export default class PropertyReview extends LightningElement {
 
     get propertyName() {
         return this.property?.data?.fields?.Name?.value;
+    }
+
+    get propertyIdForWire() {
+        return this.propertyId || this.recordId || null;
+    }
+
+    get activePropertyId() {
+        return this.propertyIdForWire;
     }
 
     get hasReviews() {
@@ -59,7 +68,8 @@ export default class PropertyReview extends LightningElement {
 
     handleSubmit(event) {
         event.preventDefault();
-        if (!this.propertyId) {
+        const activePropertyId = this.activePropertyId;
+        if (!activePropertyId) {
             this.dispatchEvent(
                 new ShowToastEvent({
                     title: 'Missing property context',
@@ -104,7 +114,7 @@ export default class PropertyReview extends LightningElement {
         }
 
         const fields = { ...event.detail.fields };
-        fields.Property__c = this.propertyId;
+        fields.Property__c = activePropertyId;
         fields.Rating__c = this.draftRating;
         fields.Title__c = this.title;
         fields.Comment__c = this.comment;
