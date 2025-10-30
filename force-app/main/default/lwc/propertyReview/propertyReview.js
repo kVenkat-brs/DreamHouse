@@ -2,6 +2,7 @@ import { LightningElement, api, wire, track } from 'lwc';
 import { subscribe, unsubscribe, MessageContext } from 'lightning/messageService';
 import { getRecord } from 'lightning/uiRecordApi';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import savePropertyReview from '@salesforce/apex/PropertyController.savePropertyReview';
 
 import PROPERTY_SELECTED from '@salesforce/messageChannel/PropertySelected__c';
 
@@ -19,6 +20,7 @@ export default class PropertyReview extends LightningElement {
     comment = '';
     subscription;
     selectedPropertyId;
+    isSubmitting = false;
 
     @wire(getRecord, { recordId: '$propertyIdForWire', fields: PROPERTY_FIELDS })
     property;
@@ -163,43 +165,46 @@ export default class PropertyReview extends LightningElement {
             return;
         }
 
-        const fields = { ...event.detail.fields };
-        fields.Property__c = activePropertyId;
-        fields.Rating__c = this.draftRating;
-        fields.Title__c = this.title;
-        fields.Comment__c = this.comment;
+        const reviewBody = this.title?.trim()
+            ? `${this.title.trim()} — ${this.comment.trim()}`
+            : this.comment.trim();
 
-        this.template
-            .querySelector('lightning-record-edit-form')
-            .submit(fields);
+        this.isSubmitting = true;
+
+        savePropertyReview({
+            propertyId: activePropertyId,
+            rating: this.draftRating,
+            comment: reviewBody
+        })
+            .then(() => {
+                this.dispatchEvent(
+                    new ShowToastEvent({
+                        title: 'Review submitted',
+                        message: 'Thank you for sharing your feedback!',
+                        variant: 'success'
+                    })
+                );
+                this.showForm = false;
+                this.resetDraft();
+                this.loadReviews();
+            })
+            .catch((error) => {
+                this.dispatchEvent(
+                    new ShowToastEvent({
+                        title: 'Unable to submit review',
+                        message: error?.body?.message || error?.message || 'Try again later.',
+                        variant: 'error'
+                    })
+                );
+            })
+            .finally(() => {
+                this.isSubmitting = false;
+            });
     }
 
     cancelForm() {
         this.toggleForm();
         this.resetDraft();
-    }
-
-    handleSuccess() {
-        this.dispatchEvent(
-            new ShowToastEvent({
-                title: 'Review submitted',
-                message: 'Thank you for sharing your feedback!',
-                variant: 'success'
-            })
-        );
-        this.toggleForm();
-        this.resetDraft();
-        this.loadReviews();
-    }
-
-    handleError(event) {
-        this.dispatchEvent(
-            new ShowToastEvent({
-                title: 'Unable to submit review',
-                message: event.detail?.message || 'Try again later.',
-                variant: 'error'
-            })
-        );
     }
 
     resetDraft() {
