@@ -109,4 +109,35 @@ public with sharing class PropertyController {
             ORDER BY CreatedDate
         ];
     }
+
+    /**
+     * Creates a new review for the provided property.
+     * @param propertyId Id of the Property__c record being reviewed.
+     * @param rating Number of stars (1-5) the reviewer selected.
+     * @param comment Body of the review text.
+     */
+    @AuraEnabled(scope='global')
+    public static Id savePropertyReview(Id propertyId, Decimal rating, String comment) {
+        if (propertyId == null) {
+            throw new AuraHandledException('Property Id is required.');
+        }
+
+        Decimal normalizedRating = rating == null ? 0 : rating;
+        if (normalizedRating < 1 || normalizedRating > 5) {
+            throw new AuraHandledException('Rating must be between 1 and 5.');
+        }
+
+        if (String.isBlank(comment)) {
+            throw new AuraHandledException('A comment is required.');
+        }
+
+        Property_Review__c review = new Property_Review__c();
+        review.Property__c = propertyId;
+        review.Rating__c = normalizedRating;
+        review.Comment__c = comment;
+
+        insert review;
+
+        return review.Id;
+    }
 }
