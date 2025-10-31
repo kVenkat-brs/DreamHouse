@@ -119,41 +119,71 @@ public with sharing class PropertyController {
             return new List<PropertyReviewDTO>();
         }
 
-        Boolean hasCommentField = hasReviewField('Comment__c');
-        Boolean hasTitleField = hasReviewField('Title__c');
-
-        String fieldList = 'Id, Property__c, Rating__c, CreatedDate, CreatedBy.Name';
-        if (hasCommentField) {
-            fieldList += ', Comment__c';
-        }
-        if (hasTitleField) {
-            fieldList += ', Title__c';
-        }
-
-        List<Property_Review__c> rawReviews = Database.query(
-            'SELECT ' + fieldList + ' ' +
-            'FROM Property_Review__c ' +
-            'WHERE Property__c = :propertyId ' +
-            'WITH USER_MODE ' +
-            'ORDER BY CreatedDate DESC ' +
-            'LIMIT 200'
-        );
-
         List<PropertyReviewDTO> dtos = new List<PropertyReviewDTO>();
-        for (Property_Review__c review : rawReviews) {
-            PropertyReviewDTO dtoInstance = new PropertyReviewDTO();
-            dtoInstance.id = review.Id;
-            dtoInstance.propertyId = review.Property__c;
-            dtoInstance.rating = review.Rating__c;
-            dtoInstance.comment = hasCommentField
-                ? (String)review.get('Comment__c')
-                : null;
-            dtoInstance.title = hasTitleField
-                ? (String)review.get('Title__c')
-                : null;
-            dtoInstance.createdDate = review.CreatedDate;
-            dtoInstance.reviewerName = review.CreatedBy?.Name;
-            dtos.add(dtoInstance);
+
+        try {
+            Boolean hasCommentField = hasReviewField('Comment__c');
+            Boolean hasTitleField = hasReviewField('Title__c');
+
+            String fieldList = 'Id, Property__c, Rating__c, CreatedDate, CreatedBy.Name';
+            if (hasCommentField) {
+                fieldList += ', Comment__c';
+            }
+            if (hasTitleField) {
+                fieldList += ', Title__c';
+            }
+
+            List<Property_Review__c> rawReviews = Database.query(
+                'SELECT ' + fieldList + ' ' +
+                'FROM Property_Review__c ' +
+                'WHERE Property__c = :propertyId ' +
+                'WITH USER_MODE ' +
+                'ORDER BY CreatedDate DESC ' +
+                'LIMIT 200'
+            );
+
+            for (Property_Review__c review : rawReviews) {
+                PropertyReviewDTO dtoInstance = new PropertyReviewDTO();
+                dtoInstance.id = review.Id;
+                dtoInstance.propertyId = review.Property__c;
+                dtoInstance.rating = review.Rating__c;
+                dtoInstance.comment = hasCommentField
+                    ? (String)review.get('Comment__c')
+                    : null;
+                dtoInstance.title = hasTitleField
+                    ? (String)review.get('Title__c')
+                    : null;
+                dtoInstance.createdDate = review.CreatedDate;
+                dtoInstance.reviewerName = review.CreatedBy?.Name;
+                dtos.add(dtoInstance);
+            }
+        } catch (Exception ex) {
+            System.debug(LoggingLevel.WARN, 'Failed to load comments/title fields: ' + ex.getMessage());
+
+            List<Property_Review__c> fallbackReviews = [
+                SELECT Id,
+                    Property__c,
+                    Rating__c,
+                    CreatedDate,
+                    CreatedBy.Name
+                FROM Property_Review__c
+                WHERE Property__c = :propertyId
+                WITH USER_MODE
+                ORDER BY CreatedDate DESC
+                LIMIT 200
+            ];
+
+            for (Property_Review__c review : fallbackReviews) {
+                PropertyReviewDTO dtoInstance = new PropertyReviewDTO();
+                dtoInstance.id = review.Id;
+                dtoInstance.propertyId = review.Property__c;
+                dtoInstance.rating = review.Rating__c;
+                dtoInstance.comment = null;
+                dtoInstance.title = null;
+                dtoInstance.createdDate = review.CreatedDate;
+                dtoInstance.reviewerName = review.CreatedBy?.Name;
+                dtos.add(dtoInstance);
+            }
         }
 
         return dtos;
