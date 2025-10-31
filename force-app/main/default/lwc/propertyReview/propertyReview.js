@@ -99,7 +99,7 @@ export default class PropertyReview extends LightningElement {
                     comment: record.comment,
                     reviewer: record.reviewerName || 'Anonymous',
                     createdDate: record.createdDate,
-                    title: null
+                    title: record.title
                 }));
             })
             .catch((error) => {
@@ -192,16 +192,12 @@ export default class PropertyReview extends LightningElement {
             return;
         }
 
-        const reviewBody = this.title?.trim()
-            ? `${this.title.trim()} — ${this.comment.trim()}`
-            : this.comment.trim();
-
         this.isSubmitting = true;
 
         savePropertyReview({
             propertyId: activePropertyId,
             rating: this.draftRating,
-            comment: reviewBody
+            comment: this.comment.trim()
         })
             .then(() => {
                 this.dispatchEvent(

@@ -1,6 +1,9 @@
 public with sharing class PropertyController {
     private static final Decimal DEFAULT_MAX_PRICE = 9999999;
     private static final Integer DEFAULT_PAGE_SIZE = 9;
+    private static final Map<String, Schema.SObjectField> REVIEW_FIELDS = Property_Review__c.SObjectType.getDescribe().fields.getMap();
+    private static final Boolean HAS_COMMENT_FIELD = REVIEW_FIELDS.containsKey('Comment__c');
+    private static final Boolean HAS_TITLE_FIELD = REVIEW_FIELDS.containsKey('Title__c');
 
     /**
      * Endpoint that retrieves a paged and filtered list of properties
@@ -119,19 +122,22 @@ public with sharing class PropertyController {
             return new List<PropertyReviewDTO>();
         }
 
-        List<Property_Review__c> rawReviews = [
-            SELECT Id,
-                Property__c,
-                Rating__c,
-                Comment__c,
-                CreatedDate,
-                CreatedBy.Name
-            FROM Property_Review__c
-            WHERE Property__c = :propertyId
-            WITH USER_MODE
-            ORDER BY CreatedDate DESC
-            LIMIT 200
-        ];
+        String fieldList = 'Id, Property__c, Rating__c, CreatedDate, CreatedBy.Name';
+        if (HAS_COMMENT_FIELD) {
+            fieldList += ', Comment__c';
+        }
+        if (HAS_TITLE_FIELD) {
+            fieldList += ', Title__c';
+        }
+
+        List<Property_Review__c> rawReviews = Database.query(
+            'SELECT ' + fieldList + ' ' +
+            'FROM Property_Review__c ' +
+            'WHERE Property__c = :propertyId ' +
+            'WITH USER_MODE ' +
+            'ORDER BY CreatedDate DESC ' +
+            'LIMIT 200'
+        );
 
         List<PropertyReviewDTO> dtos = new List<PropertyReviewDTO>();
         for (Property_Review__c review : rawReviews) {
@@ -139,7 +145,12 @@ public with sharing class PropertyController {
             dtoInstance.id = review.Id;
             dtoInstance.propertyId = review.Property__c;
             dtoInstance.rating = review.Rating__c;
-            dtoInstance.comment = review.Comment__c;
+            dtoInstance.comment = HAS_COMMENT_FIELD
+                ? (String)review.get('Comment__c')
+                : null;
+            dtoInstance.title = HAS_TITLE_FIELD
+                ? (String)review.get('Title__c')
+                : null;
             dtoInstance.createdDate = review.CreatedDate;
             dtoInstance.reviewerName = review.CreatedBy?.Name;
             dtos.add(dtoInstance);
@@ -172,7 +183,11 @@ public with sharing class PropertyController {
         Property_Review__c review = new Property_Review__c();
         review.Property__c = propertyId;
         review.Rating__c = normalizedRating;
-        review.Comment__c = comment;
+        if (HAS_COMMENT_FIELD) {
+            review.put('Comment__c', comment);
+        } else if (HAS_TITLE_FIELD) {
+            review.put('Title__c', comment.length() > 255 ? comment.substring(0, 255) : comment);
+        }
 
         insert review;
 
@@ -183,6 +198,7 @@ public with sharing class PropertyController {
         @AuraEnabled public Id propertyId;
         @AuraEnabled public Decimal rating;
         @AuraEnabled public String comment;
+        @AuraEnabled public String title;
         @AuraEnabled public Datetime createdDate;
         @AuraEnabled public String reviewerName;
     }
