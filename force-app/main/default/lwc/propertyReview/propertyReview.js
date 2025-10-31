@@ -17,7 +17,6 @@ export default class PropertyReview extends LightningElement {
     @track reviews = [];
     showForm = false;
     draftRating = 0;
-    title = '';
     comment = '';
     subscription;
     selectedPropertyId;
@@ -127,17 +126,14 @@ export default class PropertyReview extends LightningElement {
                 })
             );
             this.showForm = false;
+        } else {
+            this.draftRating = this.draftRating > 0 ? this.draftRating : 3;
         }
     }
 
     handleRatingChange(event) {
         this.draftRating = Number(event.detail.value);
         this.lastTouchedField = 'rating';
-    }
-
-    handleTitleChange(event) {
-        this.title = event.target.value;
-        this.lastTouchedField = 'title';
     }
 
     handleCommentChange(event) {
@@ -164,17 +160,6 @@ export default class PropertyReview extends LightningElement {
                 new ShowToastEvent({
                     title: 'Rating required',
                     message: 'Please choose a star rating before submitting.',
-                    variant: 'error'
-                })
-            );
-            return;
-        }
-
-        if (!this.title?.trim()) {
-            this.dispatchEvent(
-                new ShowToastEvent({
-                    title: 'Title required',
-                    message: 'Please provide a short title for your review.',
                     variant: 'error'
                 })
             );
@@ -232,7 +217,6 @@ export default class PropertyReview extends LightningElement {
 
     resetDraft() {
         this.draftRating = 0;
-        this.title = '';
         this.comment = '';
     }
 }
