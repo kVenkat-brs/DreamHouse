@@ -1,0 +1,67 @@
+<template>
+    <article class="slds-card mortgage-calculator">
+        <div class="slds-card__header slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                <div class="slds-media__figure">
+                    <span class="slds-icon_container slds-icon-standard-solution" title="Mortgage Calculator">
+                        <svg class="slds-icon slds-icon_small" aria-hidden="true">
+                            <use xlink:href="/assets/icons/standard-sprite/svg/symbols.svg#solution"></use>
+                        </svg>
+                    </span>
+                </div>
+                <div class="slds-media__body">
+                    <h2 class="slds-card__header-title slds-truncate">Mortgage Calculator</h2>
+                    <p class="slds-text-body_small">Estimate your monthly mortgage payment</p>
+                </div>
+            </header>
+        </div>
+
+        <div class="slds-card__body slds-p-around_medium">
+            <lightning-layout multiple-rows>
+                <lightning-layout-item size="12" small-device-size="12" medium-device-size="6" class="slds-p-bottom_medium">
+                    <lightning-input
+                        type="currency"
+                        label="Property Price"
+                        value={price}
+                        onchange={handlePriceChange}
+                        required
+                    ></lightning-input>
+                </lightning-layout-item>
+                <lightning-layout-item size="12" small-device-size="6" medium-device-size="3" class="slds-p-bottom_medium">
+                    <lightning-input
+                        type="number"
+                        label="Interest Rate (Annual %)"
+                        step="0.01"
+                        value={interestRate}
+                        onchange={handleRateChange}
+                        required
+                    ></lightning-input>
+                </lightning-layout-item>
+                <lightning-layout-item size="12" small-device-size="6" medium-device-size="3" class="slds-p-bottom_medium">
+                    <lightning-input
+                        type="number"
+                        label="Loan Tenure (Years)"
+                        value={tenure}
+                        onchange={handleTenureChange}
+                        required
+                    ></lightning-input>
+                </lightning-layout-item>
+            </lightning-layout>
+
+            <div class="slds-m-top_medium slds-grid slds-grid_align-end">
+                <lightning-button
+                    label="Calculate"
+                    variant="brand"
+                    onclick={calculatePayment}
+                ></lightning-button>
+            </div>
+
+            <template lwc:if={monthlyPayment}>
+                <div class="slds-m-top_large mortgage-calculator__result">
+                    <p class="slds-text-heading_large">{monthlyPayment}</p>
+                    <p class="slds-text-title">Estimated Monthly Payment</p>
+                </div>
+            </template>
+        </div>
+    </article>
+</template>
