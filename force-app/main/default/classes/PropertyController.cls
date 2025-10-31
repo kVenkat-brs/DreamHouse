@@ -1,9 +1,6 @@
 public with sharing class PropertyController {
     private static final Decimal DEFAULT_MAX_PRICE = 9999999;
     private static final Integer DEFAULT_PAGE_SIZE = 9;
-    private static final Map<String, Schema.SObjectField> REVIEW_FIELDS = Property_Review__c.SObjectType.getDescribe().fields.getMap();
-    private static final Boolean HAS_COMMENT_FIELD = REVIEW_FIELDS.containsKey('Comment__c');
-    private static final Boolean HAS_TITLE_FIELD = REVIEW_FIELDS.containsKey('Title__c');
 
     /**
      * Endpoint that retrieves a paged and filtered list of properties
@@ -122,11 +119,14 @@ public with sharing class PropertyController {
             return new List<PropertyReviewDTO>();
         }
 
+        Boolean hasCommentField = hasReviewField('Comment__c');
+        Boolean hasTitleField = hasReviewField('Title__c');
+
         String fieldList = 'Id, Property__c, Rating__c, CreatedDate, CreatedBy.Name';
-        if (HAS_COMMENT_FIELD) {
+        if (hasCommentField) {
             fieldList += ', Comment__c';
         }
-        if (HAS_TITLE_FIELD) {
+        if (hasTitleField) {
             fieldList += ', Title__c';
         }
 
@@ -145,10 +145,10 @@ public with sharing class PropertyController {
             dtoInstance.id = review.Id;
             dtoInstance.propertyId = review.Property__c;
             dtoInstance.rating = review.Rating__c;
-            dtoInstance.comment = HAS_COMMENT_FIELD
+            dtoInstance.comment = hasCommentField
                 ? (String)review.get('Comment__c')
                 : null;
-            dtoInstance.title = HAS_TITLE_FIELD
+            dtoInstance.title = hasTitleField
                 ? (String)review.get('Title__c')
                 : null;
             dtoInstance.createdDate = review.CreatedDate;
@@ -180,12 +180,15 @@ public with sharing class PropertyController {
             throw new AuraHandledException('A comment is required.');
         }
 
+        Boolean hasCommentField = hasReviewField('Comment__c');
+        Boolean hasTitleField = hasReviewField('Title__c');
+
         Property_Review__c review = new Property_Review__c();
         review.Property__c = propertyId;
         review.Rating__c = normalizedRating;
-        if (HAS_COMMENT_FIELD) {
+        if (hasCommentField) {
             review.put('Comment__c', comment);
-        } else if (HAS_TITLE_FIELD) {
+        } else if (hasTitleField) {
             review.put('Title__c', comment.length() > 255 ? comment.substring(0, 255) : comment);
         }
 
@@ -201,5 +204,9 @@ public with sharing class PropertyController {
         @AuraEnabled public String title;
         @AuraEnabled public Datetime createdDate;
         @AuraEnabled public String reviewerName;
+    }
+
+    private static Boolean hasReviewField(String apiName) {
+        return Property_Review__c.SObjectType.getDescribe().fields.getMap().containsKey(apiName);
     }
 }
