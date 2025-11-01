@@ -7,6 +7,7 @@ export default class MortgageCalculator extends LightningElement {
     @track interestRate = null; // annual percentage rate
     @track tenure = null; // years
     @track monthlyPayment = null;
+    @track formattedPayment = null;
 
     handlePriceChange(event) {
         const value = parseFloat(event.detail.value);
@@ -26,6 +27,7 @@ export default class MortgageCalculator extends LightningElement {
     calculatePayment() {
         if (!this.isInputValid()) {
             this.monthlyPayment = null;
+            this.formattedPayment = null;
             return;
         }
 
@@ -34,11 +36,8 @@ export default class MortgageCalculator extends LightningElement {
         const totalPayments = this.tenure * MONTHS_IN_YEAR;
 
         const payment = this.calculateEmi(loanAmount, monthlyRate, totalPayments);
-
-        this.monthlyPayment = new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD'
-        }).format(payment);
+        this.monthlyPayment = payment;
+        this.formattedPayment = this.formatCurrency(payment);
     }
 
     /**
@@ -55,11 +54,39 @@ export default class MortgageCalculator extends LightningElement {
         return (principal * monthlyRate * growthFactor) / (growthFactor - 1);
     }
 
+    formatCurrency(amount) {
+        return new Intl.NumberFormat(undefined, {
+            style: 'currency',
+            currency: this.detectCurrencyCode()
+        }).format(amount);
+    }
+
+    detectCurrencyCode() {
+        const locale = Intl.DateTimeFormat().resolvedOptions().locale || 'en-US';
+        const currencyMap = {
+            'en-IN': 'INR',
+            'hi-IN': 'INR',
+            'bn-IN': 'INR',
+            'en-US': 'USD'
+        };
+
+        if (currencyMap[locale]) {
+            return currencyMap[locale];
+        }
+
+        if (locale && locale.endsWith('-IN')) {
+            return 'INR';
+        }
+
+        return 'USD';
+    }
+
     resetCalculator() {
         this.price = null;
         this.interestRate = null;
         this.tenure = null;
         this.monthlyPayment = null;
+        this.formattedPayment = null;
     }
 
     isInputValid() {
