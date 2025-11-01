@@ -8,10 +8,11 @@ export default class MortgageCalculator extends LightningElement {
     @track tenure = null; // years
     @track monthlyPayment = null;
     @track formattedPayment = null;
+    @track validationMessage = null;
 
     handlePriceChange(event) {
         const value = parseFloat(event.detail.value);
-        this.price = Number.isFinite(value) && value >= 0 ? value : null;
+        this.price = Number.isFinite(value) && value > 0 ? value : null;
     }
 
     handleRateChange(event) {
@@ -38,6 +39,7 @@ export default class MortgageCalculator extends LightningElement {
         const payment = this.calculateEmi(loanAmount, monthlyRate, totalPayments);
         this.monthlyPayment = payment;
         this.formattedPayment = this.formatCurrency(payment);
+        this.validationMessage = null;
     }
 
     /**
@@ -87,13 +89,26 @@ export default class MortgageCalculator extends LightningElement {
         this.tenure = null;
         this.monthlyPayment = null;
         this.formattedPayment = null;
+        this.validationMessage = null;
     }
 
     isInputValid() {
-        return (
-            Number.isFinite(this.price) && this.price > 0 &&
-            Number.isFinite(this.interestRate) && this.interestRate >= 0 &&
-            Number.isFinite(this.tenure) && this.tenure > 0
-        );
+        if (!Number.isFinite(this.price) || this.price <= 0) {
+            this.validationMessage = 'Enter a valid property price greater than zero.';
+            return false;
+        }
+
+        if (!Number.isFinite(this.interestRate) || this.interestRate < 0) {
+            this.validationMessage = 'Enter a valid annual interest rate (zero or positive).';
+            return false;
+        }
+
+        if (!Number.isFinite(this.tenure) || this.tenure <= 0) {
+            this.validationMessage = 'Enter a valid loan tenure in years (greater than zero).';
+            return false;
+        }
+
+        this.validationMessage = null;
+        return true;
     }
 }
