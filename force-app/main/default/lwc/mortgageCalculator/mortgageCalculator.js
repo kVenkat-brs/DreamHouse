@@ -33,18 +33,26 @@ export default class MortgageCalculator extends LightningElement {
         const monthlyRate = (this.interestRate / 100) / MONTHS_IN_YEAR;
         const totalPayments = this.tenure * MONTHS_IN_YEAR;
 
-        let payment;
-        if (monthlyRate === 0) {
-            payment = loanAmount / totalPayments;
-        } else {
-            const factor = Math.pow(1 + monthlyRate, totalPayments);
-            payment = (loanAmount * monthlyRate * factor) / (factor - 1);
-        }
+        const payment = this.calculateEmi(loanAmount, monthlyRate, totalPayments);
 
         this.monthlyPayment = new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: 'USD'
         }).format(payment);
+    }
+
+    /**
+     * Calculates the monthly repayment using the standard EMI formula:
+     * EMI = [P × R × (1 + R)^N] / [(1 + R)^N – 1]
+     * Where P = principal, R = monthly interest rate, N = total number of payments.
+     */
+    calculateEmi(principal, monthlyRate, totalPayments) {
+        if (monthlyRate === 0) {
+            return principal / totalPayments;
+        }
+
+        const growthFactor = Math.pow(1 + monthlyRate, totalPayments);
+        return (principal * monthlyRate * growthFactor) / (growthFactor - 1);
     }
 
     isInputValid() {
