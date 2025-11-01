@@ -55,6 +55,13 @@ export default class MortgageCalculator extends LightningElement {
         return (principal * monthlyRate * growthFactor) / (growthFactor - 1);
     }
 
+    resetCalculator() {
+        this.price = null;
+        this.interestRate = null;
+        this.tenure = null;
+        this.monthlyPayment = null;
+    }
+
     isInputValid() {
         return (
             Number.isFinite(this.price) && this.price > 0 &&

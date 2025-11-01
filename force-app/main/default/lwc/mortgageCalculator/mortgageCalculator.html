@@ -51,7 +51,13 @@
                 </lightning-layout-item>
             </lightning-layout>
 
-            <div class="slds-m-top_medium slds-grid slds-grid_align-end">
+            <div class="slds-m-top_medium slds-grid slds-grid_align-end slds-gutters_x-small">
+                <lightning-button
+                    label="Reset"
+                    variant="neutral"
+                    onclick={resetCalculator}
+                    class="mortgage-calculator__button"
+                ></lightning-button>
                 <lightning-button
                     label="Calculate"
                     variant="brand"
