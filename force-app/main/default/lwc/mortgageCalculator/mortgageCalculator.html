@@ -17,8 +17,8 @@
         </div>
 
         <div class="slds-card__body slds-p-around_medium">
-            <lightning-layout multiple-rows pull-to-boundary="small">
-                <lightning-layout-item size="12" small-device-size="12" medium-device-size="6" class="slds-p-bottom_medium">
+            <lightning-layout multiple-rows pull-to-boundary="small" class="mortgage-calculator__grid">
+                <lightning-layout-item size="12" small-device-size="12" medium-device-size="8" class="slds-p-bottom_medium">
                     <lightning-input
                         type="currency"
                         label="Property Price"
@@ -28,7 +28,7 @@
                         required
                     ></lightning-input>
                 </lightning-layout-item>
-                <lightning-layout-item size="12" small-device-size="6" medium-device-size="3" class="slds-p-bottom_medium">
+                <lightning-layout-item size="12" small-device-size="6" medium-device-size="4" class="slds-p-bottom_medium">
                     <lightning-input
                         type="number"
                         label="Interest Rate (Annual %)"
@@ -39,7 +39,7 @@
                         required
                     ></lightning-input>
                 </lightning-layout-item>
-                <lightning-layout-item size="12" small-device-size="6" medium-device-size="3" class="slds-p-bottom_medium">
+                <lightning-layout-item size="12" small-device-size="6" medium-device-size="4" class="slds-p-bottom_medium">
                     <lightning-input
                         type="number"
                         label="Loan Tenure (Years)"
@@ -51,7 +51,7 @@
                 </lightning-layout-item>
             </lightning-layout>
 
-            <div class="slds-m-top_medium slds-grid slds-grid_align-end slds-gutters_x-small">
+            <div class="slds-m-top_medium slds-grid slds-grid_align-end slds-wrap slds-gutters_x-small">
                 <lightning-button
                     label="Reset"
                     variant="neutral"
