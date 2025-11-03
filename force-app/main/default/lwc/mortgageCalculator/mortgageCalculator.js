@@ -7,7 +7,6 @@ export default class MortgageCalculator extends LightningElement {
     @track interestRate = null; // annual percentage rate
     @track tenure = null; // years
     @track monthlyPayment = null;
-    @track formattedPayment = null;
     @track validationMessage = null;
 
     handlePriceChange(event) {
@@ -25,10 +24,17 @@ export default class MortgageCalculator extends LightningElement {
         this.tenure = Number.isFinite(value) && value > 0 ? value : null;
     }
 
+    get formattedPayment() {
+        if (!Number.isFinite(this.monthlyPayment)) {
+            return null;
+        }
+
+        return this.formatCurrency(this.monthlyPayment);
+    }
+
     calculatePayment() {
         if (!this.isInputValid()) {
             this.monthlyPayment = null;
-            this.formattedPayment = null;
             return;
         }
 
@@ -36,9 +42,7 @@ export default class MortgageCalculator extends LightningElement {
         const monthlyRate = (this.interestRate / 100) / MONTHS_IN_YEAR;
         const totalPayments = this.tenure * MONTHS_IN_YEAR;
 
-        const payment = this.calculateEmi(loanAmount, monthlyRate, totalPayments);
-        this.monthlyPayment = payment;
-        this.formattedPayment = this.formatCurrency(payment);
+        this.monthlyPayment = this.calculateEmi(loanAmount, monthlyRate, totalPayments);
         this.validationMessage = null;
     }
 
@@ -88,7 +92,6 @@ export default class MortgageCalculator extends LightningElement {
         this.interestRate = null;
         this.tenure = null;
         this.monthlyPayment = null;
-        this.formattedPayment = null;
         this.validationMessage = null;
     }
 
