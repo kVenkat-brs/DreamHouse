@@ -91,14 +91,16 @@ export default class PropertyReview extends LightningElement {
 
         getPropertyReviews({ propertyId: activePropertyId })
             .then((records) => {
-                this.reviews = (records || []).map((record) => ({
+                const items = records || [];
+                this.reviews = items.map((record, index) => ({
                     id: record.id,
                     propertyId: record.propertyId,
                     rating: record.rating,
                     comment: record.comment,
                     reviewer: record.reviewerName || 'Anonymous',
                     createdDate: record.createdDate,
-                    title: record.title
+                    title: record.title,
+                    hasDivider: index < items.length - 1
                 }));
             })
             .catch((error) => {
