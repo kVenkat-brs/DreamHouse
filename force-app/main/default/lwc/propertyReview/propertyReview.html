@@ -58,6 +58,9 @@
                                 <p class="slds-text-longform">{review.comment}</p>
                             </div>
                         </article>
+                        <template lwc:if={review.hasDivider}>
+                            <div class="slds-divider slds-m-vertical_medium"></div>
+                        </template>
                     </template>
                 </div>
             </template>
