@@ -34,12 +34,17 @@
                                 <div class="property-review__tile-header">
                                     <div>
                                         <span class="slds-text-title_bold">By:</span>
-                                        <lightning-formatted-text
-                                            class="slds-text-title_bold slds-m-left_x-small"
-                                            value={review.reviewer}
-                                        ></lightning-formatted-text>
+                                        <template lwc:if={review.reviewer}>
+                                            <lightning-formatted-text
+                                                class="slds-text-title_bold slds-m-left_x-small"
+                                                value={review.reviewer}
+                                            ></lightning-formatted-text>
+                                        </template>
+                                        <template lwc:else>
+                                            <span class="slds-text-title_bold slds-m-left_x-small">Anonymous</span>
+                                        </template>
                                         <lightning-formatted-date-time
-                                            class="slds-text-color_weak slds-text-body_small"
+                                            class="slds-text-color_weak slds-text-body_small slds-m-top_xx-small"
                                             value={review.createdDate}
                                             year="numeric"
                                             month="short"
