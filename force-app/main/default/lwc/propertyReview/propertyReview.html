@@ -60,7 +60,9 @@
                                     ></c-rating-picker>
                                 </div>
                                 <template lwc:if={review.title}>
-                                    <h3 class="slds-text-heading_small slds-m-bottom_x-small">{review.title}</h3>
+                                    <h3 class="slds-text-heading_small slds-text-color_default slds-text-title_bold slds-m-bottom_x-small">
+                                        {review.title}
+                                    </h3>
                                 </template>
                                 <p class="slds-text-longform">{review.comment}</p>
                             </div>
