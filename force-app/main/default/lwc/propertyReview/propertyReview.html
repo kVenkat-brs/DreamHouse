@@ -100,6 +100,14 @@
                     <lightning-messages></lightning-messages>
 
                     <div class="slds-form slds-form_stacked slds-p-around_medium slds-box slds-box_xx-small">
+                        <lightning-input
+                            type="text"
+                            label="Title"
+                            value={title}
+                            onchange={handleTitleChange}
+                            placeholder="e.g., Great for families"
+                            class="slds-m-bottom_medium"
+                        ></lightning-input>
                         <fieldset class="slds-form-element slds-m-bottom_medium">
                             <legend class="slds-form-element__legend slds-form-element__label">Rating</legend>
                             <div class="slds-form-element__control">

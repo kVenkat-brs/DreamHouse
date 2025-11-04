@@ -17,6 +17,7 @@ export default class PropertyReview extends LightningElement {
     @track reviews = [];
     showForm = false;
     draftRating = 0;
+    title = '';
     comment = '';
     subscription;
     selectedPropertyId;
@@ -143,6 +144,11 @@ export default class PropertyReview extends LightningElement {
         this.lastTouchedField = 'comment';
     }
 
+    handleTitleChange(event) {
+        this.title = event.target.value;
+        this.lastTouchedField = 'title';
+    }
+
     handleSubmit(event) {
         event.preventDefault();
         const activePropertyId = this.activePropertyId;
@@ -184,7 +190,8 @@ export default class PropertyReview extends LightningElement {
         savePropertyReview({
             propertyId: activePropertyId,
             rating: this.draftRating,
-            comment: this.comment.trim()
+            comment: this.comment.trim(),
+            title: this.title ? this.title.trim() : null
         })
             .then(() => {
                 this.dispatchEvent(
@@ -219,6 +226,7 @@ export default class PropertyReview extends LightningElement {
 
     resetDraft() {
         this.draftRating = 0;
+        this.title = '';
         this.comment = '';
     }
 }
