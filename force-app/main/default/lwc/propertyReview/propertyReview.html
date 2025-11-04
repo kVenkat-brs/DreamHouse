@@ -88,6 +88,9 @@
 
         <template lwc:if={showForm}>
             <div class="property-review__form">
+                <h3 class="slds-text-heading_small slds-text-title_bold slds-p-horizontal_medium slds-p-top_medium">
+                    Write a Review
+                </h3>
                 <lightning-record-edit-form
                     object-api-name="Property_Review__c"
                     onsubmit={handleSubmit}
