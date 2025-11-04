@@ -27,7 +27,8 @@
 
         <div class="slds-card__body slds-p-around_medium property-review">
             <template lwc:if={reviews.length}>
-                <div class="property-review__list" aria-live="polite">
+                <h3 id="reviews-list" class="slds-text-title_bold slds-m-bottom_small">Recent Reviews</h3>
+                <div class="property-review__list" aria-live="polite" aria-labelledby="reviews-list">
                     <template for:each={reviews} for:item="review">
                         <article key={review.id} class="property-review__tile slds-media">
                             <div class="slds-media__body">
