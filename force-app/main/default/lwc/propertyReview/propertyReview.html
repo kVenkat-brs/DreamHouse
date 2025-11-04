@@ -1,4 +1,5 @@
 <template>
+    <!-- Container card for the property review experience -->
     <section class="slds-card slds-theme_default" aria-label="Property Reviews Section">
         <!-- Header region groups the card title, contextual copy, and the Add Review action button -->
         <div class="slds-card__header slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
@@ -25,6 +26,7 @@
             ></lightning-button>
         </div>
 
+        <!-- Region displaying existing reviews -->
         <div class="slds-card__body slds-p-around_medium property-review">
             <template lwc:if={reviews.length}>
                 <h3 id="reviews-list" class="slds-text-title_bold slds-m-bottom_small">Recent Reviews</h3>
@@ -88,6 +90,7 @@
         </div>
 
         <template lwc:if={showForm}>
+            <!-- Review form surfaced when users choose to contribute -->
             <div class="property-review__form">
                 <h3 class="slds-text-heading_small slds-text-title_bold slds-p-horizontal_medium slds-p-top_medium">
                     Write a Review
