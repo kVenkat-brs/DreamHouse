@@ -102,9 +102,16 @@ export default class PropertyReview extends LightningElement {
      * @param {{ propertyId: string }} message - The LMS payload containing a propertyId.
      */
     handlePropertySelected(message) {
+        // eslint-disable-next-line no-console
+        console.log('[PropertyReview] LMS message received:', JSON.stringify(message));
         if (message?.propertyId) {
             this.selectedPropertyId = message.propertyId;
+            // eslint-disable-next-line no-console
+            console.log('[PropertyReview] Selected propertyId set to:', this.selectedPropertyId);
             this.loadReviews();
+        } else {
+            // eslint-disable-next-line no-console
+            console.log('[PropertyReview] LMS message missing propertyId');
         }
     }
 
