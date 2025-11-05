@@ -152,7 +152,8 @@ export default class PropertyReview extends LightningElement {
                 reviewer: record.reviewerName || 'Anonymous',
                 createdDate: record.createdDate,
                 title: record.title,
-                hasDivider: index < items.length - 1
+                hasDivider: index < items.length - 1,
+                dividerKey: record.id + '-divider'
             }));
         } else if (error) {
             this.reviews = [];
@@ -226,16 +227,17 @@ export default class PropertyReview extends LightningElement {
         return getPropertyReviews({ propertyId: activePropertyId })
             .then((records) => {
                 const items = records || [];
-                this.reviews = items.map((record, index) => ({
-                    id: record.id,
-                    propertyId: record.propertyId,
-                    rating: record.rating,
-                    comment: record.comment,
-                    reviewer: record.reviewerName || 'Anonymous',
-                    createdDate: record.createdDate,
-                    title: record.title,
-                    hasDivider: index < items.length - 1
-                }));
+            this.reviews = items.map((record, index) => ({
+                id: record.id,
+                propertyId: record.propertyId,
+                rating: record.rating,
+                comment: record.comment,
+                reviewer: record.reviewerName || 'Anonymous',
+                createdDate: record.createdDate,
+                title: record.title,
+                hasDivider: index < items.length - 1,
+                dividerKey: record.id + '-divider'
+            }));
                 // Notify the user about the result of loading reviews
                 if (this.reviewCount === 0) {
                     this.showToast('No reviews found', 'There are no reviews for this property yet.', 'info');

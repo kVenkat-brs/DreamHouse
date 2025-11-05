@@ -71,7 +71,7 @@
                             </div>
                         </article>
                         <template lwc:if={review.hasDivider}>
-                            <div class="slds-divider slds-m-vertical_medium"></div>
+                            <div key={review.dividerKey} class="slds-divider slds-m-vertical_medium"></div>
                         </template>
                     </template>
                 </div>
