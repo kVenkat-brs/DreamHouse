@@ -17,6 +17,10 @@ import savePropertyReview from '@salesforce/apex/PropertyController.saveProperty
 // Lightning Message Channel that notifies this component when a property is selected elsewhere.
 import PROPERTY_SELECTED from '@salesforce/messageChannel/PropertySelected__c';
 
+// Fields to retrieve via getRecord for the active Property__c context.
+// Currently only fetches the property's Name for lightweight UI display
+// (e.g., headings or contextual labels). Add more fields here as needed
+// and ensure they are referenced safely in the template/JS.
 const PROPERTY_FIELDS = ['Property__c.Name'];
 
 export default class PropertyReview extends LightningElement {
@@ -133,6 +137,13 @@ export default class PropertyReview extends LightningElement {
 
     get reviewCount() {
         return this.reviews.length;
+    }
+
+    /**
+     * True when there is no selected property context; use to disable the form UI.
+     */
+    get isReviewFormDisabled() {
+        return !this.activePropertyId;
     }
 
     get canSubmitVisible() {
