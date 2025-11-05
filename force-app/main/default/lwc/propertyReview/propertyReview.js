@@ -139,6 +139,14 @@ export default class PropertyReview extends LightningElement {
                     title: record.title,
                     hasDivider: index < items.length - 1
                 }));
+                // Notify success with the number of reviews loaded
+                this.dispatchEvent(
+                    new ShowToastEvent({
+                        title: 'Reviews loaded',
+                        message: `${this.reviewCount} review${this.reviewCount === 1 ? '' : 's'} loaded.`,
+                        variant: 'success'
+                    })
+                );
             })
             .catch((error) => {
                 this.reviews = [];
