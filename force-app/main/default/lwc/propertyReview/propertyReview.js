@@ -108,6 +108,10 @@ export default class PropertyReview extends LightningElement {
         return this.reviews.length > 0;
     }
 
+    get reviewCount() {
+        return this.reviews.length;
+    }
+
     get canSubmitVisible() {
         return this.canSubmit !== false;
     }
