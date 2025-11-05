@@ -141,10 +141,10 @@ export default class PropertyReview extends LightningElement {
         if (!activePropertyId) {
             this.reviews = [];
             this.isLoading = false;
-            return;
+            return Promise.resolve();
         }
 
-        getPropertyReviews({ propertyId: activePropertyId })
+        return getPropertyReviews({ propertyId: activePropertyId })
             .then((records) => {
                 const items = records || [];
                 this.reviews = items.map((record, index) => ({
@@ -179,6 +179,21 @@ export default class PropertyReview extends LightningElement {
             .finally(() => {
                 this.isLoading = false;
             });
+    }
+
+    /**
+     * Public helper to refresh the review list and surface a success toast when complete.
+     */
+    refreshReviews() {
+        const maybePromise = this.loadReviews();
+        if (maybePromise && typeof maybePromise.then === 'function') {
+            return maybePromise.then(() => {
+                this.showToast('Reviews refreshed', 'Latest reviews loaded.', 'success');
+            });
+        }
+        // Fallback if loadReviews didn't return a promise
+        this.showToast('Reviews refreshed', 'Latest reviews loaded.', 'success');
+        return Promise.resolve();
     }
 
     /**
