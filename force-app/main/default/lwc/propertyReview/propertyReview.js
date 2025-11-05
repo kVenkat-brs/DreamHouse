@@ -188,6 +188,23 @@ export default class PropertyReview extends LightningElement {
         return !this.activePropertyId;
     }
 
+    /**
+     * Computed reviews where reviewer names are capitalized for display.
+     */
+    get formattedReviews() {
+        const toTitle = (name) => {
+            if (!name) return 'Anonymous';
+            return name
+                .split(/\s+/)
+                .map((part) => (part ? part.charAt(0).toUpperCase() + part.slice(1).toLowerCase() : part))
+                .join(' ');
+        };
+        return (this.reviews || []).map((r) => ({
+            ...r,
+            reviewer: toTitle(r.reviewer)
+        }));
+    }
+
     get canSubmitVisible() {
         return this.canSubmit !== false;
     }
