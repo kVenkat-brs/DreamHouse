@@ -94,11 +94,21 @@ export default class PropertyReview extends LightningElement {
             return;
         }
 
-        this.subscription = subscribe(
-            this.messageContext,
-            PROPERTY_SELECTED,
-            (message) => this.handlePropertySelected(message)
-        );
+        try {
+            this.subscription = subscribe(
+                this.messageContext,
+                PROPERTY_SELECTED,
+                (message) => this.handlePropertySelected(message)
+            );
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error('[PropertyReview] Failed to subscribe to PROPERTY_SELECTED:', e);
+            this.showToast(
+                'Subscription error',
+                `Unable to subscribe to property selection updates: ${e?.message || 'Unknown error'}`,
+                'error'
+            );
+        }
     }
 
     /**
