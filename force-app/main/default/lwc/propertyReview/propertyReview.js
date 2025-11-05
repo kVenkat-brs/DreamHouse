@@ -265,12 +265,25 @@ export default class PropertyReview extends LightningElement {
             return;
         }
 
+        // Ensure the comment has a reasonable minimum length
+        const cleanedComment = this.comment.trim();
+        if (cleanedComment.length < 10) {
+            this.dispatchEvent(
+                new ShowToastEvent({
+                    title: 'Comment too short',
+                    message: 'Please enter at least 10 characters in your review comment.',
+                    variant: 'error'
+                })
+            );
+            return;
+        }
+
         this.isSubmitting = true;
 
         savePropertyReview({
             propertyId: activePropertyId,
             rating: this.draftRating,
-            comment: this.comment.trim(),
+            comment: cleanedComment,
             title: this.title ? this.title.trim() : null
         })
             .then(() => {
