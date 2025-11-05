@@ -139,7 +139,7 @@
 
                     <div class="property-review__footer">
                         <lightning-button variant="destructive-text" label="Cancel" onclick={cancelForm}></lightning-button>
-                        <lightning-button variant="brand" type="submit" label="Post Review"></lightning-button>
+                        <lightning-button variant="brand" type="submit" label="Post Review" disabled={isSubmitting}></lightning-button>
                     </div>
                 </lightning-record-edit-form>
                 <p class="slds-text-body_small slds-text-color_weak slds-p-horizontal_medium slds-p-bottom_medium">
