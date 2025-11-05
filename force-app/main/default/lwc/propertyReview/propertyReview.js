@@ -248,9 +248,17 @@ export default class PropertyReview extends LightningElement {
      * Toggles the visibility of the review submission form and resets state when hidden.
      */
     toggleForm() {
+        const wasOpen = this.showForm;
         this.showForm = !this.showForm;
         if (!this.showForm) {
-            this.resetDraft();
+            // If the user closes the form mid-entry, clear any draft values
+            const hasDraft =
+                (this.draftRating && this.draftRating > 0) ||
+                (this.title && this.title.trim().length > 0) ||
+                (this.comment && this.comment.trim().length > 0);
+            if (wasOpen && hasDraft) {
+                this.resetDraft();
+            }
         } else if (!this.activePropertyId) {
             this.showToast(
                 'No property selected',
@@ -386,5 +394,6 @@ export default class PropertyReview extends LightningElement {
         this.draftRating = 0;
         this.title = '';
         this.comment = '';
+        this.lastTouchedField = undefined;
     }
 }
