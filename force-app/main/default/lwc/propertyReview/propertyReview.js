@@ -30,6 +30,8 @@ export default class PropertyReview extends LightningElement {
     subscription;
     selectedPropertyId;
     isSubmitting = false;
+    // True while reviews are being loaded from the server
+    isLoading = false;
 
     @wire(getRecord, { recordId: '$propertyIdForWire', fields: PROPERTY_FIELDS })
     property;
@@ -121,8 +123,10 @@ export default class PropertyReview extends LightningElement {
      */
     loadReviews() {
         const activePropertyId = this.activePropertyId;
+        this.isLoading = true;
         if (!activePropertyId) {
             this.reviews = [];
+            this.isLoading = false;
             return;
         }
 
@@ -157,6 +161,9 @@ export default class PropertyReview extends LightningElement {
                         variant: 'error'
                     })
                 );
+            })
+            .finally(() => {
+                this.isLoading = false;
             });
     }
 
