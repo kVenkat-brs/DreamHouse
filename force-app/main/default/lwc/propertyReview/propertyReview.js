@@ -140,6 +140,8 @@ export default class PropertyReview extends LightningElement {
      */
     @wire(getPropertyReviews, { propertyId: '$propertyIdForWire' })
     wiredReviews({ data, error }) {
+        // eslint-disable-next-line no-console
+        console.log('[PropertyReview] @wire getPropertyReviews propertyId:', this.propertyIdForWire);
         if (data) {
             const items = data || [];
             this.reviews = items.map((record, index) => ({
@@ -202,6 +204,8 @@ export default class PropertyReview extends LightningElement {
             return Promise.resolve();
         }
 
+        // eslint-disable-next-line no-console
+        console.log('[PropertyReview] Loading reviews for propertyId:', activePropertyId);
         return getPropertyReviews({ propertyId: activePropertyId })
             .then((records) => {
                 const items = records || [];
