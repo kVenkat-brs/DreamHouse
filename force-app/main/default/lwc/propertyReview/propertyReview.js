@@ -7,6 +7,8 @@ import { subscribe, unsubscribe, MessageContext } from 'lightning/messageService
 import { getRecord } from 'lightning/uiRecordApi';
 // Toast notifications for success and error feedback.
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+// Modal-style confirmation dialog presented before submitting a review.
+import LightningConfirm from 'lightning/confirm';
 // Apex method that retrieves existing reviews for the active property.
 import getPropertyReviews from '@salesforce/apex/PropertyController.getPropertyReviews';
 // Apex method that saves a new review when the form is submitted.
@@ -229,7 +231,7 @@ export default class PropertyReview extends LightningElement {
      * Validates user input and persists the review through Apex.
      * @param {Event} event - Form submit event.
      */
-    handleSubmit(event) {
+    async handleSubmit(event) {
         event.preventDefault();
         const activePropertyId = this.activePropertyId;
         if (!activePropertyId) {
@@ -275,6 +277,16 @@ export default class PropertyReview extends LightningElement {
                     variant: 'error'
                 })
             );
+            return;
+        }
+
+        // Ask for user confirmation before submitting the review
+        const confirmed = await LightningConfirm.open({
+            message: 'Are you sure you want to post this review?',
+            label: 'Confirm Review Submission'
+        });
+
+        if (!confirmed) {
             return;
         }
 
