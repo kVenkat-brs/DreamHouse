@@ -32,6 +32,9 @@ export default class MortgageCalculator extends LightningElement {
         return this.formatCurrency(this.monthlyPayment);
     }
 
+    /**
+     * Calculates the monthly mortgage payment when the user clicks Calculate.
+     */
     calculatePayment() {
         if (!this.isInputValid()) {
             this.monthlyPayment = null;
@@ -51,6 +54,13 @@ export default class MortgageCalculator extends LightningElement {
      * EMI = [P × R × (1 + R)^N] / [(1 + R)^N – 1]
      * Where P = principal, R = monthly interest rate, N = total number of payments.
      */
+    /**
+     * EMI = [P × R × (1 + R)^N] / [(1 + R)^N – 1]
+     * @param {number} principal - Total loan amount.
+     * @param {number} monthlyRate - Interest rate per month.
+     * @param {number} totalPayments - Total number of monthly payments.
+     * @returns {number} EMI payment.
+     */
     calculateEmi(principal, monthlyRate, totalPayments) {
         if (monthlyRate === 0) {
             return principal / totalPayments;
@@ -60,6 +70,11 @@ export default class MortgageCalculator extends LightningElement {
         return (principal * monthlyRate * growthFactor) / (growthFactor - 1);
     }
 
+    /**
+     * Formats the EMI amount based on the detected locale.
+     * @param {number} amount - EMI value.
+     * @returns {string} Localized currency string.
+     */
     formatCurrency(amount) {
         return new Intl.NumberFormat(undefined, {
             style: 'currency',
@@ -67,6 +82,10 @@ export default class MortgageCalculator extends LightningElement {
         }).format(amount);
     }
 
+    /**
+     * Determines the appropriate currency code for formatting the EMI.
+     * @returns {string} Currency code, e.g., USD or INR.
+     */
     detectCurrencyCode() {
         const locale = Intl.DateTimeFormat().resolvedOptions().locale || 'en-US';
         const currencyMap = {
@@ -87,6 +106,9 @@ export default class MortgageCalculator extends LightningElement {
         return 'USD';
     }
 
+    /**
+     * Clears all calculator inputs and the calculated result.
+     */
     resetCalculator() {
         this.price = null;
         this.interestRate = null;
@@ -95,6 +117,10 @@ export default class MortgageCalculator extends LightningElement {
         this.validationMessage = null;
     }
 
+    /**
+     * Validates calculator inputs before calculating EMI.
+     * @returns {boolean} true when inputs are valid.
+     */
     isInputValid() {
         if (!Number.isFinite(this.price) || this.price <= 0) {
             this.validationMessage = 'Enter a valid property price greater than zero.';

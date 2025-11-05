@@ -40,11 +40,19 @@ export default class PropertyReview extends LightningElement {
         this.subscribeToSelection();
     }
 
+    /**
+     * Lifecycle hook fired when the component is inserted into the DOM.
+     * Initializes the selected property context and loads existing reviews.
+     */
     connectedCallback() {
         this.selectedPropertyId = this.propertyId || this.recordId || null;
         this.loadReviews();
     }
 
+    /**
+     * Lifecycle hook fired when the component is removed from the DOM.
+     * Cleans up the Lightning Message Service subscription.
+     */
     disconnectedCallback() {
         if (this.subscription) {
             unsubscribe(this.subscription);
@@ -52,6 +60,10 @@ export default class PropertyReview extends LightningElement {
         }
     }
 
+    /**
+     * Subscribes to the PropertySelected message channel so the component reacts
+     * whenever a property is chosen elsewhere in the UI.
+     */
     subscribeToSelection() {
         if (this.subscription || !this.messageContext) {
             return;
@@ -64,6 +76,10 @@ export default class PropertyReview extends LightningElement {
         );
     }
 
+    /**
+     * Handles selection notifications and refreshes reviews for the new property.
+     * @param {{ propertyId: string }} message - The LMS payload containing a propertyId.
+     */
     handlePropertySelected(message) {
         if (message?.propertyId) {
             this.selectedPropertyId = message.propertyId;
@@ -91,6 +107,9 @@ export default class PropertyReview extends LightningElement {
         return this.canSubmit !== false;
     }
 
+    /**
+     * Loads the review list for the current property by calling the Apex controller.
+     */
     loadReviews() {
         const activePropertyId = this.activePropertyId;
         if (!activePropertyId) {
@@ -124,6 +143,9 @@ export default class PropertyReview extends LightningElement {
             });
     }
 
+    /**
+     * Toggles the visibility of the review submission form and resets state when hidden.
+     */
     toggleForm() {
         this.showForm = !this.showForm;
         if (!this.showForm) {
@@ -142,21 +164,37 @@ export default class PropertyReview extends LightningElement {
         }
     }
 
+    /**
+     * Captures updates from the rating picker control.
+     * @param {CustomEvent} event - Contains the selected rating in event.detail.value.
+     */
     handleRatingChange(event) {
         this.draftRating = Number(event.detail.value);
         this.lastTouchedField = 'rating';
     }
 
+    /**
+     * Tracks changes to the free-form comment textarea.
+     * @param {Event} event - Standard input event carrying the textarea value.
+     */
     handleCommentChange(event) {
         this.comment = event.target.value;
         this.lastTouchedField = 'comment';
     }
 
+    /**
+     * Tracks changes to the optional review title input.
+     * @param {Event} event - Standard input event carrying the title value.
+     */
     handleTitleChange(event) {
         this.title = event.target.value;
         this.lastTouchedField = 'title';
     }
 
+    /**
+     * Validates user input and persists the review through Apex.
+     * @param {Event} event - Form submit event.
+     */
     handleSubmit(event) {
         event.preventDefault();
         const activePropertyId = this.activePropertyId;
@@ -227,11 +265,17 @@ export default class PropertyReview extends LightningElement {
             });
     }
 
+    /**
+     * Cancels form entry and hides the submission UI.
+     */
     cancelForm() {
         this.toggleForm();
         this.resetDraft();
     }
 
+    /**
+     * Clears any draft inputs so the form starts fresh next time it is opened.
+     */
     resetDraft() {
         this.draftRating = 0;
         this.title = '';
