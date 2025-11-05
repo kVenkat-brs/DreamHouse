@@ -47,6 +47,8 @@ export default class MortgageCalculator extends LightningElement {
 
         this.monthlyPayment = this.calculateEmi(loanAmount, monthlyRate, totalPayments);
         this.validationMessage = null;
+        // eslint-disable-next-line no-console
+        console.log('[MortgageCalculator] Payment calculated');
     }
 
     /**
@@ -115,6 +117,8 @@ export default class MortgageCalculator extends LightningElement {
         this.tenure = null;
         this.monthlyPayment = null;
         this.validationMessage = null;
+        // eslint-disable-next-line no-console
+        console.log('[MortgageCalculator] Calculator reset');
     }
 
     /**

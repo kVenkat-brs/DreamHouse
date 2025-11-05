@@ -47,6 +47,9 @@ export default class PropertyReview extends LightningElement {
     connectedCallback() {
         this.selectedPropertyId = this.propertyId || this.recordId || null;
         this.loadReviews();
+        // Debug trace to indicate component initialization lifecycle
+        // eslint-disable-next-line no-console
+        console.log('[PropertyReview] connectedCallback: component initialized');
     }
 
     /**
@@ -58,6 +61,8 @@ export default class PropertyReview extends LightningElement {
             unsubscribe(this.subscription);
             this.subscription = null;
         }
+        // eslint-disable-next-line no-console
+        console.log('[PropertyReview] disconnectedCallback: component destroyed');
     }
 
     /**
