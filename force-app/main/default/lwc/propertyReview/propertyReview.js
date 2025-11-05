@@ -35,6 +35,18 @@ export default class PropertyReview extends LightningElement {
     // True while reviews are being loaded from the server
     isLoading = false;
 
+    /**
+     * Helper to show toast notifications consistently.
+     * @param {string} title - Toast title text.
+     * @param {string} message - Body message for the toast.
+     * @param {('info'|'success'|'warning'|'error')} [variant='info'] - Toast variant.
+     */
+    showToast(title, message, variant = 'info') {
+        this.dispatchEvent(
+            new ShowToastEvent({ title, message, variant })
+        );
+    }
+
     @wire(getRecord, { recordId: '$propertyIdForWire', fields: PROPERTY_FIELDS })
     property;
 
@@ -147,31 +159,21 @@ export default class PropertyReview extends LightningElement {
                 }));
                 // Notify the user about the result of loading reviews
                 if (this.reviewCount === 0) {
-                    this.dispatchEvent(
-                        new ShowToastEvent({
-                            title: 'No reviews found',
-                            message: 'There are no reviews for this property yet.',
-                            variant: 'info'
-                        })
-                    );
+                    this.showToast('No reviews found', 'There are no reviews for this property yet.', 'info');
                 } else {
-                    this.dispatchEvent(
-                        new ShowToastEvent({
-                            title: 'Reviews loaded',
-                            message: `${this.reviewCount} review${this.reviewCount === 1 ? '' : 's'} loaded.`,
-                            variant: 'success'
-                        })
+                    this.showToast(
+                        'Reviews loaded',
+                        `${this.reviewCount} review${this.reviewCount === 1 ? '' : 's'} loaded.`,
+                        'success'
                     );
                 }
             })
             .catch((error) => {
                 this.reviews = [];
-                this.dispatchEvent(
-                    new ShowToastEvent({
-                        title: 'Unable to load reviews',
-                        message: error?.body?.message || error?.message || 'Try again later.',
-                        variant: 'error'
-                    })
+                this.showToast(
+                    'Unable to load reviews',
+                    error?.body?.message || error?.message || 'Try again later.',
+                    'error'
                 );
             })
             .finally(() => {
@@ -187,12 +189,10 @@ export default class PropertyReview extends LightningElement {
         if (!this.showForm) {
             this.resetDraft();
         } else if (!this.activePropertyId) {
-            this.dispatchEvent(
-                new ShowToastEvent({
-                    title: 'No property selected',
-                    message: 'Pick a property on the map or list before leaving a review.',
-                    variant: 'error'
-                })
+            this.showToast(
+                'No property selected',
+                'Pick a property on the map or list before leaving a review.',
+                'error'
             );
             this.showForm = false;
         } else {
@@ -235,34 +235,28 @@ export default class PropertyReview extends LightningElement {
         event.preventDefault();
         const activePropertyId = this.activePropertyId;
         if (!activePropertyId) {
-            this.dispatchEvent(
-                new ShowToastEvent({
-                    title: 'Missing property context',
-                    message: 'Select a property before leaving a review.',
-                    variant: 'error'
-                })
+            this.showToast(
+                'Missing property context',
+                'Select a property before leaving a review.',
+                'error'
             );
             return;
         }
 
         if (!this.draftRating || this.draftRating < 1) {
-            this.dispatchEvent(
-                new ShowToastEvent({
-                    title: 'Rating required',
-                    message: 'Please choose a star rating before submitting.',
-                    variant: 'error'
-                })
+            this.showToast(
+                'Rating required',
+                'Please choose a star rating before submitting.',
+                'error'
             );
             return;
         }
 
         if (!this.comment?.trim()) {
-            this.dispatchEvent(
-                new ShowToastEvent({
-                    title: 'Comment required',
-                    message: 'Tell us a bit about your experience before submitting.',
-                    variant: 'error'
-                })
+            this.showToast(
+                'Comment required',
+                'Tell us a bit about your experience before submitting.',
+                'error'
             );
             return;
         }
@@ -270,12 +264,10 @@ export default class PropertyReview extends LightningElement {
         // Ensure the comment has a reasonable minimum length
         const cleanedComment = this.comment.trim();
         if (cleanedComment.length < 10) {
-            this.dispatchEvent(
-                new ShowToastEvent({
-                    title: 'Comment too short',
-                    message: 'Please enter at least 10 characters in your review comment.',
-                    variant: 'error'
-                })
+            this.showToast(
+                'Comment too short',
+                'Please enter at least 10 characters in your review comment.',
+                'error'
             );
             return;
         }
@@ -299,24 +291,16 @@ export default class PropertyReview extends LightningElement {
             title: this.title ? this.title.trim() : null
         })
             .then(() => {
-                this.dispatchEvent(
-                    new ShowToastEvent({
-                        title: 'Review submitted',
-                        message: 'Thank you for sharing your feedback!',
-                        variant: 'success'
-                    })
-                );
+                this.showToast('Review submitted', 'Thank you for sharing your feedback!', 'success');
                 this.showForm = false;
                 this.resetDraft();
                 this.loadReviews();
             })
             .catch((error) => {
-                this.dispatchEvent(
-                    new ShowToastEvent({
-                        title: 'Unable to submit review',
-                        message: error?.body?.message || error?.message || 'Try again later.',
-                        variant: 'error'
-                    })
+                this.showToast(
+                    'Unable to submit review',
+                    error?.body?.message || error?.message || 'Try again later.',
+                    'error'
                 );
             })
             .finally(() => {
