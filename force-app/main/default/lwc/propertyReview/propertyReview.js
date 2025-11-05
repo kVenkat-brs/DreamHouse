@@ -28,16 +28,15 @@ export default class PropertyReview extends LightningElement {
     @api recordId;
     @api canSubmit;
 
-    @track reviews = [];
-    showForm = false;
-    draftRating = 0;
-    title = '';
-    comment = '';
-    subscription;
-    selectedPropertyId;
-    isSubmitting = false;
-    // True while reviews are being loaded from the server
-    isLoading = false;
+    @track reviews = []; // List of review view-model items rendered in the UI
+    showForm = false; // Whether the review submission form is visible
+    draftRating = 0; // Current star rating selected in the form
+    title = ''; // Draft review title entered by the user
+    comment = ''; // Draft review comment entered by the user
+    subscription; // LMS subscription reference for cleanup
+    selectedPropertyId; // Active property context Id for which reviews are shown
+    isSubmitting = false; // True while a review submission is in-flight
+    isLoading = false; // True while reviews are being fetched from the server
 
     /**
      * Helper to show toast notifications consistently.
@@ -66,7 +65,8 @@ export default class PropertyReview extends LightningElement {
      */
     connectedCallback() {
         this.selectedPropertyId = this.propertyId || this.recordId || null;
-        this.loadReviews();
+        // Set loading state; reactive wire will populate reviews when ready
+        this.isLoading = true;
         // Debug trace to indicate component initialization lifecycle
         // eslint-disable-next-line no-console
         console.log('[PropertyReview] connectedCallback: component initialized');
@@ -112,7 +112,8 @@ export default class PropertyReview extends LightningElement {
             this.selectedPropertyId = message.propertyId;
             // eslint-disable-next-line no-console
             console.log('[PropertyReview] Selected propertyId set to:', this.selectedPropertyId);
-            this.loadReviews();
+            // Reactive wire will reload reviews automatically
+            this.isLoading = true;
         } else {
             // eslint-disable-next-line no-console
             console.log('[PropertyReview] LMS message missing propertyId');
@@ -121,6 +122,35 @@ export default class PropertyReview extends LightningElement {
 
     get propertyName() {
         return this.property?.data?.fields?.Name?.value;
+    }
+
+    /**
+     * Reactive wire that refreshes reviews whenever the active property id changes
+     * using the reactive getter `propertyIdForWire`.
+     */
+    @wire(getPropertyReviews, { propertyId: '$propertyIdForWire' })
+    wiredReviews({ data, error }) {
+        if (data) {
+            const items = data || [];
+            this.reviews = items.map((record, index) => ({
+                id: record.id,
+                propertyId: record.propertyId,
+                rating: record.rating,
+                comment: record.comment,
+                reviewer: record.reviewerName || 'Anonymous',
+                createdDate: record.createdDate,
+                title: record.title,
+                hasDivider: index < items.length - 1
+            }));
+        } else if (error) {
+            this.reviews = [];
+            this.showToast(
+                'Unable to load reviews',
+                error?.body?.message || error?.message || 'Try again later.',
+                'error'
+            );
+        }
+        this.isLoading = false;
     }
 
     get propertyIdForWire() {
