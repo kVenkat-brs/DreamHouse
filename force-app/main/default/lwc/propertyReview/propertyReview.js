@@ -1,10 +1,18 @@
+// Core LWC base class and decorators used for exposing @api props,
+// wiring data services, and tracking reactive state.
 import { LightningElement, api, wire, track } from 'lwc';
+// Lightning Message Service utilities for subscribing/publishing to cross-component events.
 import { subscribe, unsubscribe, MessageContext } from 'lightning/messageService';
+// UI Record API helper to fetch the related property record metadata.
 import { getRecord } from 'lightning/uiRecordApi';
+// Toast notifications for success and error feedback.
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+// Apex method that retrieves existing reviews for the active property.
 import getPropertyReviews from '@salesforce/apex/PropertyController.getPropertyReviews';
+// Apex method that saves a new review when the form is submitted.
 import savePropertyReview from '@salesforce/apex/PropertyController.savePropertyReview';
 
+// Lightning Message Channel that notifies this component when a property is selected elsewhere.
 import PROPERTY_SELECTED from '@salesforce/messageChannel/PropertySelected__c';
 
 const PROPERTY_FIELDS = ['Property__c.Name'];
