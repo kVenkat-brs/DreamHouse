@@ -318,6 +318,11 @@ export default class PropertyReview extends LightningElement {
      */
     async handleSubmit(event) {
         event.preventDefault();
+        // Guard against rapid double-submission clicks
+        if (this.isSubmitting) {
+            this.showToast('Please wait', 'A submission is already in progress.', 'warning');
+            return;
+        }
         const activePropertyId = this.activePropertyId;
         if (!activePropertyId) {
             this.showToast(
@@ -357,6 +362,9 @@ export default class PropertyReview extends LightningElement {
             return;
         }
 
+        // Lock the UI before opening confirmation to avoid multiple submissions
+        this.isSubmitting = true;
+
         // Ask for user confirmation before submitting the review
         const confirmed = await LightningConfirm.open({
             message: 'Are you sure you want to post this review?',
@@ -364,10 +372,9 @@ export default class PropertyReview extends LightningElement {
         });
 
         if (!confirmed) {
+            this.isSubmitting = false;
             return;
         }
-
-        this.isSubmitting = true;
 
         savePropertyReview({
             propertyId: activePropertyId,
