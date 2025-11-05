@@ -143,14 +143,24 @@ export default class PropertyReview extends LightningElement {
                     title: record.title,
                     hasDivider: index < items.length - 1
                 }));
-                // Notify success with the number of reviews loaded
-                this.dispatchEvent(
-                    new ShowToastEvent({
-                        title: 'Reviews loaded',
-                        message: `${this.reviewCount} review${this.reviewCount === 1 ? '' : 's'} loaded.`,
-                        variant: 'success'
-                    })
-                );
+                // Notify the user about the result of loading reviews
+                if (this.reviewCount === 0) {
+                    this.dispatchEvent(
+                        new ShowToastEvent({
+                            title: 'No reviews found',
+                            message: 'There are no reviews for this property yet.',
+                            variant: 'info'
+                        })
+                    );
+                } else {
+                    this.dispatchEvent(
+                        new ShowToastEvent({
+                            title: 'Reviews loaded',
+                            message: `${this.reviewCount} review${this.reviewCount === 1 ? '' : 's'} loaded.`,
+                            variant: 'success'
+                        })
+                    );
+                }
             })
             .catch((error) => {
                 this.reviews = [];
