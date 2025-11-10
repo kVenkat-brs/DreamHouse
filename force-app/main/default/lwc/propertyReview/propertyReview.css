@@ -138,7 +138,7 @@
     --symbol-spacing: 0.25rem;
     display: inline-block;
     transform-origin: left center;
-    transition: transform 120ms ease-out;
+    transition: transform 120ms ease-out, color 160ms ease, opacity 160ms ease;
 }
 
 /* Emphasize interactivity: scale rating picker slightly on hover in the form */
@@ -157,6 +157,13 @@ c-rating-picker.property-review__rating:hover {
     .property-review__rating {
         transition: none;
     }
+}
+
+/* Smoothly animate star color/fill changes inside the rating picker */
+.property-review__rating svg,
+.property-review__rating svg path,
+.property-review__rating .star {
+    transition: fill 160ms ease, color 160ms ease, opacity 160ms ease;
 }
 
 .property-review__footer {
