@@ -154,6 +154,7 @@ c-rating-picker.property-review__rating:hover {
     justify-content: flex-end;
     gap: var(--lwc-spacingSmall, 0.75rem);
     padding: var(--lwc-spacingSmall, 0.75rem);
+    background: var(--lwc-colorBackgroundAlt, #f3f6f9);
 }
 
 /* Ensure comfortable spacing on smaller screens */
