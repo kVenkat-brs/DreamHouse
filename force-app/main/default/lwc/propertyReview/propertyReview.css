@@ -64,6 +64,14 @@
 .property-review__empty .slds-illustration__text {
     max-width: 28rem;
     margin: 0 auto;
+    /* Add spacing to prevent overlap with the SVG on smaller screens */
+    margin-top: var(--lwc-spacingMedium, 1rem);
+}
+
+@media (max-width: 30rem) { /* ~480px */
+    .property-review__empty .slds-illustration__text {
+        margin-top: var(--lwc-spacingLarge, 1.5rem);
+    }
 }
 
 .property-review__tile {
