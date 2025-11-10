@@ -15,6 +15,14 @@
     scrollbar-color: var(--lwc-colorBorder, #d8dde6) transparent;
 }
 
+/* Thin divider line between reviews using border-bottom */
+.property-review__list .slds-divider {
+    height: 0;
+    border: 0;
+    border-bottom: 1px solid var(--lwc-colorBorder, #d8dde6);
+    margin: var(--lwc-spacingMedium, 1rem) 0;
+}
+
 /* WebKit-based browsers (Chrome, Edge, Safari) */
 .property-review__list::-webkit-scrollbar {
     width: 8px;
