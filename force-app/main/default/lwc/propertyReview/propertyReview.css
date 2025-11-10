@@ -43,6 +43,11 @@
     margin-bottom: var(--lwc-spacingXSmall, 0.5rem);
 }
 
+.property-review__reviewer-name {
+    font-size: calc(var(--lwc-fontSizeMedium, 1rem) + 0.1rem);
+    line-height: 1.4;
+}
+
 .property-review__tile:hover {
     background: var(--lwc-colorBackgroundAlt2, #f3f6f9);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);

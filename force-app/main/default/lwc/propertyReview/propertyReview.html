@@ -39,12 +39,12 @@
                                         <span class="slds-text-title_bold">By:</span>
                                         <template lwc:if={review.reviewer}>
                                             <lightning-formatted-text
-                                                class="slds-text-title_bold slds-m-left_x-small"
+                                                class="slds-text-title_bold slds-m-left_x-small property-review__reviewer-name"
                                                 value={review.reviewer}
                                             ></lightning-formatted-text>
                                         </template>
                                         <template lwc:else>
-                                            <span class="slds-text-title_bold slds-m-left_x-small">Anonymous</span>
+                                            <span class="slds-text-title_bold slds-m-left_x-small property-review__reviewer-name">Anonymous</span>
                                         </template>
                                         <lightning-formatted-date-time
                                             class="slds-text-color_weak slds-text-body_small slds-m-top_xx-small"
