@@ -4,6 +4,10 @@
     margin-bottom: var(--lwc-spacingXLarge, 2rem);
     /* Ensure consistent Salesforce Sans typography within this section */
     font-family: var(--lwc-fontFamily, "Salesforce Sans", Arial, sans-serif);
+    /* Constrain width on desktop and center the container */
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 /* Inherit the same font for descendants to ensure consistency */
