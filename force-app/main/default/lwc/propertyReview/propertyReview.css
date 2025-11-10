@@ -1,6 +1,7 @@
 .property-review {
     display: grid;
     gap: var(--lwc-spacingLarge, 1.5rem);
+    margin-bottom: var(--lwc-spacingXLarge, 2rem);
 }
 
 .property-review__list {
