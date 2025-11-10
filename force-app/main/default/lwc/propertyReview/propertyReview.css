@@ -119,6 +119,27 @@
 .property-review__rating {
     --symbol-size: 1.25rem;
     --symbol-spacing: 0.25rem;
+    display: inline-block;
+    transform-origin: left center;
+    transition: transform 120ms ease-out;
+}
+
+/* Emphasize interactivity: scale rating picker slightly on hover in the form */
+c-rating-picker.property-review__rating:hover {
+    transform: scale(1.05);
+    cursor: pointer;
+}
+
+/* Do not scale read-only ratings shown inside tiles */
+.property-review__tile c-rating-picker.property-review__rating:hover {
+    transform: none;
+    cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .property-review__rating {
+        transition: none;
+    }
 }
 
 .property-review__footer {
