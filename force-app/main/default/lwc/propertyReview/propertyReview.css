@@ -43,6 +43,7 @@
     align-items: center;
     justify-content: center;
     min-height: 12rem;
+    background: var(--lwc-colorBackgroundAlt, #f3f6f9);
 }
 
 .property-review__empty .slds-illustration__text {
