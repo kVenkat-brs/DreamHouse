@@ -1,3 +1,7 @@
+/*
+ * Root review section container
+ * - Sets a grid layout with spacing, consistent font, and centered max width on desktop
+ */
 .property-review {
     display: grid;
     gap: var(--lwc-spacingLarge, 1.5rem);
@@ -11,10 +15,18 @@
 }
 
 /* Inherit the same font for descendants to ensure consistency */
+/*
+ * Typography inheritance
+ * - Forces all descendants to use the same font for visual consistency
+ */
 .property-review * {
     font-family: inherit;
 }
 
+/*
+ * Reviews list container
+ * - Grid list with max height, scrollable overflow, and themed scrollbars
+ */
 .property-review__list {
     display: grid;
     gap: var(--lwc-spacingMedium, 1rem);
@@ -54,6 +66,10 @@
     background-color: var(--lwc-colorBorder, #b0b7c3);
 }
 
+/*
+ * Empty state container
+ * - Centers illustration and text with a light background
+ */
 .property-review__empty {
     padding: var(--lwc-spacingLarge, 1.5rem);
     text-align: center;
@@ -65,6 +81,10 @@
     background: var(--lwc-colorBackgroundAlt, #f3f6f9);
 }
 
+/*
+ * Empty state text wrapper
+ * - Constrains width and adds spacing from the illustration
+ */
 .property-review__empty .slds-illustration__text {
     max-width: 28rem;
     margin: 0 auto;
@@ -78,6 +98,10 @@
     }
 }
 
+/*
+ * Individual review tile
+ * - Rounded card with gradient, brand highlights, and subtle entrance animation
+ */
 .property-review__tile {
     border: 1px solid var(--lwc-colorBorder, #d8dde6);
     border-radius: var(--lwc-borderRadiusMedium, 0.5rem);
@@ -98,6 +122,10 @@
     animation: property-review-fade-in 180ms ease-out both;
 }
 
+/*
+ * Review tile header
+ * - Aligns reviewer info and rating on a single row
+ */
 .property-review__tile-header {
     display: flex;
     align-items: center;
@@ -106,11 +134,19 @@
     margin-bottom: var(--lwc-spacingXSmall, 0.5rem);
 }
 
+/*
+ * Reviewer name styling
+ * - Slightly larger font for readability
+ */
 .property-review__reviewer-name {
     font-size: calc(var(--lwc-fontSizeMedium, 1rem) + 0.1rem);
     line-height: 1.4;
 }
 
+/*
+ * Review tile hover state
+ * - Elevates card while preserving brand highlights
+ */
 .property-review__tile:hover {
     background: var(--lwc-colorBackgroundAlt2, #f3f6f9);
     /* Preserve top + left highlights and add elevation on hover */
@@ -126,6 +162,10 @@
     }
 }
 
+/*
+ * Entrance animation for tiles
+ * - Fades and slides in on initial render
+ */
 @keyframes property-review-fade-in {
     from {
         opacity: 0;
@@ -137,6 +177,10 @@
     }
 }
 
+/*
+ * Rating control styling
+ * - Adds transforms and transitions for interactive feedback
+ */
 .property-review__rating {
     --symbol-size: 1.25rem;
     --symbol-spacing: 0.25rem;
@@ -170,6 +214,10 @@ c-rating-picker.property-review__rating:hover {
     transition: fill 160ms ease, color 160ms ease, opacity 160ms ease;
 }
 
+/*
+ * Form footer container
+ * - Aligns actions to the right with spacing and subtle background
+ */
 .property-review__footer {
     display: flex;
     justify-content: flex-end;
@@ -207,6 +255,10 @@ c-rating-picker.property-review__rating:hover {
     }
 }
 
+/*
+ * Review form wrapper
+ * - Card-like container with border, radius, and soft shadow
+ */
 .property-review__form {
     /* Use a slightly darker border for better contrast */
     border: 1px solid var(--lwc-colorBorder, #c2c8d0);
