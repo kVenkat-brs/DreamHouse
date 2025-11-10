@@ -104,6 +104,13 @@
     padding: var(--lwc-spacingSmall, 0.75rem);
 }
 
+/* Ensure comfortable spacing on smaller screens */
+@media (max-width: 30rem) { /* ~480px */
+    .property-review__footer {
+        padding: var(--lwc-spacingMedium, 1rem);
+    }
+}
+
 .property-review__form {
     border-top: 1px solid var(--lwc-colorBorder, #d8dde6);
     background: var(--lwc-colorBackgroundAlt, #f3f6f9);
