@@ -208,7 +208,8 @@ c-rating-picker.property-review__rating:hover {
 }
 
 .property-review__form {
-    border-top: 1px solid var(--lwc-colorBorder, #d8dde6);
+    /* Use a slightly darker border for better contrast */
+    border: 1px solid var(--lwc-colorBorder, #c2c8d0);
     background: var(--lwc-colorBackgroundAlt, #f3f6f9);
     border-radius: 1rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
