@@ -10,6 +10,29 @@
     max-height: 28rem;
     overflow-y: auto;
     padding-right: var(--lwc-spacingSmall, 0.75rem);
+    /* Firefox scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: var(--lwc-colorBorder, #d8dde6) transparent;
+}
+
+/* WebKit-based browsers (Chrome, Edge, Safari) */
+.property-review__list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.property-review__list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.property-review__list::-webkit-scrollbar-thumb {
+    background-color: var(--lwc-colorBorder, #c9c9c9);
+    border-radius: 8px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+.property-review__list:hover::-webkit-scrollbar-thumb {
+    background-color: var(--lwc-colorBorder, #b0b7c3);
 }
 
 .property-review__empty {
