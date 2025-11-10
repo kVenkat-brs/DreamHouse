@@ -156,6 +156,20 @@ c-rating-picker.property-review__rating:hover {
     }
 }
 
+/* Reduce internal form padding on small screens */
+@media (max-width: 30rem) { /* ~480px */
+    .property-review__form .slds-form {
+        padding: var(--lwc-spacingSmall, 0.75rem) !important;
+    }
+    .property-review__form .slds-p-horizontal_medium {
+        padding-left: var(--lwc-spacingSmall, 0.75rem) !important;
+        padding-right: var(--lwc-spacingSmall, 0.75rem) !important;
+    }
+    .property-review__form .slds-p-top_medium {
+        padding-top: var(--lwc-spacingSmall, 0.75rem) !important;
+    }
+}
+
 /* Responsive: ensure single-column layout on small screens */
 @media (max-width: 30rem) { /* ~480px */
     .property-review,
