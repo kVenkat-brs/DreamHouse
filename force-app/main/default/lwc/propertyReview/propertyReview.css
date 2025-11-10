@@ -70,4 +70,5 @@
 .property-review__form {
     border-top: 1px solid var(--lwc-colorBorder, #d8dde6);
     background: var(--lwc-colorBackgroundAlt, #f3f6f9);
+    border-radius: 1rem;
 }
