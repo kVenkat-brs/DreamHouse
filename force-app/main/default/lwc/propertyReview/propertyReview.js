@@ -1,3 +1,20 @@
+/*
+ * Component: PropertyReview (LWC)
+ *
+ * Overview
+ * - Displays reviews for the currently selected Property__c and lets users submit new reviews.
+ * - Listens to Lightning Message Service (PropertySelected__c) to react to map/list selections.
+ * - Loads reviews from Apex (PropertyController.getPropertyReviews) both reactively and imperatively.
+ * - Validates inputs, confirms intent, and submits reviews via Apex (savePropertyReview).
+ * - Surfaces user feedback with toasts and disables UI while loading/submitting.
+ *
+ * Key Concepts
+ * - activePropertyId: The effective context record Id resolved from selectedPropertyId, @api propertyId, or recordId.
+ * - Reactive loading: @wire(getPropertyReviews, { propertyId: '$propertyIdForWire' }) updates the list when context changes.
+ * - Imperative loading: loadReviews()/refreshReviews() used after submit or on-demand refresh with explicit toasts.
+ * - State flags: isLoading (list fetch in progress), isSubmitting (review save in progress).
+ * - UX flow: Toggle form -> validate -> confirm -> submit -> toast -> reset form -> refresh list.
+ */
 // Core LWC base class and decorators used for exposing @api props,
 // wiring data services, and tracking reactive state.
 import { LightningElement, api, wire, track } from 'lwc';
