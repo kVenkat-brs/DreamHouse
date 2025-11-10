@@ -127,6 +127,14 @@
     }
 }
 
+/* Responsive: ensure single-column layout on small screens */
+@media (max-width: 30rem) { /* ~480px */
+    .property-review,
+    .property-review__list {
+        grid-template-columns: 1fr;
+    }
+}
+
 .property-review__form {
     border-top: 1px solid var(--lwc-colorBorder, #d8dde6);
     background: var(--lwc-colorBackgroundAlt, #f3f6f9);
