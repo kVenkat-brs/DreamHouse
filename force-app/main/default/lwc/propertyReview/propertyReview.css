@@ -78,8 +78,9 @@
         var(--lwc-colorBackgroundAlt, #ffffff) 0%,
         var(--lwc-colorBackgroundAlt2, #f3f6f9) 100%
     );
-    /* Add brand-colored top highlight using an inset shadow */
-    box-shadow: inset 0 3px 0 #0176d3, var(--lwc-shadowInset, inset 0 0 0 rgba(0, 0, 0, 0));
+    /* Add brand-colored top and left highlights using inset shadows */
+    box-shadow: inset 3px 0 0 #0176d3, inset 0 3px 0 #0176d3,
+        var(--lwc-shadowInset, inset 0 0 0 rgba(0, 0, 0, 0));
     transition: background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease-out;
     /* Light fade-in on initial render */
     animation: property-review-fade-in 180ms ease-out both;
@@ -100,8 +101,9 @@
 
 .property-review__tile:hover {
     background: var(--lwc-colorBackgroundAlt2, #f3f6f9);
-    /* Preserve top highlight and add elevation on hover */
-    box-shadow: inset 0 3px 0 #0176d3, 0 2px 6px rgba(0, 0, 0, 0.08);
+    /* Preserve top + left highlights and add elevation on hover */
+    box-shadow: inset 3px 0 0 #0176d3, inset 0 3px 0 #0176d3,
+        0 2px 6px rgba(0, 0, 0, 0.08);
     transform: translateY(-1px);
 }
 
