@@ -2,6 +2,13 @@
     display: grid;
     gap: var(--lwc-spacingLarge, 1.5rem);
     margin-bottom: var(--lwc-spacingXLarge, 2rem);
+    /* Ensure consistent Salesforce Sans typography within this section */
+    font-family: var(--lwc-fontFamily, "Salesforce Sans", Arial, sans-serif);
+}
+
+/* Inherit the same font for descendants to ensure consistency */
+.property-review * {
+    font-family: inherit;
 }
 
 .property-review__list {
