@@ -3,11 +3,19 @@ import { LightningElement, track } from 'lwc';
 const MONTHS_IN_YEAR = 12;
 
 export default class MortgageCalculator extends LightningElement {
+    activeSectionName = 'step1';
     @track price = null;
     @track interestRate = null; // annual percentage rate
     @track tenure = null; // years
     @track monthlyPayment = null;
     @track validationMessage = null;
+
+    goToStep(event) {
+        const next = event?.target?.dataset?.step;
+        if (next) {
+            this.activeSectionName = next;
+        }
+    }
 
     handlePriceChange(event) {
         const value = parseFloat(event.detail.value);

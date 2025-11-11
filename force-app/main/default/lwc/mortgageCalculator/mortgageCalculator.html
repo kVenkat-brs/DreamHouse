@@ -5,75 +5,135 @@
                 Estimate your monthly mortgage payment.
             </p>
 
-            <lightning-layout multiple-rows pull-to-boundary="small" class="mortgage-calculator__grid">
-                <lightning-layout-item size="12" small-device-size="12" medium-device-size="8" class="slds-p-bottom_medium">
-                    <lightning-input
-                        type="currency"
-                        label="Property Price"
-                        value={price}
-                        onchange={handlePriceChange}
-                        placeholder="e.g., 350000"
-                        message-when-bad-input="Enter a valid amount greater than zero"
-                        field-level-help="Total price of the property you plan to purchase"
-                        class="mortgage-calculator__input"
-                        required
-                    ></lightning-input>
-                </lightning-layout-item>
-                <lightning-layout-item size="12" small-device-size="6" medium-device-size="4" class="slds-p-bottom_medium">
-                    <lightning-input
-                        type="number"
-                        label="Interest Rate (Annual %)"
-                        step="0.01"
-                        value={interestRate}
-                        onchange={handleRateChange}
-                        placeholder="e.g., 6.75"
-                        message-when-bad-input="Enter the annual rate as a percentage"
-                        field-level-help="Annual interest rate offered by your lender"
-                        class="mortgage-calculator__input"
-                        required
-                    ></lightning-input>
-                </lightning-layout-item>
-                <lightning-layout-item size="12" small-device-size="6" medium-device-size="4" class="slds-p-bottom_medium">
-                    <lightning-input
-                        type="number"
-                        label="Loan Tenure (Years)"
-                        value={tenure}
-                        onchange={handleTenureChange}
-                        placeholder="e.g., 30"
-                        message-when-bad-input="Enter the number of years for repayment"
-                        field-level-help="Total number of years you will repay the loan"
-                        class="mortgage-calculator__input"
-                        required
-                    ></lightning-input>
-                </lightning-layout-item>
-            </lightning-layout>
+            <lightning-accordion active-section-name={activeSectionName}>
+                <!-- Step 1: Property Details -->
+                <lightning-accordion-section name="step1" label="Step 1 - Property Details">
+                    <div class="slds-grid slds-wrap slds-gutters">
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_2-of-3">
+                            <lightning-input
+                                type="currency"
+                                label="Property Price"
+                                value={price}
+                                onchange={handlePriceChange}
+                                placeholder="e.g., 350000"
+                                message-when-bad-input="Enter a valid amount greater than zero"
+                                field-level-help="Total price of the property you plan to purchase"
+                                required
+                            ></lightning-input>
+                        </div>
+                    </div>
+                    <div class="slds-m-top_medium slds-text-align_right">
+                        <lightning-button label="Next" variant="brand" data-step="step2" onclick={goToStep}></lightning-button>
+                    </div>
+                </lightning-accordion-section>
 
-            <div class="slds-m-top_medium slds-grid slds-grid_align-end slds-wrap slds-gutters_x-small">
-                <lightning-button
-                    label="Reset"
-                    variant="neutral"
-                    onclick={resetCalculator}
-                ></lightning-button>
-                <lightning-button
-                    label="Calculate"
-                    variant="brand"
-                    onclick={calculatePayment}
-                ></lightning-button>
-            </div>
+                <!-- Step 2: Loan Terms -->
+                <lightning-accordion-section name="step2" label="Step 2 - Loan Terms">
+                    <div class="slds-grid slds-wrap slds-gutters">
+                        <div class="slds-col slds-size_1-of-1 slds-small-size_1-of-2 slds-p-bottom_small">
+                            <lightning-input
+                                type="number"
+                                label="Interest Rate (Annual %)"
+                                step="0.01"
+                                value={interestRate}
+                                onchange={handleRateChange}
+                                placeholder="e.g., 6.75"
+                                message-when-bad-input="Enter the annual rate as a percentage"
+                                field-level-help="Annual interest rate offered by your lender"
+                                required
+                            ></lightning-input>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-small-size_1-of-2 slds-p-bottom_small">
+                            <lightning-input
+                                type="number"
+                                label="Loan Tenure (Years)"
+                                value={tenure}
+                                onchange={handleTenureChange}
+                                placeholder="e.g., 30"
+                                message-when-bad-input="Enter the number of years for repayment"
+                                field-level-help="Total number of years you will repay the loan"
+                                required
+                            ></lightning-input>
+                        </div>
+                    </div>
+                    <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                        <lightning-button label="Previous" variant="neutral" data-step="step1" onclick={goToStep}></lightning-button>
+                        <div>
+                            <lightning-button label="Next" variant="brand" data-step="step3" onclick={goToStep}></lightning-button>
+                        </div>
+                    </div>
+                </lightning-accordion-section>
 
-            <template lwc:if={formattedPayment}>
-                <div class="slds-m-top_large slds-box slds-theme_shade mortgage-calculator__result">
-                    <p class="slds-text-heading_large slds-m-bottom_x-small">{formattedPayment}</p>
-                    <p class="slds-text-title slds-text-color_weak">Estimated Monthly Payment</p>
-                </div>
-            </template>
+                <!-- Step 3: Additional Costs -->
+                <lightning-accordion-section name="step3" label="Step 3 - Additional Costs">
+                    <div class="slds-grid slds-wrap slds-gutters">
+                        <div class="slds-col slds-size_1-of-1 slds-small-size_1-of-2 slds-p-bottom_small">
+                            <lightning-input
+                                type="number"
+                                label="Down Payment (%)"
+                                step="0.1"
+                                placeholder="e.g., 20"
+                                field-level-help="Optional: percent of purchase price paid upfront"
+                            ></lightning-input>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-small-size_1-of-2 slds-p-bottom_small">
+                            <lightning-input
+                                type="number"
+                                label="Property Tax (Annual %)"
+                                step="0.01"
+                                placeholder="e.g., 1.2"
+                                field-level-help="Optional: annual property tax rate"
+                            ></lightning-input>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-small-size_1-of-2 slds-p-bottom_small">
+                            <lightning-input
+                                type="currency"
+                                label="Home Insurance (Monthly)"
+                                placeholder="e.g., 75"
+                                field-level-help="Optional: estimated monthly insurance cost"
+                            ></lightning-input>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-small-size_1-of-2 slds-p-bottom_small">
+                            <lightning-input
+                                type="currency"
+                                label="HOA Fees (Monthly)"
+                                placeholder="e.g., 100"
+                                field-level-help="Optional: monthly HOA dues if applicable"
+                            ></lightning-input>
+                        </div>
+                    </div>
+                    <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                        <lightning-button label="Previous" variant="neutral" data-step="step2" onclick={goToStep}></lightning-button>
+                        <div>
+                            <lightning-button label="Next" variant="brand" data-step="step4" onclick={goToStep}></lightning-button>
+                        </div>
+                    </div>
+                </lightning-accordion-section>
 
-            <template lwc:if={validationMessage}>
-                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
-                    <span class="slds-assistive-text">Error</span>
-                    <h2>{validationMessage}</h2>
-                </div>
-            </template>
+                <!-- Step 4: Results -->
+                <lightning-accordion-section name="step4" label="Step 4 - Results">
+                    <div class="slds-m-bottom_medium slds-grid slds-grid_align-spread">
+                        <lightning-button label="Previous" variant="neutral" data-step="step3" onclick={goToStep}></lightning-button>
+                        <div class="slds-grid slds-gutters_x-small">
+                            <lightning-button label="Reset" variant="neutral" onclick={resetCalculator}></lightning-button>
+                            <lightning-button label="Calculate" variant="brand" onclick={calculatePayment}></lightning-button>
+                        </div>
+                    </div>
+                    <template lwc:if={formattedPayment}>
+                        <div class="slds-m-top_small slds-box slds-theme_shade mortgage-calculator__result">
+                            <p class="slds-text-heading_large slds-m-bottom_x-small">{formattedPayment}</p>
+                            <p class="slds-text-title slds-text-color_weak">Estimated Monthly Payment</p>
+                        </div>
+                    </template>
+                    <template lwc:if={validationMessage}>
+                        <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
+                            <span class="slds-assistive-text">Error</span>
+                            <h2>{validationMessage}</h2>
+                        </div>
+                    </template>
+                </lightning-accordion-section>
+            </lightning-accordion>
         </div>
     </lightning-card>
+    
 </template>
