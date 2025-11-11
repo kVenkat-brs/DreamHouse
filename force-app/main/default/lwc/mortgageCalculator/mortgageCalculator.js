@@ -4,59 +4,137 @@ const MONTHS_IN_YEAR = 12;
 
 export default class MortgageCalculator extends LightningElement {
     activeSectionName = 'step1';
+    activeSectionNameB = 'step1';
+    theme = 'standard'; // standard | dark | pro
+    comparisonMode = false;
+    // Scenario A (default)
     @track price = null;
     @track interestRate = null; // annual percentage rate
     @track tenure = null; // years
     @track monthlyPayment = null;
     @track validationMessage = null;
 
+    // Scenario B (comparison)
+    @track priceB = null;
+    @track interestRateB = null; // annual percentage rate
+    @track tenureB = null; // years
+    @track monthlyPaymentB = null;
+    @track validationMessageB = null;
+
     goToStep(event) {
         const next = event?.target?.dataset?.step;
-        if (next) {
+        const scenario = event?.target?.dataset?.scenario === 'B' ? 'B' : 'A';
+        if (!next) return;
+        if (scenario === 'B') {
+            this.activeSectionNameB = next;
+        } else {
             this.activeSectionName = next;
         }
     }
 
+    get hostClass() {
+        switch (this.theme) {
+            case 'dark':
+                return 'theme-dark';
+            case 'pro':
+                return 'theme-pro';
+            default:
+                return '';
+        }
+    }
+
+    handleThemeChange(event) {
+        const selected = event?.target?.dataset?.theme;
+        if (!selected) return;
+        this.theme = selected;
+        // Toggle host class for theme
+        const host = this.template.host;
+        host.classList.remove('theme-dark', 'theme-pro');
+        if (this.theme === 'dark') {
+            host.classList.add('theme-dark');
+        } else if (this.theme === 'pro') {
+            host.classList.add('theme-pro');
+        }
+    }
+
+    handleComparisonToggle(event) {
+        this.comparisonMode = !!event.detail.checked;
+    }
+
     handlePriceChange(event) {
         const value = parseFloat(event.detail.value);
-        this.price = Number.isFinite(value) && value > 0 ? value : null;
+        const scenario = event?.target?.dataset?.scenario === 'B' ? 'B' : 'A';
+        const parsed = Number.isFinite(value) && value > 0 ? value : null;
+        if (scenario === 'B') {
+            this.priceB = parsed;
+        } else {
+            this.price = parsed;
+        }
     }
 
     handleRateChange(event) {
         const value = parseFloat(event.detail.value);
-        this.interestRate = Number.isFinite(value) && value >= 0 ? value : null;
+        const scenario = event?.target?.dataset?.scenario === 'B' ? 'B' : 'A';
+        const parsed = Number.isFinite(value) && value >= 0 ? value : null;
+        if (scenario === 'B') {
+            this.interestRateB = parsed;
+        } else {
+            this.interestRate = parsed;
+        }
     }
 
     handleTenureChange(event) {
         const value = parseFloat(event.detail.value);
-        this.tenure = Number.isFinite(value) && value > 0 ? value : null;
+        const scenario = event?.target?.dataset?.scenario === 'B' ? 'B' : 'A';
+        const parsed = Number.isFinite(value) && value > 0 ? value : null;
+        if (scenario === 'B') {
+            this.tenureB = parsed;
+        } else {
+            this.tenure = parsed;
+        }
     }
 
     get formattedPayment() {
         if (!Number.isFinite(this.monthlyPayment)) {
             return null;
         }
-
         return this.formatCurrency(this.monthlyPayment);
+    }
+
+    get formattedPaymentB() {
+        if (!Number.isFinite(this.monthlyPaymentB)) {
+            return null;
+        }
+        return this.formatCurrency(this.monthlyPaymentB);
     }
 
     /**
      * Calculates the monthly mortgage payment when the user clicks Calculate.
      */
-    calculatePayment() {
-        if (!this.isInputValid()) {
-            this.monthlyPayment = null;
+    calculatePayment(event) {
+        const scenario = event?.target?.dataset?.scenario === 'B' ? 'B' : 'A';
+        if (!this.isInputValid(scenario)) {
+            if (scenario === 'B') this.monthlyPaymentB = null; else this.monthlyPayment = null;
             return;
         }
+        const price = scenario === 'B' ? this.priceB : this.price;
+        const interestRate = scenario === 'B' ? this.interestRateB : this.interestRate;
+        const tenure = scenario === 'B' ? this.tenureB : this.tenure;
 
-        const loanAmount = this.price;
-        const monthlyRate = (this.interestRate / 100) / MONTHS_IN_YEAR;
-        const totalPayments = this.tenure * MONTHS_IN_YEAR;
+        const loanAmount = price;
+        const monthlyRate = (interestRate / 100) / MONTHS_IN_YEAR;
+        const totalPayments = tenure * MONTHS_IN_YEAR;
 
-        this.monthlyPayment = this.calculateEmi(loanAmount, monthlyRate, totalPayments);
-        this.validationMessage = null;
+        const emi = this.calculateEmi(loanAmount, monthlyRate, totalPayments);
+        if (scenario === 'B') {
+            this.monthlyPaymentB = emi;
+            this.validationMessageB = null;
+        } else {
+            this.monthlyPayment = emi;
+            this.validationMessage = null;
+        }
         // eslint-disable-next-line no-console
-        console.log('[MortgageCalculator] Payment calculated');
+        console.log(`[MortgageCalculator] Payment calculated for ${scenario}`);
     }
 
     /**
@@ -119,37 +197,60 @@ export default class MortgageCalculator extends LightningElement {
     /**
      * Clears all calculator inputs and the calculated result.
      */
-    resetCalculator() {
-        this.price = null;
-        this.interestRate = null;
-        this.tenure = null;
-        this.monthlyPayment = null;
-        this.validationMessage = null;
+    resetCalculator(event) {
+        const scenario = event?.target?.dataset?.scenario;
+        const resetA = () => {
+            this.price = null;
+            this.interestRate = null;
+            this.tenure = null;
+            this.monthlyPayment = null;
+            this.validationMessage = null;
+        };
+        const resetB = () => {
+            this.priceB = null;
+            this.interestRateB = null;
+            this.tenureB = null;
+            this.monthlyPaymentB = null;
+            this.validationMessageB = null;
+        };
+        if (scenario === 'B') {
+            resetB();
+        } else if (scenario === 'A') {
+            resetA();
+        } else {
+            // No scenario specified -> reset both
+            resetA();
+            resetB();
+        }
         // eslint-disable-next-line no-console
-        console.log('[MortgageCalculator] Calculator reset');
+        console.log(`[MortgageCalculator] Calculator reset ${scenario || 'A+B'}`);
     }
 
     /**
      * Validates calculator inputs before calculating EMI.
      * @returns {boolean} true when inputs are valid.
      */
-    isInputValid() {
-        if (!Number.isFinite(this.price) || this.price <= 0) {
-            this.validationMessage = 'Enter a valid property price greater than zero.';
+    isInputValid(scenario = 'A') {
+        const price = scenario === 'B' ? this.priceB : this.price;
+        const rate = scenario === 'B' ? this.interestRateB : this.interestRate;
+        const tenure = scenario === 'B' ? this.tenureB : this.tenure;
+        const setMessage = (msg) => {
+            if (scenario === 'B') this.validationMessageB = msg; else this.validationMessage = msg;
+        };
+
+        if (!Number.isFinite(price) || price <= 0) {
+            setMessage('Enter a valid property price greater than zero.');
             return false;
         }
-
-        if (!Number.isFinite(this.interestRate) || this.interestRate < 0) {
-            this.validationMessage = 'Enter a valid annual interest rate (zero or positive).';
+        if (!Number.isFinite(rate) || rate < 0) {
+            setMessage('Enter a valid annual interest rate (zero or positive).');
             return false;
         }
-
-        if (!Number.isFinite(this.tenure) || this.tenure <= 0) {
-            this.validationMessage = 'Enter a valid loan tenure in years (greater than zero).';
+        if (!Number.isFinite(tenure) || tenure <= 0) {
+            setMessage('Enter a valid loan tenure in years (greater than zero).');
             return false;
         }
-
-        this.validationMessage = null;
+        setMessage(null);
         return true;
     }
 }

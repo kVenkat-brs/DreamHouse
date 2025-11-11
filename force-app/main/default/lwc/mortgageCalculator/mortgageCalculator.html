@@ -1,11 +1,178 @@
 <template>
     <lightning-card title="Mortgage Calculator" icon-name="standard:solution">
         <div class="mortgage-calculator slds-p-around_medium">
+            <div class="slds-m-bottom_medium slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                <div class="theme-indicator slds-text-title">
+                    <span class="theme-pill" title="Theme Accent"></span>
+                    <span>Theme</span>
+                </div>
+                <lightning-button-group>
+                    <lightning-button label="Standard" data-theme="standard" onclick={handleThemeChange}></lightning-button>
+                    <lightning-button label="Dark Mode" data-theme="dark" onclick={handleThemeChange}></lightning-button>
+                    <lightning-button label="Professional" data-theme="pro" onclick={handleThemeChange}></lightning-button>
+                </lightning-button-group>
+            </div>
+
+            <div class="slds-m-bottom_medium slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                <span class="slds-text-title">Comparison Mode</span>
+                <lightning-input type="toggle" message-toggle-active="On" message-toggle-inactive="Off" onchange={handleComparisonToggle}></lightning-input>
+            </div>
             <p class="slds-text-body_small slds-m-bottom_medium">
                 Estimate your monthly mortgage payment.
             </p>
 
-            <lightning-accordion active-section-name={activeSectionName}>
+            <template lwc:if={comparisonMode}>
+                <div class="slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+                        <lightning-accordion active-section-name={activeSectionName}>
+                            <lightning-accordion-section name="step1" label="Scenario A — Step 1 - Property Details">
+                                <div class="slds-grid slds-wrap slds-gutters">
+                                    <div class="slds-col slds-size_1-of-1 slds-medium-size_2-of-3">
+                                        <lightning-input type="currency" label="Property Price" value={price} data-scenario="A" onchange={handlePriceChange} required></lightning-input>
+                                    </div>
+                                </div>
+                                <div class="slds-m-top_medium slds-text-align_right">
+                                    <lightning-button label="Next" variant="brand" data-step="step2" data-scenario="A" onclick={goToStep}></lightning-button>
+                                </div>
+                            </lightning-accordion-section>
+                            <lightning-accordion-section name="step2" label="Scenario A — Step 2 - Loan Terms">
+                                <div class="slds-grid slds-wrap slds-gutters">
+                                    <div class="slds-col slds-size_1-of-1 slds-small-size_1-of-2 slds-p-bottom_small">
+                                        <lightning-input type="number" label="Interest Rate (Annual %)" step="0.01" value={interestRate} data-scenario="A" onchange={handleRateChange} required></lightning-input>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-small-size_1-of-2 slds-p-bottom_small">
+                                        <lightning-input type="number" label="Loan Tenure (Years)" value={tenure} data-scenario="A" onchange={handleTenureChange} required></lightning-input>
+                                    </div>
+                                </div>
+                                <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                                    <lightning-button label="Previous" variant="neutral" data-step="step1" data-scenario="A" onclick={goToStep}></lightning-button>
+                                    <div>
+                                        <lightning-button label="Next" variant="brand" data-step="step3" data-scenario="A" onclick={goToStep}></lightning-button>
+                                    </div>
+                                </div>
+                            </lightning-accordion-section>
+                            <lightning-accordion-section name="step3" label="Scenario A — Step 3 - Additional Costs">
+                                <div class="slds-grid slds-wrap slds-gutters">
+                                    <div class="slds-col slds-size_1-of-1 slds-small-size_1-of-2 slds-p-bottom_small">
+                                        <lightning-input type="number" label="Down Payment (%)" step="0.1" placeholder="e.g., 20"></lightning-input>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-small-size_1-of-2 slds-p-bottom_small">
+                                        <lightning-input type="number" label="Property Tax (Annual %)" step="0.01" placeholder="e.g., 1.2"></lightning-input>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-small-size_1-of-2 slds-p-bottom_small">
+                                        <lightning-input type="currency" label="Home Insurance (Monthly)" placeholder="e.g., 75"></lightning-input>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-small-size_1-of-2 slds-p-bottom_small">
+                                        <lightning-input type="currency" label="HOA Fees (Monthly)" placeholder="e.g., 100"></lightning-input>
+                                    </div>
+                                </div>
+                                <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                                    <lightning-button label="Previous" variant="neutral" data-step="step2" data-scenario="A" onclick={goToStep}></lightning-button>
+                                    <div>
+                                        <lightning-button label="Next" variant="brand" data-step="step4" data-scenario="A" onclick={goToStep}></lightning-button>
+                                    </div>
+                                </div>
+                            </lightning-accordion-section>
+                            <lightning-accordion-section name="step4" label="Scenario A — Step 4 - Results">
+                                <div class="slds-m-bottom_medium slds-grid slds-grid_align-spread">
+                                    <lightning-button label="Previous" variant="neutral" data-step="step3" data-scenario="A" onclick={goToStep}></lightning-button>
+                                    <div class="slds-grid slds-gutters_x-small">
+                                        <lightning-button label="Reset" variant="neutral" data-scenario="A" onclick={resetCalculator}></lightning-button>
+                                        <lightning-button label="Calculate" variant="brand" data-scenario="A" onclick={calculatePayment}></lightning-button>
+                                    </div>
+                                </div>
+                                <template lwc:if={formattedPayment}>
+                                    <div class="slds-m-top_small slds-box slds-theme_shade mortgage-calculator__result">
+                                        <p class="slds-text-heading_large slds-m-bottom_x-small">{formattedPayment}</p>
+                                        <p class="slds-text-title slds-text-color_weak">Estimated Monthly Payment</p>
+                                    </div>
+                                </template>
+                                <template lwc:if={validationMessage}>
+                                    <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
+                                        <span class="slds-assistive-text">Error</span>
+                                        <h2>{validationMessage}</h2>
+                                    </div>
+                                </template>
+                            </lightning-accordion-section>
+                        </lightning-accordion>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+                        <lightning-accordion active-section-name={activeSectionNameB}>
+                            <lightning-accordion-section name="step1" label="Scenario B — Step 1 - Property Details">
+                                <div class="slds-grid slds-wrap slds-gutters">
+                                    <div class="slds-col slds-size_1-of-1 slds-medium-size_2-of-3">
+                                        <lightning-input type="currency" label="Property Price" value={priceB} data-scenario="B" onchange={handlePriceChange} required></lightning-input>
+                                    </div>
+                                </div>
+                                <div class="slds-m-top_medium slds-text-align_right">
+                                    <lightning-button label="Next" variant="brand" data-step="step2" data-scenario="B" onclick={goToStep}></lightning-button>
+                                </div>
+                            </lightning-accordion-section>
+                            <lightning-accordion-section name="step2" label="Scenario B — Step 2 - Loan Terms">
+                                <div class="slds-grid slds-wrap slds-gutters">
+                                    <div class="slds-col slds-size_1-of-1 slds-small-size_1-of-2 slds-p-bottom_small">
+                                        <lightning-input type="number" label="Interest Rate (Annual %)" step="0.01" value={interestRateB} data-scenario="B" onchange={handleRateChange} required></lightning-input>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-small-size_1-of-2 slds-p-bottom_small">
+                                        <lightning-input type="number" label="Loan Tenure (Years)" value={tenureB} data-scenario="B" onchange={handleTenureChange} required></lightning-input>
+                                    </div>
+                                </div>
+                                <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                                    <lightning-button label="Previous" variant="neutral" data-step="step1" data-scenario="B" onclick={goToStep}></lightning-button>
+                                    <div>
+                                        <lightning-button label="Next" variant="brand" data-step="step3" data-scenario="B" onclick={goToStep}></lightning-button>
+                                    </div>
+                                </div>
+                            </lightning-accordion-section>
+                            <lightning-accordion-section name="step3" label="Scenario B — Step 3 - Additional Costs">
+                                <div class="slds-grid slds-wrap slds-gutters">
+                                    <div class="slds-col slds-size_1-of-1 slds-small-size_1-of-2 slds-p-bottom_small">
+                                        <lightning-input type="number" label="Down Payment (%)" step="0.1" placeholder="e.g., 20"></lightning-input>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-small-size_1-of-2 slds-p-bottom_small">
+                                        <lightning-input type="number" label="Property Tax (Annual %)" step="0.01" placeholder="e.g., 1.2"></lightning-input>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-small-size_1-of-2 slds-p-bottom_small">
+                                        <lightning-input type="currency" label="Home Insurance (Monthly)" placeholder="e.g., 75"></lightning-input>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-small-size_1-of-2 slds-p-bottom_small">
+                                        <lightning-input type="currency" label="HOA Fees (Monthly)" placeholder="e.g., 100"></lightning-input>
+                                    </div>
+                                </div>
+                                <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                                    <lightning-button label="Previous" variant="neutral" data-step="step2" data-scenario="B" onclick={goToStep}></lightning-button>
+                                    <div>
+                                        <lightning-button label="Next" variant="brand" data-step="step4" data-scenario="B" onclick={goToStep}></lightning-button>
+                                    </div>
+                                </div>
+                            </lightning-accordion-section>
+                            <lightning-accordion-section name="step4" label="Scenario B — Step 4 - Results">
+                                <div class="slds-m-bottom_medium slds-grid slds-grid_align-spread">
+                                    <lightning-button label="Previous" variant="neutral" data-step="step3" data-scenario="B" onclick={goToStep}></lightning-button>
+                                    <div class="slds-grid slds-gutters_x-small">
+                                        <lightning-button label="Reset" variant="neutral" data-scenario="B" onclick={resetCalculator}></lightning-button>
+                                        <lightning-button label="Calculate" variant="brand" data-scenario="B" onclick={calculatePayment}></lightning-button>
+                                    </div>
+                                </div>
+                                <template lwc:if={formattedPaymentB}>
+                                    <div class="slds-m-top_small slds-box slds-theme_shade mortgage-calculator__result">
+                                        <p class="slds-text-heading_large slds-m-bottom_x-small">{formattedPaymentB}</p>
+                                        <p class="slds-text-title slds-text-color_weak">Estimated Monthly Payment</p>
+                                    </div>
+                                </template>
+                                <template lwc:if={validationMessageB}>
+                                    <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
+                                        <span class="slds-assistive-text">Error</span>
+                                        <h2>{validationMessageB}</h2>
+                                    </div>
+                                </template>
+                            </lightning-accordion-section>
+                        </lightning-accordion>
+                    </div>
+                </div>
+            </template>
+            <template lwc:else>
+                <lightning-accordion active-section-name={activeSectionName}>
                 <!-- Step 1: Property Details -->
                 <lightning-accordion-section name="step1" label="Step 1 - Property Details">
                     <div class="slds-grid slds-wrap slds-gutters">

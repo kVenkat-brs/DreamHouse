@@ -1,0 +1,67 @@
+/* Theme variables: default (Standard) */
+:host {
+    --mc-bg: #ffffff;
+    --mc-card-bg: #ffffff;
+    --mc-text: #1f1f1f;
+    --mc-muted: #6b6d70;
+    --mc-accent: #0176d3;
+    --mc-border: #d8dde6;
+    --mc-box: #f3f6f9;
+}
+
+/* Dark Mode theme */
+:host(.theme-dark) {
+    --mc-bg: #111827;
+    --mc-card-bg: #1f2937;
+    --mc-text: #f3f4f6;
+    --mc-muted: #9ca3af;
+    --mc-accent: #60a5fa;
+    --mc-border: #374151;
+    --mc-box: #111827;
+}
+
+/* Professional theme (subtle gray with accent) */
+:host(.theme-pro) {
+    --mc-bg: #f7f9fb;
+    --mc-card-bg: #ffffff;
+    --mc-text: #253858;
+    --mc-muted: #6b778c;
+    --mc-accent: #005fb2;
+    --mc-border: #c2c8d0;
+    --mc-box: #eef2f7;
+}
+
+.mortgage-calculator {
+    background: var(--mc-bg);
+    color: var(--mc-text);
+}
+
+.mortgage-calculator .slds-box,
+.mortgage-calculator .slds-theme_shade {
+    background: var(--mc-box);
+    border: 1px solid var(--mc-border);
+}
+
+.mortgage-calculator .slds-text-color_weak {
+    color: var(--mc-muted);
+}
+
+.mortgage-calculator .theme-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.mortgage-calculator .theme-pill {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--mc-accent);
+}
+
+.mortgage-calculator .slds-button_brand {
+    --slds-c-button-brand-color-background: var(--mc-accent);
+    --slds-c-button-brand-color-background-hover: color-mix(in oklab, var(--mc-accent), #000 12%);
+}
+
