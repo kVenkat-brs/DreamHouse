@@ -8,6 +8,7 @@ export default class MortgageCalculator extends LightningElement {
     theme = 'standard'; // standard | dark | pro
     comparisonMode = false;
     affordabilityMode = false;
+    investmentMode = false;
     // Currency selection
     selectedCurrency = null; // ISO code, e.g., USD, EUR
     // Scenario A (default)
@@ -157,6 +158,149 @@ export default class MortgageCalculator extends LightningElement {
             fha: 6.9,
             va: 6.8
         };
+    }
+
+    // Credit score slider → dynamic band mapping and impact analysis
+    creditScoreValue = 720; // default
+
+    get creditScoreBand() {
+        return this.bandFromScore(this.creditScoreValue);
+    }
+
+    bandFromScore(score) {
+        if (score >= 800) return 'excellent';
+        if (score >= 740) return 'verygood';
+        if (score >= 670) return 'good';
+        if (score >= 580) return 'fair';
+        return 'poor';
+    }
+
+    rateAdjustmentForBand(band) {
+        const adj = {
+            excellent: -0.5,
+            verygood: -0.25,
+            good: 0,
+            fair: 0.5,
+            poor: 1.0
+        };
+        return adj[band] ?? 0;
+    }
+
+    rateForBand(band) {
+        const base = this.getDefaultRateForLoanType(this.loanType);
+        const adjusted = base + this.rateAdjustmentForBand(band);
+        return Math.max(0, Math.round(adjusted * 100) / 100);
+    }
+
+    handleCreditSliderChange(event) {
+        const val = parseInt(event.detail.value, 10);
+        if (!Number.isFinite(val)) return;
+        this.creditScoreValue = val;
+        // Dynamically set current scenario interest rate based on band
+        this.interestRate = this.rateForBand(this.creditScoreBand);
+    }
+
+    get creditImpactColumns() {
+        const code = this.currencyCode;
+        return [
+            { label: 'Band', fieldName: 'band' },
+            { label: 'Rate (%)', fieldName: 'rate', type: 'number', typeAttributes: { minimumIntegerDigits: 1, maximumFractionDigits: 2 } },
+            { label: 'Monthly', fieldName: 'monthly', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Total Interest', fieldName: 'interest', type: 'currency', typeAttributes: { currencyCode: code } }
+        ];
+    }
+
+    get creditImpactRows() {
+        // Need price and tenure for meaningful comparison
+        if (!Number.isFinite(this.price) || !Number.isFinite(this.tenure) || this.tenure <= 0) {
+            return [];
+        }
+        const bands = ['excellent', 'verygood', 'good', 'fair', 'poor'];
+        const rows = [];
+        const totalPayments = this.tenure * MONTHS_IN_YEAR;
+        for (const band of bands) {
+            const rate = this.rateForBand(band);
+            const monthlyRate = (rate / 100) / MONTHS_IN_YEAR;
+            const m = this.calculateEmi(this.price, monthlyRate, totalPayments);
+            const totalPaid = m * totalPayments;
+            const totalInterest = totalPaid - this.price;
+            rows.push({
+                id: band,
+                band,
+                rate,
+                monthly: m,
+                interest: totalInterest
+            });
+        }
+        return rows;
+    }
+
+    // =========================
+    // Lender comparison (rates/APR/fees + recommendation)
+    // =========================
+    lendersCatalog = [
+        { id: 'acme', name: 'Acme Bank', rateAdj: 0.0, aprAdj: 0.10, baseFee: 1500, specialties: ['fixed30', 'fixed15'] },
+        { id: 'homefirst', name: 'HomeFirst Mortgage', rateAdj: -0.05, aprAdj: 0.05, baseFee: 995, specialties: ['fha', 'va'] },
+        { id: 'citywide', name: 'Citywide Credit Union', rateAdj: -0.10, aprAdj: 0.00, baseFee: 700, specialties: ['fixed30', 'arm5_1'] },
+        { id: 'neighborhood', name: 'Neighborhood Lenders', rateAdj: 0.05, aprAdj: 0.12, baseFee: 1200, specialties: ['arm5_1', 'fixed15'] }
+    ];
+
+    get lenderComparisonColumns() {
+        const code = this.currencyCode;
+        return [
+            { label: 'Lender', fieldName: 'lender' },
+            { label: 'Rate (%)', fieldName: 'rate', type: 'number', typeAttributes: { minimumIntegerDigits: 1, maximumFractionDigits: 2 } },
+            { label: 'APR (%)', fieldName: 'apr', type: 'number', typeAttributes: { minimumIntegerDigits: 1, maximumFractionDigits: 2 } },
+            { label: 'Fees', fieldName: 'fees', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Monthly', fieldName: 'monthly', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Recommendation', fieldName: 'recommendation' }
+        ];
+    }
+
+    get lenderComparisonRows() {
+        if (!this.lendersCatalog || !this.lendersCatalog.length) return [];
+        const baseRate = this.getDefaultRateForLoanType(this.loanType);
+        const band = this.creditScoreBand || 'good';
+        const bandAdj = this.rateAdjustmentForBand(band);
+        const price = Number.isFinite(this.price) ? this.price : null;
+        const tenure = Number.isFinite(this.tenure) && this.tenure > 0 ? this.tenure : null;
+        const totalPayments = tenure ? tenure * MONTHS_IN_YEAR : null;
+
+        const rows = this.lendersCatalog.map((l) => {
+            const rate = Math.max(0, Math.round((baseRate + bandAdj + l.rateAdj) * 100) / 100);
+            const apr = Math.max(0, Math.round((rate + l.aprAdj) * 100) / 100);
+            let monthly = null;
+            if (price && totalPayments) {
+                const monthlyRate = (rate / 100) / MONTHS_IN_YEAR;
+                monthly = this.calculateEmi(price, monthlyRate, totalPayments);
+            }
+            // Simple recommendation reasons
+            const aligns = l.specialties?.includes(this.loanType);
+            const rec = aligns ? 'Specializes in your loan type' : (l.baseFee <= 800 ? 'Low fees' : (rate <= baseRate + bandAdj ? 'Competitive rate' : 'Standard offer'));
+            return {
+                id: l.id,
+                lender: l.name,
+                rate,
+                apr,
+                fees: l.baseFee,
+                monthly,
+                recommendation: rec,
+                _score: (monthly ? -monthly : 0) - (l.baseFee / 500) + (aligns ? 1 : 0) // internal score for ranking
+            };
+        });
+
+        // Mark top pick
+        const sorted = [...rows].sort((a, b) => b._score - a._score);
+        if (sorted.length) {
+            const topId = sorted[0].id;
+            rows.forEach((r) => {
+                if (r.id === topId) {
+                    r.recommendation = (r.recommendation ? r.recommendation + ' — ' : '') + 'Top pick for your profile';
+                }
+                delete r._score;
+            });
+        }
+        return rows;
     }
 
     getDefaultRateForLoanType(type) {
@@ -841,6 +985,13 @@ export default class MortgageCalculator extends LightningElement {
         const monthly = (price * (rate / 100) * factor) / 12;
         return this.formatCurrency(monthly);
     }
+    get estimatedMonthlyTaxValueA() {
+        const rate = this.propertyTaxRate;
+        const price = this.price;
+        if (!Number.isFinite(rate) || !Number.isFinite(price)) return 0;
+        const factor = this.propertyType === 'multi' ? 1.05 : this.propertyType === 'condo' ? 0.95 : this.propertyType === 'townhouse' ? 0.98 : 1.0;
+        return (price * (rate / 100) * factor) / 12;
+    }
     get estimatedMonthlyTaxB() {
         const rate = this.propertyTaxRateB;
         // For simplicity use Scenario A priceB if provided, else price
@@ -849,6 +1000,316 @@ export default class MortgageCalculator extends LightningElement {
         const factor = this.propertyTypeB === 'multi' ? 1.05 : this.propertyTypeB === 'condo' ? 0.95 : this.propertyTypeB === 'townhouse' ? 0.98 : 1.0;
         const monthly = (price * (rate / 100) * factor) / 12;
         return this.formatCurrency(monthly);
+    }
+
+    // =========================
+    // Investment Property Mode (ROI, Cap Rate, Cash Flow)
+    // =========================
+    @track investRentalMonthly = null;
+    @track investVacancyPct = null; // %
+    @track investMgmtPct = null; // % of effective rent
+    @track investMaintPct = null; // % of effective rent
+    @track investDownPayment = null; // amount
+    @track investSummary = null;
+    @track investMessage = null;
+
+    handleInvestmentToggle(event) {
+        this.investmentMode = !!event.detail.checked;
+    }
+
+    handleInvestFieldChange(event) {
+        const name = event.target.name;
+        const v = parseFloat(event.detail.value);
+        const parsed = Number.isFinite(v) && v >= 0 ? v : null;
+        switch (name) {
+            case 'investRentalMonthly': this.investRentalMonthly = parsed; break;
+            case 'investVacancyPct': this.investVacancyPct = parsed; break;
+            case 'investMgmtPct': this.investMgmtPct = parsed; break;
+            case 'investMaintPct': this.investMaintPct = parsed; break;
+            case 'investDownPayment': this.investDownPayment = parsed; break;
+            default: break;
+        }
+    }
+
+    calculateInvestmentRoi() {
+        // Validate essentials
+        if (!Number.isFinite(this.price) || this.price <= 0) {
+            this.investMessage = 'Enter a valid property price to analyze investment returns.';
+            this.investSummary = null;
+            return;
+        }
+        if (!Number.isFinite(this.investRentalMonthly) || this.investRentalMonthly < 0) {
+            this.investMessage = 'Enter expected monthly rental income (zero or more).';
+            this.investSummary = null;
+            return;
+        }
+        const rent = this.investRentalMonthly;
+        const vac = Number.isFinite(this.investVacancyPct) ? this.investVacancyPct / 100 : 0;
+        const mgmt = Number.isFinite(this.investMgmtPct) ? this.investMgmtPct / 100 : 0;
+        const maint = Number.isFinite(this.investMaintPct) ? this.investMaintPct / 100 : 0;
+        const hoa = Number.isFinite(this.hoaMonthly) ? this.hoaMonthly : 0;
+        const tax = Number.isFinite(this.estimatedMonthlyTaxValueA) ? this.estimatedMonthlyTaxValueA : 0;
+
+        const effective = rent * (1 - vac);
+        const mgmtExp = effective * mgmt;
+        const maintExp = effective * maint;
+        const noiMonthly = effective - mgmtExp - maintExp - hoa - tax;
+        const noiAnnual = noiMonthly * 12;
+
+        // Financing
+        const annualRate = Number.isFinite(this.interestRate) ? this.interestRate : this.getDefaultRateForLoanType(this.loanType);
+        const years = Number.isFinite(this.tenure) && this.tenure > 0 ? this.tenure : 30;
+        const monthlyRate = (annualRate / 100) / MONTHS_IN_YEAR;
+        const totalPayments = years * MONTHS_IN_YEAR;
+        const down = Number.isFinite(this.investDownPayment) ? this.investDownPayment : 0;
+        const principal = Math.max(0, (this.price || 0) - down);
+        const debtServiceMonthly = principal > 0 ? this.calculateEmi(principal, monthlyRate, totalPayments) : 0;
+
+        const cashFlowMonthly = noiMonthly - debtServiceMonthly;
+        const capRatePct = this.price > 0 ? (noiAnnual / this.price) * 100 : null;
+        const cocPct = down > 0 ? ((cashFlowMonthly * 12) / down) * 100 : null;
+
+        this.investSummary = {
+            effective,
+            noiMonthly,
+            cashFlowMonthly,
+            capRatePct: capRatePct != null ? Math.round(capRatePct * 10) / 10 : null,
+            cocPct: cocPct != null ? Math.round(cocPct * 10) / 10 : null,
+            debtServiceMonthly,
+            taxMonthly: tax,
+            hoaMonthly: hoa
+        };
+        this.investMessage = null;
+    }
+
+    resetInvestment() {
+        this.investRentalMonthly = null;
+        this.investVacancyPct = null;
+        this.investMgmtPct = null;
+        this.investMaintPct = null;
+        this.investDownPayment = null;
+        this.investSummary = null;
+        this.investMessage = null;
+    }
+
+    // =========================
+    // What‑If Scenario Planner (Best/Worst/Expected)
+    // =========================
+    @track scenarioDraft = { name: 'expected', price: null, rate: null, tenure: null };
+    @track scenarios = [];
+
+    get scenarioNameOptions() {
+        return [
+            { label: 'Best Case', value: 'best' },
+            { label: 'Expected', value: 'expected' },
+            { label: 'Worst Case', value: 'worst' }
+        ];
+    }
+
+    handleScenarioFieldChange(event) {
+        const name = event.target.name;
+        const v = event.detail.value;
+        if (name === 'scenarioName') {
+            this.scenarioDraft = { ...this.scenarioDraft, name: v };
+            return;
+        }
+        const num = parseFloat(v);
+        const parsed = Number.isFinite(num) && num >= 0 ? num : null;
+        if (name === 'scenarioPrice') this.scenarioDraft = { ...this.scenarioDraft, price: parsed };
+        if (name === 'scenarioRate') this.scenarioDraft = { ...this.scenarioDraft, rate: parsed };
+        if (name === 'scenarioTenure') this.scenarioDraft = { ...this.scenarioDraft, tenure: parsed };
+    }
+
+    resetScenarioDraft() {
+        this.scenarioDraft = { name: 'expected', price: null, rate: null, tenure: null };
+    }
+
+    saveScenario() {
+        const d = this.scenarioDraft || {};
+        if (!d.name) { d.name = 'expected'; }
+        if (!Number.isFinite(d.price) || d.price <= 0 || !Number.isFinite(d.rate) || d.rate < 0 || !Number.isFinite(d.tenure) || d.tenure <= 0) {
+            // eslint-disable-next-line no-console
+            console.warn('[MortgageCalculator] Invalid scenario draft, missing price/rate/tenure');
+            return;
+        }
+        const monthlyRate = (d.rate / 100) / MONTHS_IN_YEAR;
+        const totalPayments = d.tenure * MONTHS_IN_YEAR;
+        const monthly = this.calculateEmi(d.price, monthlyRate, totalPayments);
+        const totalPaid = monthly * totalPayments;
+        const totalInterest = totalPaid - d.price;
+        const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const scenario = {
+            id,
+            name: d.name,
+            price: d.price,
+            rate: d.rate,
+            tenure: d.tenure,
+            monthly,
+            totalPaid,
+            totalInterest,
+            compare: false
+        };
+        this.scenarios = [...this.scenarios, scenario];
+        this.resetScenarioDraft();
+    }
+
+    toggleCompareScenario(event) {
+        const id = event?.currentTarget?.dataset?.id;
+        if (!id) return;
+        this.scenarios = this.scenarios.map((s) => (s.id === id ? { ...s, compare: !s.compare } : s));
+    }
+
+    deleteScenario(event) {
+        const id = event?.currentTarget?.dataset?.id;
+        if (!id) return;
+        this.scenarios = this.scenarios.filter((s) => s.id !== id);
+    }
+
+    clearScenarios() {
+        this.scenarios = [];
+    }
+
+    get compareScenarios() {
+        const sel = this.scenarios.filter((s) => s.compare);
+        return sel.length ? sel.slice(0, 3) : this.scenarios.slice(0, 3);
+    }
+
+    // =========================
+    // Payment Calendar (monthly schedule + extra payment planner)
+    // =========================
+    @track calendarStartDate = null; // YYYY-MM-DD
+    @track extraAmount = null; // currency amount applied as extra to principal
+    @track extraStartMonth = null; // first payment index (1-based)
+    @track extraFrequency = 'none'; // none | one | monthly
+    @track extraMonths = null; // number of months to apply (for monthly frequency); null = until payoff
+    @track monthlySchedule = [];
+    @track calendarSummary = null;
+    @track calendarMessage = null;
+
+    get calendarColumns() {
+        const code = this.currencyCode;
+        return [
+            { label: '#', fieldName: 'n', type: 'number', cellAttributes: { alignment: 'left' } },
+            { label: 'Due Date', fieldName: 'dueDate', type: 'date', typeAttributes: { year: 'numeric', month: 'short', day: '2-digit' } },
+            { label: 'Interest', fieldName: 'interest', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Principal', fieldName: 'principal', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Extra', fieldName: 'extra', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Balance', fieldName: 'balance', type: 'currency', typeAttributes: { currencyCode: code } }
+        ];
+    }
+
+    handleCalendarFieldChange(event) {
+        const name = event.target.name;
+        const val = event.detail.value;
+        if (name === 'calendarStartDate') {
+            this.calendarStartDate = val;
+            return;
+        }
+        if (name === 'extraFrequency') {
+            this.extraFrequency = val;
+            return;
+        }
+        const num = parseFloat(val);
+        const parsed = Number.isFinite(num) && num >= 0 ? num : null;
+        if (name === 'extraAmount') this.extraAmount = parsed;
+        if (name === 'extraStartMonth') this.extraStartMonth = parsed;
+        if (name === 'extraMonths') this.extraMonths = parsed;
+    }
+
+    resetCalendarPlanner() {
+        this.calendarStartDate = null;
+        this.extraAmount = null;
+        this.extraStartMonth = null;
+        this.extraFrequency = 'none';
+        this.extraMonths = null;
+        this.monthlySchedule = [];
+        this.calendarSummary = null;
+        this.calendarMessage = null;
+    }
+
+    generateCalendar() {
+        // Validate base inputs
+        if (!Number.isFinite(this.price) || !Number.isFinite(this.interestRate) || !Number.isFinite(this.tenure) || this.price <= 0 || this.tenure <= 0 || this.interestRate < 0) {
+            this.calendarMessage = 'Enter valid price, rate, and tenure to generate a payment calendar.';
+            this.monthlySchedule = [];
+            this.calendarSummary = null;
+            return;
+        }
+        const p = this.price;
+        const r = (this.interestRate / 100) / MONTHS_IN_YEAR;
+        const n = this.tenure * MONTHS_IN_YEAR;
+        const emi = this.calculateEmi(p, r, n);
+
+        const start = this.calendarStartDate ? new Date(this.calendarStartDate) : new Date();
+        const extras = {
+            amount: Number.isFinite(this.extraAmount) ? this.extraAmount : 0,
+            start: Number.isFinite(this.extraStartMonth) ? Math.max(1, Math.floor(this.extraStartMonth)) : null,
+            frequency: this.extraFrequency || 'none',
+            months: Number.isFinite(this.extraMonths) ? Math.max(1, Math.floor(this.extraMonths)) : null
+        };
+
+        // Baseline (no extras)
+        const base = this.buildMonthlySchedule(p, r, n, emi, start, { amount: 0, start: null, frequency: 'none', months: null });
+        // With extras
+        const withExtras = this.buildMonthlySchedule(p, r, n, emi, start, extras);
+
+        this.monthlySchedule = withExtras.schedule;
+        const baselineInterest = base.totalInterest;
+        const baselineMonths = base.payments;
+        const newInterest = withExtras.totalInterest;
+        const newMonths = withExtras.payments;
+        const payoffDate = withExtras.lastDate;
+        this.calendarSummary = {
+            baselineMonths,
+            newMonths,
+            monthsSaved: baselineMonths - newMonths,
+            baselineInterest: baselineInterest,
+            newInterest: newInterest,
+            interestSaved: baselineInterest - newInterest,
+            payoffDate
+        };
+        this.calendarMessage = null;
+    }
+
+    /**
+     * Builds a per-month amortization schedule with optional extra payment planner.
+     * @returns {{schedule:Array, payments:number, totalInterest:number, lastDate: Date}}
+     */
+    buildMonthlySchedule(principal, monthlyRate, totalPayments, emi, startDate, extras) {
+        const rows = [];
+        let balance = principal;
+        let totalInterest = 0;
+        let paymentCount = 0;
+        let current = new Date(startDate.getTime());
+        for (let i = 1; i <= totalPayments && balance > 0; i++) {
+            const interest = monthlyRate === 0 ? 0 : balance * monthlyRate;
+            let principalPaid = emi - interest;
+            if (principalPaid > balance) principalPaid = balance;
+            let extra = 0;
+            if (extras && extras.amount > 0) {
+                const applyOne = extras.frequency === 'one' && extras.start === i;
+                const applyMonthly = extras.frequency === 'monthly' && extras.start && i >= extras.start && (!extras.months || i < extras.start + extras.months);
+                if (applyOne || applyMonthly) {
+                    extra = Math.min(extras.amount, Math.max(0, balance - principalPaid));
+                }
+            }
+            const totalPrincipal = principalPaid + extra;
+            balance -= totalPrincipal;
+            totalInterest += interest;
+            paymentCount++;
+            // push row
+            rows.push({
+                n: i,
+                dueDate: new Date(current.getTime()),
+                interest,
+                principal: principalPaid,
+                extra,
+                balance: Math.max(0, balance)
+            });
+            // advance month
+            current.setMonth(current.getMonth() + 1);
+        }
+        return { schedule: rows, payments: paymentCount, totalInterest, lastDate: rows.length ? rows[rows.length - 1].dueDate : startDate };
     }
 
     // =========================
