@@ -1,5 +1,6 @@
 import { LightningElement, track } from 'lwc';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import getRates from '@salesforce/apex/CurrencyService.getRates';
 
 const MONTHS_IN_YEAR = 12;
 
@@ -12,6 +13,7 @@ export default class MortgageCalculator extends LightningElement {
     investmentMode = false;
     // Currency selection
     selectedCurrency = null; // ISO code, e.g., USD, EUR
+    @track fxRates = null; // map of code->rate relative to selectedCurrency
     // Scenario A (default)
     @track price = null;
     @track interestRate = null; // annual percentage rate (derived from loan type unless overridden)
@@ -326,6 +328,87 @@ export default class MortgageCalculator extends LightningElement {
             });
         }
         return rows;
+    }
+
+    // =========================
+    // Credit Score Simulation (hard inquiry + new mortgage + payment history)
+    // =========================
+    @track simStartScore = 720;
+    @track simMonths = 60;
+    @track simHardInquiries = 1;
+    @track simOnTimePct = 100; // 0-100
+    @track creditSimRows = [];
+    @track creditSimSummary = null;
+
+    handleCreditSimFieldChange(event) {
+        const { name, value } = event.target;
+        const n = parseFloat(value);
+        if (['simStartScore','simMonths','simHardInquiries','simOnTimePct'].includes(name)) {
+            this[name] = Number.isFinite(n) ? n : this[name];
+        }
+    }
+
+    runCreditSimulation() {
+        const startScore = Number.isFinite(this.simStartScore) ? this.simStartScore : 720;
+        const months = Math.min(360, Math.max(1, Number.isFinite(this.simMonths) ? Math.floor(this.simMonths) : 60));
+        const inquiries = Math.max(0, Number.isFinite(this.simHardInquiries) ? Math.floor(this.simHardInquiries) : 0);
+        const onTime = Math.min(100, Math.max(0, Number.isFinite(this.simOnTimePct) ? this.simOnTimePct : 100));
+
+        let score = startScore;
+        const rows = [];
+        const startDate = new Date();
+
+        // Immediate effects
+        // Hard inquiries: ~5 points each, recovers linearly over 12 months
+        const inquiryHit = -5 * inquiries;
+        // New mortgage account (credit mix + new account age): ~-10 first 3 months
+        const newAcctInitialHit = -10;
+        // High balance large mortgage slight initial impact
+        const loanAmt = Number.isFinite(this.loanAmount) ? this.loanAmount : (Number.isFinite(this.price) ? this.price : 0);
+        const largeLoanHit = loanAmt > 500000 ? -5 : 0;
+
+        // Payment history monthly expected delta: base +0.5 per on-time month, expected penalty for late fraction
+        const monthlyOnTimeBoost = 0.5 * (onTime / 100);
+        const monthlyLatePenalty = -2.0 * ((100 - onTime) / 100);
+        const monthlyHistoryDelta = monthlyOnTimeBoost + monthlyLatePenalty; // can be negative
+
+        // Rate-related effect: lower rate improves affordability slightly (tiny positive), higher rate negative
+        const rate = Number.isFinite(this.interestRate) ? this.interestRate : this.getDefaultRateForLoanType(this.loanType);
+        const rateAdj = Math.max(-0.3, Math.min(0.3, (7 - rate) * 0.05));
+
+        // Apply immediate hits at month 1
+        for (let m = 1; m <= months; m++) {
+            let delta = 0;
+            let noteParts = [];
+            if (m === 1) {
+                delta += inquiryHit + newAcctInitialHit + largeLoanHit;
+                if (inquiryHit) noteParts.push(`Inquiry impact ${inquiryHit}`);
+                if (newAcctInitialHit) noteParts.push('New mortgage opened');
+                if (largeLoanHit) noteParts.push('Large loan balance');
+            }
+            // Recover inquiries over 12 months
+            if (inquiryHit !== 0 && m <= 12) {
+                delta += (-inquiryHit) / 12; // gradual recovery
+            }
+            // New account impact fades over first 3 months (offset half back over 3 months)
+            if (m <= 3 && newAcctInitialHit) {
+                delta += (-newAcctInitialHit) / 6; // slow recovery
+            }
+            // Payment history expected effect
+            delta += monthlyHistoryDelta;
+            // Rate affordability small adjustment each month
+            delta += rateAdj / 12;
+
+            score = Math.max(300, Math.min(850, score + delta));
+
+            const d = new Date(startDate.getTime());
+            d.setMonth(d.getMonth() + m - 1);
+            rows.push({ id: m, month: m, date: d, score: Math.round(score), note: noteParts.join('; ') });
+        }
+
+        this.creditSimRows = rows;
+        const endScore = rows.length ? rows[rows.length - 1].score : startScore;
+        this.creditSimSummary = { start: startScore, end: endScore, change: endScore - startScore };
     }
 
     getDefaultRateForLoanType(type) {
@@ -1203,10 +1286,36 @@ export default class MortgageCalculator extends LightningElement {
     // Tax Implications (interest + property tax deductions)
     // =========================
     @track taxBracketPct = null; // user's marginal tax bracket %
+    @track filingStatus = 'single'; // single | married_joint | married_separate | head_household
+    @track otherSaltAnnual = null; // other state+local taxes besides property tax
+    @track loanStartYear = null; // loan origination year to determine MI cap (pre-2018 vs post)
 
     handleTaxBracketChange(event) {
         const v = parseFloat(event.detail.value);
         this.taxBracketPct = Number.isFinite(v) && v >= 0 ? v : null;
+    }
+
+    handleFilingStatusChange(event) {
+        this.filingStatus = event.detail.value;
+    }
+
+    handleOtherSaltChange(event) {
+        const v = parseFloat(event.detail.value);
+        this.otherSaltAnnual = Number.isFinite(v) && v >= 0 ? v : null;
+    }
+
+    handleLoanStartYearChange(event) {
+        const v = parseInt(event.detail.value, 10);
+        this.loanStartYear = Number.isFinite(v) && v > 1900 ? v : null;
+    }
+
+    get filingStatusOptions() {
+        return [
+            { label: 'Single', value: 'single' },
+            { label: 'Married Filing Jointly', value: 'married_joint' },
+            { label: 'Married Filing Separately', value: 'married_separate' },
+            { label: 'Head of Household', value: 'head_household' }
+        ];
     }
 
     get taxImplicationSummary() {
@@ -1223,14 +1332,36 @@ export default class MortgageCalculator extends LightningElement {
         // Property tax: use monthly estimate * 12 if available
         const monthlyTax = Number.isFinite(this.estimatedMonthlyTaxValueA) ? this.estimatedMonthlyTaxValueA : 0;
         const annualPropertyTax = monthlyTax * 12;
+
+        // Mortgage interest deduction cap logic
+        const year = this.loanStartYear || new Date().getFullYear();
+        const cap = (year <= 2017) ? 1000000 : 750000; // USD limits under current law
+        const loanPrincipal = this.price; // if down payment tracked, substitute price*(1 - downPct)
+        const capRatio = loanPrincipal > 0 ? Math.min(1, cap / loanPrincipal) : 1;
+        const deductibleInterest = annualMortgageInterest * capRatio;
+
+        // SALT cap for property taxes
+        let saltCap = 10000;
+        if (this.filingStatus === 'married_separate') saltCap = 5000;
+        // If other state/local taxes are provided, reduce remaining SALT capacity
+        const otherSalt = Number.isFinite(this.otherSaltAnnual) ? this.otherSaltAnnual : 0;
+        const remainingSalt = Math.max(0, saltCap - otherSalt);
+        const deductiblePropertyTax = Math.min(annualPropertyTax, remainingSalt);
+
         const bracket = Number.isFinite(this.taxBracketPct) ? this.taxBracketPct / 100 : null;
-        const totalDeductible = annualMortgageInterest + annualPropertyTax;
+        const totalDeductible = deductibleInterest + deductiblePropertyTax;
         const estSavings = bracket != null ? totalDeductible * bracket : null;
         return {
             annualMortgageInterest,
+            deductibleInterest,
             annualPropertyTax,
+            deductiblePropertyTax,
             totalDeductible,
-            estSavings
+            estSavings,
+            saltCap,
+            otherSalt,
+            loanCapApplied: cap,
+            capRatio
         };
     }
 
@@ -1314,6 +1445,7 @@ export default class MortgageCalculator extends LightningElement {
         const withExtras = this.buildMonthlySchedule(p, r, n, emi, start, extras);
 
         this.monthlySchedule = withExtras.schedule;
+        this.monthlyScheduleBaseline = base.schedule;
         const baselineInterest = base.totalInterest;
         const baselineMonths = base.payments;
         const newInterest = withExtras.totalInterest;
@@ -1328,6 +1460,19 @@ export default class MortgageCalculator extends LightningElement {
             interestSaved: baselineInterest - newInterest,
             payoffDate
         };
+        this.calendarBaselineSummary = {
+            payments: baselineMonths,
+            totalInterest: baselineInterest,
+            payoffDate: base.lastDate
+        };
+        // Interest savings quick scenarios
+        const scenarios = [50, 100, 200, 500];
+        const rows = [];
+        scenarios.forEach((amt) => {
+            const s = this.buildMonthlySchedule(p, r, n, emi, start, { amount: amt, start: 1, frequency: 'monthly', months: null });
+            rows.push({ id: `extra_${amt}`, extra: amt, monthsSaved: baselineMonths - s.payments, interestSaved: baselineInterest - s.totalInterest });
+        });
+        this.interestSavingsRows = rows;
         this.calendarMessage = null;
     }
 
@@ -1382,6 +1527,8 @@ export default class MortgageCalculator extends LightningElement {
     @track helocMaxLtvPct = 80; // typical max CLTV
     @track helocDrawAmount = null; // desired draw amount
     @track helocRatePct = null; // annual interest-only rate for HELOC
+    @track helocTermYears = 10; // amortization term for HELOC when amortizing
+    @track helocAmortize = false; // amortize HELOC instead of interest-only
 
     handleEquityFieldChange(event) {
         const name = event.target.name;
@@ -1395,8 +1542,15 @@ export default class MortgageCalculator extends LightningElement {
             case 'helocMaxLtvPct': this.helocMaxLtvPct = parsed; break;
             case 'helocDrawAmount': this.helocDrawAmount = parsed; break;
             case 'helocRatePct': this.helocRatePct = parsed; break;
+            case 'helocTermYears': this.helocTermYears = parsed; break;
             default: break;
         }
+    }
+
+    handleEquityToggle(event) {
+        const name = event.target.name;
+        const checked = !!event.detail.checked;
+        if (name === 'helocAmortize') this.helocAmortize = checked;
     }
 
     loanBalanceAfter(principal, monthlyRate, totalPayments, k) {
@@ -1457,8 +1611,41 @@ export default class MortgageCalculator extends LightningElement {
         const homeValue = this.equityHomeValue;
         const available = homeValue && eq.balance != null ? Math.max(0, homeValue * maxLtv - eq.balance) : null;
         const draw = Number.isFinite(this.helocDrawAmount) ? Math.min(this.helocDrawAmount, available || 0) : null;
-        const monthlyInt = Number.isFinite(this.helocRatePct) && draw != null ? draw * ((this.helocRatePct / 100) / MONTHS_IN_YEAR) : null;
-        return { available, draw, monthlyInt };
+        const monthlyRate = Number.isFinite(this.helocRatePct) ? (this.helocRatePct / 100) / MONTHS_IN_YEAR : null;
+        const monthlyInt = monthlyRate != null && draw != null ? draw * monthlyRate : null;
+        let amortPayment = null;
+        if (this.helocAmortize && monthlyRate != null && draw != null && Number.isFinite(this.helocTermYears) && this.helocTermYears > 0) {
+            const n = this.helocTermYears * MONTHS_IN_YEAR;
+            amortPayment = monthlyRate === 0 ? (draw / n) : (draw * monthlyRate * Math.pow(1 + monthlyRate, n)) / (Math.pow(1 + monthlyRate, n) - 1);
+        }
+        return { available, draw, monthlyInt, amortPayment };
+    }
+
+    // Combined LTV analysis (CLTV) scenarios
+    get cltvRows() {
+        const eq = this.equitySummary;
+        if (!eq || !Number.isFinite(this.equityHomeValue)) return [];
+        const hv = this.equityHomeValue;
+        const baseBal = eq.balance || 0;
+        const helocDraw = Number.isFinite(this.helocDrawAmount) ? this.helocDrawAmount : 0;
+        const cashout = Number.isFinite(this.refiCashOut) ? this.refiCashOut : 0;
+        const rows = [];
+        const pct = (num) => hv > 0 ? (num / hv) * 100 : null;
+        rows.push({ id: 'base', scenario: 'Base Mortgage', cltv: pct(baseBal) });
+        if (helocDraw > 0) {
+            rows.push({ id: 'heloc', scenario: 'With HELOC Draw', cltv: pct(baseBal + helocDraw) });
+        }
+        if (cashout > 0) {
+            rows.push({ id: 'cashout', scenario: 'With Cash-Out Refi', cltv: pct(baseBal + cashout) });
+        }
+        return rows;
+    }
+
+    get cltvColumns() {
+        return [
+            { label: 'Scenario', fieldName: 'scenario' },
+            { label: 'CLTV (%)', fieldName: 'cltv', type: 'number', typeAttributes: { maximumFractionDigits: 1 } }
+        ];
     }
 
     // =========================
@@ -1509,6 +1696,95 @@ export default class MortgageCalculator extends LightningElement {
         const base = this.buyingMonthlyCost; // includes EMI + maint + HOA
         if (!Number.isFinite(base)) return null;
         return base + this.riskInsuranceBreakdown.total;
+    }
+
+    // =========================
+    // Comprehensive DTI Calculator (lender profiles and thresholds)
+    // =========================
+    @track dtiIncome = null; // gross monthly income
+    @track dtiAuto = null;
+    @track dtiStudent = null;
+    @track dtiCredit = null;
+    @track dtiOther = null;
+    @track dtiChildcare = null; // future/known obligations
+    @track dtiHousingOverride = null; // optional override for housing payment
+    @track dtiLender = 'conventional'; // conventional | fha | va | usda | custom
+    @track dtiCustomFront = null; // %
+    @track dtiCustomBack = null; // %
+
+    get dtiLenderOptions() {
+        return [
+            { label: 'Conventional (28/36)', value: 'conventional' },
+            { label: 'FHA (31/43)', value: 'fha' },
+            { label: 'VA (back 41)', value: 'va' },
+            { label: 'USDA (29/41)', value: 'usda' },
+            { label: 'Custom', value: 'custom' }
+        ];
+    }
+
+    handleDtiFieldChange(event) {
+        const { name, value } = event.target;
+        const numeric = parseFloat(value);
+        if (['dtiLender'].includes(name)) {
+            this.dtiLender = value;
+            return;
+        }
+        this[name] = Number.isFinite(numeric) && numeric >= 0 ? numeric : null;
+    }
+
+    get dtiHousingPayment() {
+        if (Number.isFinite(this.dtiHousingOverride)) return this.dtiHousingOverride;
+        // Default to EMI + maintenance + HOA + risk surcharges if available
+        const base = this.buyingMonthlyCost; // includes EMI + maint + HOA
+        const risk = this.riskInsuranceBreakdown?.total || 0;
+        return Number.isFinite(base) ? base + risk : null;
+    }
+
+    get dtiTotalDebts() {
+        const vals = [this.dtiAuto, this.dtiStudent, this.dtiCredit, this.dtiOther, this.dtiChildcare];
+        return vals.reduce((sum, v) => sum + (Number.isFinite(v) ? v : 0), 0);
+    }
+
+    get dtiFront() {
+        if (!Number.isFinite(this.dtiIncome) || this.dtiIncome <= 0) return null;
+        const housing = this.dtiHousingPayment;
+        if (!Number.isFinite(housing)) return null;
+        return Math.round(((housing / this.dtiIncome) * 100) * 10) / 10;
+    }
+
+    get dtiBack() {
+        if (!Number.isFinite(this.dtiIncome) || this.dtiIncome <= 0) return null;
+        const housing = this.dtiHousingPayment;
+        if (!Number.isFinite(housing)) return null;
+        const debts = this.dtiTotalDebts;
+        return Math.round((((housing + debts) / this.dtiIncome) * 100) * 10) / 10;
+    }
+
+    get dtiThresholds() {
+        const profiles = {
+            conventional: { front: 28, back: 36 },
+            fha: { front: 31, back: 43 },
+            va: { front: null, back: 41 },
+            usda: { front: 29, back: 41 }
+        };
+        if (this.dtiLender === 'custom') {
+            return { front: Number.isFinite(this.dtiCustomFront) ? this.dtiCustomFront : null, back: Number.isFinite(this.dtiCustomBack) ? this.dtiCustomBack : null };
+        }
+        return profiles[this.dtiLender] || profiles.conventional;
+    }
+
+    get dtiQualification() {
+        const front = this.dtiFront;
+        const back = this.dtiBack;
+        const th = this.dtiThresholds;
+        if (front == null || back == null) return null;
+        const frontOk = th.front == null ? true : front <= th.front;
+        const backOk = th.back == null ? true : back <= th.back;
+        const qualifies = frontOk && backOk;
+        let message = qualifies ? 'Meets lender DTI requirements.' : 'Exceeds lender DTI thresholds.';
+        if (!frontOk && th.front != null) message += ` Front DTI ${front}% > ${th.front}%.`;
+        if (!backOk && th.back != null) message += ` Back DTI ${back}% > ${th.back}%.`;
+        return { front, back, frontMax: th.front, backMax: th.back, qualifies, message };
     }
 
     // =========================
@@ -1734,6 +2010,8 @@ export default class MortgageCalculator extends LightningElement {
     @track refiNewTermYears = null;
     @track refiCashOut = 0;
     @track refiClosingCosts = 0;
+    @track refiPointsPercent = 0; // discount points on new loan (% of new principal)
+    @track refiIncludeTax = false; // include tax effects in break-even
     @track refiMessage = null;
 
     handleRefiChange(event) {
@@ -1748,8 +2026,15 @@ export default class MortgageCalculator extends LightningElement {
             case 'refiNewTermYears': this.refiNewTermYears = parsed; break;
             case 'refiCashOut': this.refiCashOut = Number.isFinite(val) && val >= 0 ? val : 0; break;
             case 'refiClosingCosts': this.refiClosingCosts = Number.isFinite(val) && val >= 0 ? val : 0; break;
+            case 'refiPointsPercent': this.refiPointsPercent = Number.isFinite(val) && val >= 0 ? val : 0; break;
             default: break;
         }
+    }
+
+    handleRefiToggle(event) {
+        const name = event.target.name;
+        const checked = !!event.detail.checked;
+        if (name === 'refiIncludeTax') this.refiIncludeTax = checked;
     }
 
     get refiValid() {
@@ -1781,14 +2066,40 @@ export default class MortgageCalculator extends LightningElement {
         const newTotalInterest = newM * newN - newP;
         const interestDelta = newTotalInterest - curTotalInterest; // could be positive or negative
 
-        const costs = Number.isFinite(this.refiClosingCosts) ? this.refiClosingCosts : 0;
-        const breakevenMonths = delta > 0 ? (costs / delta) : null;
+        const points = (Number.isFinite(this.refiPointsPercent) ? (this.refiPointsPercent / 100) : 0) * newP;
+        const costs = (Number.isFinite(this.refiClosingCosts) ? this.refiClosingCosts : 0) + points;
+        const breakevenMonthsSimple = delta > 0 ? (costs / delta) : null;
+
+        // Detailed break-even with after-tax effects and month-by-month savings
+        const includeTax = !!this.refiIncludeTax;
+        const bracket = Number.isFinite(this.taxBracketPct) ? this.taxBracketPct / 100 : 0;
+        const start = this.calendarStartDate ? new Date(this.calendarStartDate) : new Date();
+        const curSched = this.buildMonthlySchedule(curP, curR, curN, curM, start, { amount: 0, start: null, frequency: 'none', months: null });
+        const newSched = this.buildMonthlySchedule(newP, newR, newN, newM, start, { amount: 0, start: null, frequency: 'none', months: null });
+        let cum = 0; let detailedMonths = null; let detailedDate = null;
+        const len = Math.min(curSched.schedule.length, newSched.schedule.length);
+        for (let i = 0; i < len; i++) {
+            const curRow = curSched.schedule[i];
+            const newRow = newSched.schedule[i];
+            const paymentSavings = curM - newM;
+            const interestSavings = (curRow.interest || 0) - (newRow.interest || 0);
+            const monthBenefit = includeTax ? (paymentSavings + (interestSavings * bracket)) : paymentSavings;
+            cum += monthBenefit;
+            if (detailedMonths === null && cum >= costs && monthBenefit > 0) {
+                detailedMonths = i + 1;
+                detailedDate = newRow.dueDate;
+            }
+        }
 
         return {
             curM, newM, delta,
             curTotalInterest, newTotalInterest, interestDelta,
             principalNew: newP,
-            breakevenMonths
+            breakevenMonths: breakevenMonthsSimple,
+            breakevenMonthsDetailed: detailedMonths,
+            breakevenDate: detailedDate,
+            costs,
+            points
         };
     }
 
@@ -1804,8 +2115,57 @@ export default class MortgageCalculator extends LightningElement {
             newInterest: fmt(c.newTotalInterest),
             interestChange: fmt(c.interestDelta),
             principalNew: fmt(c.principalNew),
-            breakeven: c.breakevenMonths != null ? `${Math.ceil(c.breakevenMonths)} months` : 'N/A'
+            breakeven: c.breakevenMonths != null ? `${Math.ceil(c.breakevenMonths)} months` : 'N/A',
+            breakevenDetailed: c.breakevenMonthsDetailed != null ? `${c.breakevenMonthsDetailed} months` : 'N/A',
+            breakevenDate: c.breakevenDate,
+            closingCosts: fmt(c.costs),
+            pointsPaid: fmt(c.points)
         };
+    }
+
+    // What-if scenarios for refinance
+    get refiScenarioColumns() {
+        const code = this.currencyCode;
+        return [
+            { label: 'Rate %', fieldName: 'rate', type: 'number', typeAttributes: { maximumFractionDigits: 2 } },
+            { label: 'Term (yrs)', fieldName: 'term', type: 'number' },
+            { label: 'Cash-out', fieldName: 'cashout', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'New Monthly', fieldName: 'newMonthly', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Monthly Change', fieldName: 'monthlyChange', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Costs+Points', fieldName: 'costs', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Break-even (mo)', fieldName: 'breakeven', type: 'number' },
+            { label: 'Break-even (detailed)', fieldName: 'breakevenDetailed', type: 'number' }
+        ];
+    }
+
+    get refiScenarioRows() {
+        if (!this.refiValid) return [];
+        const rates = [this.refiNewRate - 0.25, this.refiNewRate, this.refiNewRate + 0.25].filter((r) => Number.isFinite(r) && r > 0);
+        const terms = Array.from(new Set([this.refiNewTermYears, 15, 30].filter((t) => Number.isFinite(t) && t > 0)));
+        const cashouts = Array.from(new Set([this.refiCashOut || 0, 0]));
+        const rows = [];
+        rates.slice(0,3).forEach((r) => {
+            terms.slice(0,3).forEach((t) => {
+                cashouts.slice(0,2).forEach((co) => {
+                    // compute quick projection for each scenario
+                    const curP = this.refiCurrentBalance;
+                    const curR = (this.refiCurrentRate / 100) / MONTHS_IN_YEAR;
+                    const curN = this.refiRemainingTermYears * MONTHS_IN_YEAR;
+                    const newP = curP + (Number.isFinite(co) ? co : 0) + (Number.isFinite(this.refiClosingCosts) ? this.refiClosingCosts : 0);
+                    const newR = (r / 100) / MONTHS_IN_YEAR;
+                    const newN = t * MONTHS_IN_YEAR;
+                    const curM = this.calculateEmi(curP, curR, curN);
+                    const newM = this.calculateEmi(newP, newR, newN);
+                    const delta = curM - newM;
+                    const points = (Number.isFinite(this.refiPointsPercent) ? (this.refiPointsPercent / 100) : 0) * newP;
+                    const costs = (Number.isFinite(this.refiClosingCosts) ? this.refiClosingCosts : 0) + points;
+                    const breakeven = delta > 0 ? Math.ceil(costs / delta) : null;
+                    // detailed months approximation using payment difference only
+                    rows.push({ id: `${r}-${t}-${co}`, rate: Math.round(r * 100) / 100, term: t, cashout: co, newMonthly: newM, monthlyChange: delta, costs, breakeven, breakevenDetailed: breakeven });
+                });
+            });
+        });
+        return rows;
     }
 
     // Savings: derived progress percent (0..100)
@@ -2036,17 +2396,30 @@ export default class MortgageCalculator extends LightningElement {
     handleCurrencyChange(event) {
         this.selectedCurrency = event.detail.value;
         // Placeholder: Integrate with exchange-rate API to convert entered values
-        // TODO: fetch and cache FX rates (Apex or platform events) then apply conversions as needed
-        // this.refreshExchangeRates(this.selectedCurrency);
+        // Fetch from Apex CurrencyService and cache locally
+        this.refreshExchangeRates(this.selectedCurrency);
     }
 
     // Placeholder for exchange-rate API call (no network in this environment)
     refreshExchangeRates(currencyCode) {
-        // Intentionally left as a stub. In production, call an Apex method that integrates
-        // with a reliable FX service and stores rates in a custom object or platform cache.
-        // Example signature:
-        // return getFxRates({ base: currencyCode }).then(rates => { this.fxRates = rates; });
-        return Promise.resolve();
+        if (!currencyCode) return Promise.resolve();
+        return getRates({ base: currencyCode })
+            .then((rates) => {
+                this.fxRates = rates;
+                this.dispatchEvent(new ShowToastEvent({ title: 'Currency updated', message: `Rates loaded for ${currencyCode}.`, variant: 'success' }));
+            })
+            .catch(() => {
+                this.dispatchEvent(new ShowToastEvent({ title: 'Rates unavailable', message: 'Using fallback conversions.', variant: 'warning' }));
+            });
+    }
+
+    convertAmount(amount, toCode) {
+        if (!Number.isFinite(amount)) return amount;
+        const code = (toCode || this.currencyCode || 'USD').toUpperCase();
+        if (!this.fxRates || !this.fxRates[code]) {
+            return amount; // fallback to raw value
+        }
+        return amount * this.fxRates[code];
     }
 
     /**
