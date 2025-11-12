@@ -886,6 +886,17 @@
                     <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
                         <lightning-input name="investDownPayment" type="currency" label="Down Payment" value={investDownPayment} onchange={handleInvestFieldChange}></lightning-input>
                     </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                        <lightning-input name="investInsuranceMonthly" type="currency" label="Insurance (Monthly)" value={investInsuranceMonthly} onchange={handleInvestFieldChange}></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                        <lightning-input name="investLandPct" type="number" step="0.1" label="Land Value (%)" value={investLandPct} onchange={handleInvestFieldChange}
+                            field-level-help="Percent of price attributed to land (non-depreciable)."></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                        <lightning-input name="investDepYears" type="number" step="0.1" label="Depreciation Years" value={investDepYears} onchange={handleInvestFieldChange}
+                            field-level-help="Residential defaults to 27.5 years."></lightning-input>
+                    </div>
                 </div>
 
                 <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
@@ -923,6 +934,17 @@
                                 <p class="slds-text-title_caps slds-m-bottom_x-small">Expenses</p>
                                 <p>Property Tax (Monthly): <strong>{investSummary.taxMonthly}</strong></p>
                                 <p>HOA (Monthly): <strong>{investSummary.hoaMonthly}</strong></p>
+                                <p>Insurance (Monthly): <strong>{investSummary.insuranceMonthly}</strong></p>
+                            </div>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-m-top_small">
+                            <div class="slds-box slds-theme_default">
+                                <p class="slds-text-title_caps slds-m-bottom_x-small">Tax Effects</p>
+                                <p>Interest (Annual): <strong>{investSummary.interestAnnual}</strong></p>
+                                <p>Depreciation (Annual): <strong>{investSummary.depreciationAnnual}</strong></p>
+                                <p>Taxable Income (Annual): <strong>{investSummary.taxableIncomeAnnual}</strong></p>
+                                <p>Tax Impact (Annual): <strong>{investSummary.taxEffectAnnual}</strong></p>
+                                <p>After-Tax Cashflow (Monthly): <strong>{investSummary.afterTaxCashflowMonthly}</strong></p>
                             </div>
                         </div>
                     </div>
