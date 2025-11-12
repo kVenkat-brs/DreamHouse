@@ -1175,6 +1175,41 @@ export default class MortgageCalculator extends LightningElement {
     }
 
     // =========================
+    // Tax Implications (interest + property tax deductions)
+    // =========================
+    @track taxBracketPct = null; // user's marginal tax bracket %
+
+    handleTaxBracketChange(event) {
+        const v = parseFloat(event.detail.value);
+        this.taxBracketPct = Number.isFinite(v) && v >= 0 ? v : null;
+    }
+
+    get taxImplicationSummary() {
+        if (!Number.isFinite(this.price) || !Number.isFinite(this.tenure) || !Number.isFinite(this.interestRate)) {
+            return null;
+        }
+        const monthlyRate = (this.interestRate / 100) / MONTHS_IN_YEAR;
+        const totalPayments = this.tenure * MONTHS_IN_YEAR;
+        const emi = this.calculateEmi(this.price, monthlyRate, totalPayments);
+        // Use yearly schedule to estimate first-year mortgage interest deduction
+        const yearly = this.buildAmortizationSchedule(this.price, monthlyRate, totalPayments, emi);
+        const firstYear = yearly && yearly.schedule && yearly.schedule.length ? yearly.schedule[0] : null;
+        const annualMortgageInterest = firstYear ? firstYear.interest : 0;
+        // Property tax: use monthly estimate * 12 if available
+        const monthlyTax = Number.isFinite(this.estimatedMonthlyTaxValueA) ? this.estimatedMonthlyTaxValueA : 0;
+        const annualPropertyTax = monthlyTax * 12;
+        const bracket = Number.isFinite(this.taxBracketPct) ? this.taxBracketPct / 100 : null;
+        const totalDeductible = annualMortgageInterest + annualPropertyTax;
+        const estSavings = bracket != null ? totalDeductible * bracket : null;
+        return {
+            annualMortgageInterest,
+            annualPropertyTax,
+            totalDeductible,
+            estSavings
+        };
+    }
+
+    // =========================
     // Payment Calendar (monthly schedule + extra payment planner)
     // =========================
     @track calendarStartDate = null; // YYYY-MM-DD
@@ -1310,6 +1345,145 @@ export default class MortgageCalculator extends LightningElement {
             current.setMonth(current.getMonth() + 1);
         }
         return { schedule: rows, payments: paymentCount, totalInterest, lastDate: rows.length ? rows[rows.length - 1].dueDate : startDate };
+    }
+
+    // =========================
+    // Home Equity & HELOC
+    // =========================
+    @track equityHomeValue = null; // current market value
+    @track equityMonthsElapsed = null; // months since loan start
+    @track equityAppreciationPct = null; // annual % appreciation
+    @track equityYearsProjection = null; // years to project
+    @track helocMaxLtvPct = 80; // typical max CLTV
+    @track helocDrawAmount = null; // desired draw amount
+    @track helocRatePct = null; // annual interest-only rate for HELOC
+
+    handleEquityFieldChange(event) {
+        const name = event.target.name;
+        const v = parseFloat(event.detail.value);
+        const parsed = Number.isFinite(v) && v >= 0 ? v : null;
+        switch (name) {
+            case 'equityHomeValue': this.equityHomeValue = parsed; break;
+            case 'equityMonthsElapsed': this.equityMonthsElapsed = parsed; break;
+            case 'equityAppreciationPct': this.equityAppreciationPct = parsed; break;
+            case 'equityYearsProjection': this.equityYearsProjection = parsed; break;
+            case 'helocMaxLtvPct': this.helocMaxLtvPct = parsed; break;
+            case 'helocDrawAmount': this.helocDrawAmount = parsed; break;
+            case 'helocRatePct': this.helocRatePct = parsed; break;
+            default: break;
+        }
+    }
+
+    loanBalanceAfter(principal, monthlyRate, totalPayments, k) {
+        const kk = Math.max(0, Math.min(totalPayments, Math.floor(k || 0)));
+        if (monthlyRate === 0) {
+            return principal * ((totalPayments - kk) / totalPayments);
+        }
+        const g = Math.pow(1 + monthlyRate, totalPayments);
+        const gk = Math.pow(1 + monthlyRate, kk);
+        return principal * (g - gk) / (g - 1);
+    }
+
+    get equitySummary() {
+        if (!Number.isFinite(this.price) || !Number.isFinite(this.tenure) || !Number.isFinite(this.interestRate) || !Number.isFinite(this.equityHomeValue)) {
+            return null;
+        }
+        const monthlyRate = (this.interestRate / 100) / MONTHS_IN_YEAR;
+        const totalPayments = this.tenure * MONTHS_IN_YEAR;
+        const monthsPaid = Number.isFinite(this.equityMonthsElapsed) ? Math.max(0, Math.min(totalPayments, Math.floor(this.equityMonthsElapsed))) : 0;
+        const balance = this.loanBalanceAfter(this.price, monthlyRate, totalPayments, monthsPaid);
+        const equity = this.equityHomeValue - balance;
+        const ltv = this.equityHomeValue > 0 ? (balance / this.equityHomeValue) * 100 : null;
+        return { balance, equity, ltv };
+    }
+
+    get equityProjectionColumns() {
+        const code = this.currencyCode;
+        return [
+            { label: 'Year', fieldName: 'year', type: 'number' },
+            { label: 'Home Value', fieldName: 'value', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Loan Balance', fieldName: 'balance', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Equity', fieldName: 'equity', type: 'currency', typeAttributes: { currencyCode: code } }
+        ];
+    }
+
+    get equityProjectionRows() {
+        if (!Number.isFinite(this.price) || !Number.isFinite(this.tenure) || !Number.isFinite(this.interestRate) || !Number.isFinite(this.equityHomeValue) || !Number.isFinite(this.equityYearsProjection)) {
+            return [];
+        }
+        const annualApp = Number.isFinite(this.equityAppreciationPct) ? this.equityAppreciationPct / 100 : 0;
+        const monthlyRate = (this.interestRate / 100) / MONTHS_IN_YEAR;
+        const totalPayments = this.tenure * MONTHS_IN_YEAR;
+        const startMonths = Number.isFinite(this.equityMonthsElapsed) ? Math.max(0, Math.floor(this.equityMonthsElapsed)) : 0;
+        const rows = [];
+        for (let y = 1; y <= Math.max(0, Math.floor(this.equityYearsProjection)); y++) {
+            const monthsFromStart = startMonths + y * 12;
+            const bal = this.loanBalanceAfter(this.price, monthlyRate, totalPayments, monthsFromStart);
+            const value = this.equityHomeValue * Math.pow(1 + annualApp, y);
+            rows.push({ year: y, value, balance: bal, equity: value - bal });
+        }
+        return rows;
+    }
+
+    get helocSummary() {
+        const eq = this.equitySummary;
+        if (!eq || !Number.isFinite(this.helocMaxLtvPct)) return null;
+        const maxLtv = this.helocMaxLtvPct / 100;
+        const homeValue = this.equityHomeValue;
+        const available = homeValue && eq.balance != null ? Math.max(0, homeValue * maxLtv - eq.balance) : null;
+        const draw = Number.isFinite(this.helocDrawAmount) ? Math.min(this.helocDrawAmount, available || 0) : null;
+        const monthlyInt = Number.isFinite(this.helocRatePct) && draw != null ? draw * ((this.helocRatePct / 100) / MONTHS_IN_YEAR) : null;
+        return { available, draw, monthlyInt };
+    }
+
+    // =========================
+    // Location-based Natural Disaster Risk & Insurance Impact
+    // =========================
+    @track riskFlood = 'none'; // none | moderate | high
+    @track riskEarthquake = 'none'; // none | moderate | high
+    @track riskHurricane = 'none'; // none | moderate | high
+
+    get riskLevelOptions() {
+        return [
+            { label: 'None', value: 'none' },
+            { label: 'Moderate', value: 'moderate' },
+            { label: 'High', value: 'high' }
+        ];
+    }
+
+    handleRiskChange(event) {
+        const name = event.target.name;
+        const val = event.detail.value;
+        if (name === 'riskFlood') this.riskFlood = val;
+        if (name === 'riskEarthquake') this.riskEarthquake = val;
+        if (name === 'riskHurricane') this.riskHurricane = val;
+    }
+
+    // Example baseline monthly surcharges (can be replaced with real underwriting tables)
+    riskCost(peril, level) {
+        const table = {
+            flood: { none: 0, moderate: 50, high: 150 },
+            eq: { none: 0, moderate: 40, high: 120 },
+            hurricane: { none: 0, moderate: 60, high: 180 }
+        };
+        if (peril === 'flood') return table.flood[level] ?? 0;
+        if (peril === 'eq') return table.eq[level] ?? 0;
+        if (peril === 'hurricane') return table.hurricane[level] ?? 0;
+        return 0;
+    }
+
+    get riskInsuranceBreakdown() {
+        const flood = this.riskCost('flood', this.riskFlood);
+        const eq = this.riskCost('eq', this.riskEarthquake);
+        const hurricane = this.riskCost('hurricane', this.riskHurricane);
+        const total = flood + eq + hurricane;
+        return { flood, eq, hurricane, total };
+    }
+
+    get monthlyWithRisk() {
+        const base = this.buyingMonthlyCost; // includes EMI + maint + HOA
+        if (!Number.isFinite(base)) return null;
+        return base + this.riskInsuranceBreakdown.total;
     }
 
     // =========================

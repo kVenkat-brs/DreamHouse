@@ -914,4 +914,142 @@
             </div>
         </lightning-card>
     </template>
+
+    <!-- Tax Implications -->
+    <lightning-card title="Tax Implications" icon-name="utility:calculator">
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input type="number" step="0.1" label="Income Tax Bracket (%)" value={taxBracketPct} onchange={handleTaxBracketChange}></lightning-input>
+                </div>
+            </div>
+            <template lwc:if={taxImplicationSummary}>
+                <div class="slds-m-top_medium slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                        <div class="slds-box slds-theme_shade">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Annual Deductions</p>
+                            <p>Mortgage Interest: <strong><lightning-formatted-number value={taxImplicationSummary.annualMortgageInterest} style="currency" currency-code={currencyCode}></lightning-formatted-number></strong></p>
+                            <p>Property Tax: <strong><lightning-formatted-number value={taxImplicationSummary.annualPropertyTax} style="currency" currency-code={currencyCode}></lightning-formatted-number></strong></p>
+                            <p>Total Deductible: <strong><lightning-formatted-number value={taxImplicationSummary.totalDeductible} style="currency" currency-code={currencyCode}></lightning-formatted-number></strong></p>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                        <div class="slds-box slds-theme_default">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Estimated Tax Savings</p>
+                            <template lwc:if={taxImplicationSummary.estSavings}>
+                                <p><strong><lightning-formatted-number value={taxImplicationSummary.estSavings} style="currency" currency-code={currencyCode}></lightning-formatted-number></strong> per year</p>
+                            </template>
+                            <template lwc:else>
+                                <p class="slds-text-color_weak">Enter your tax bracket to estimate savings.</p>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+                <p class="slds-text-color_weak slds-m-top_small slds-text-body_small">Note: This is an estimate and not tax advice. Consult a tax professional.</p>
+            </template>
+        </div>
+    </lightning-card>
+
+    <!-- Home Equity & HELOC -->
+    <lightning-card title="Home Equity & HELOC" icon-name="utility:home">
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="equityHomeValue" type="currency" label="Current Home Value" value={equityHomeValue} onchange={handleEquityFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="equityMonthsElapsed" type="number" label="Months Since Loan Start" value={equityMonthsElapsed} onchange={handleEquityFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="equityAppreciationPct" type="number" step="0.1" label="Appreciation (Annual %)" value={equityAppreciationPct} onchange={handleEquityFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="equityYearsProjection" type="number" label="Projection (Years)" value={equityYearsProjection} onchange={handleEquityFieldChange}></lightning-input>
+                </div>
+            </div>
+
+            <template lwc:if={equitySummary}>
+                <div class="slds-m-top_medium slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                        <div class="slds-box slds-theme_shade">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Current Position</p>
+                            <p>Remaining Balance: <strong><lightning-formatted-number value={equitySummary.balance} style="currency" currency-code={currencyCode}></lightning-formatted-number></strong></p>
+                            <p>Current Equity: <strong><lightning-formatted-number value={equitySummary.equity} style="currency" currency-code={currencyCode}></lightning-formatted-number></strong></p>
+                            <p>LTV: <strong><lightning-formatted-number value={equitySummary.ltv} maximum-fraction-digits="1"></lightning-formatted-number>%</strong></p>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                        <div class="slds-box slds-theme_default">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">HELOC</p>
+                            <div class="slds-grid slds-gutters slds-wrap">
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                    <lightning-input name="helocMaxLtvPct" type="number" step="0.1" label="Max LTV (%)" value={helocMaxLtvPct} onchange={handleEquityFieldChange}></lightning-input>
+                                </div>
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                    <lightning-input name="helocDrawAmount" type="currency" label="Desired Draw" value={helocDrawAmount} onchange={handleEquityFieldChange}></lightning-input>
+                                </div>
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                    <lightning-input name="helocRatePct" type="number" step="0.01" label="HELOC Rate (Annual %)" value={helocRatePct} onchange={handleEquityFieldChange}></lightning-input>
+                                </div>
+                            </div>
+                            <template lwc:if={helocSummary}>
+                                <p class="slds-m-top_small">Available at {helocMaxLtvPct}% LTV: <strong><lightning-formatted-number value={helocSummary.available} style="currency" currency-code={currencyCode}></lightning-formatted-number></strong></p>
+                                <p>Selected Draw: <strong><lightning-formatted-number value={helocSummary.draw} style="currency" currency-code={currencyCode}></lightning-formatted-number></strong></p>
+                                <template lwc:if={helocSummary.monthlyInt}>
+                                    <p>Interest Only (Monthly): <strong><lightning-formatted-number value={helocSummary.monthlyInt} style="currency" currency-code={currencyCode}></lightning-formatted-number></strong></p>
+                                </template>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <template lwc:if={equityProjectionRows.length}>
+                <div class="slds-m-top_medium">
+                    <h3 class="slds-text-title_caps slds-m-bottom_small">Equity Projection</h3>
+                    <lightning-datatable key-field="year" data={equityProjectionRows} columns={equityProjectionColumns} hide-checkbox-column></lightning-datatable>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+
+    <!-- Natural Disaster Risk & Insurance Impact -->
+    <lightning-card title="Natural Disaster Risk & Insurance Impact" icon-name="utility:warning">
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-combobox name="riskFlood" label="Flood Risk" value={riskFlood} options={riskLevelOptions} onchange={handleRiskChange}></lightning-combobox>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-combobox name="riskEarthquake" label="Earthquake Risk" value={riskEarthquake} options={riskLevelOptions} onchange={handleRiskChange}></lightning-combobox>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-combobox name="riskHurricane" label="Hurricane Risk" value={riskHurricane} options={riskLevelOptions} onchange={handleRiskChange}></lightning-combobox>
+                </div>
+            </div>
+            <div class="slds-m-top_medium slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                    <div class="slds-box slds-theme_shade">
+                        <p class="slds-text-title_caps slds-m-bottom_x-small">Monthly Insurance Surcharges</p>
+                        <p>Flood: <strong><lightning-formatted-number value={riskInsuranceBreakdown.flood} style="currency" currency-code={currencyCode}></lightning-formatted-number></strong></p>
+                        <p>Earthquake: <strong><lightning-formatted-number value={riskInsuranceBreakdown.eq} style="currency" currency-code={currencyCode}></lightning-formatted-number></strong></p>
+                        <p>Hurricane: <strong><lightning-formatted-number value={riskInsuranceBreakdown.hurricane} style="currency" currency-code={currencyCode}></lightning-formatted-number></strong></p>
+                        <p>Total: <strong><lightning-formatted-number value={riskInsuranceBreakdown.total} style="currency" currency-code={currencyCode}></lightning-formatted-number></strong></p>
+                    </div>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                    <div class="slds-box slds-theme_default">
+                        <p class="slds-text-title_caps slds-m-bottom_x-small">Impact on Monthly Payment</p>
+                        <template lwc:if={monthlyWithRisk}>
+                            <p>Base (EMI + Maint + HOA): <strong><lightning-formatted-number value={buyingMonthlyCost} style="currency" currency-code={currencyCode}></lightning-formatted-number></strong></p>
+                            <p>With Risk Surcharges: <strong><lightning-formatted-number value={monthlyWithRisk} style="currency" currency-code={currencyCode}></lightning-formatted-number></strong></p>
+                        </template>
+                        <template lwc:else>
+                            <p class="slds-text-color_weak">Enter loan details (price, rate, tenure) to compute base monthly.</p>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </lightning-card>
 </template>
