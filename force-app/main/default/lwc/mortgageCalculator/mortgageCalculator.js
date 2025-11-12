@@ -105,11 +105,21 @@ export default class MortgageCalculator extends LightningElement {
         this.theme = selected;
         // Toggle host class for theme
         const host = this.template.host;
-        host.classList.remove('theme-dark', 'theme-pro');
+        host.classList.remove('theme-dark', 'theme-pro', 'theme-high-contrast');
         if (this.theme === 'dark') {
             host.classList.add('theme-dark');
         } else if (this.theme === 'pro') {
             host.classList.add('theme-pro');
+        }
+    }
+
+    toggleHighContrast(event) {
+        const on = !!event.detail.checked;
+        const host = this.template.host;
+        if (on) {
+            host.classList.add('theme-high-contrast');
+        } else {
+            host.classList.remove('theme-high-contrast');
         }
     }
 
@@ -1484,6 +1494,116 @@ export default class MortgageCalculator extends LightningElement {
         const base = this.buyingMonthlyCost; // includes EMI + maint + HOA
         if (!Number.isFinite(base)) return null;
         return base + this.riskInsuranceBreakdown.total;
+    }
+
+    // =========================
+    // Payment Acceleration (Bi-weekly, Extra Monthly, Lump Sum)
+    // =========================
+    @track biweeklyEnabled = false;
+    @track accelExtraMonthly = null; // currency amount
+    @track accelLumpAmount = null; // currency amount
+    @track accelLumpStartMonth = null; // payment index (1-based)
+    @track accelRows = [];
+    @track accelMessage = null;
+
+    handleAccelToggle(event) {
+        this.biweeklyEnabled = !!event.detail.checked;
+    }
+
+    handleAccelFieldChange(event) {
+        const name = event.target.name;
+        const v = parseFloat(event.detail.value);
+        const parsed = Number.isFinite(v) && v >= 0 ? v : null;
+        if (name === 'accelExtraMonthly') this.accelExtraMonthly = parsed;
+        if (name === 'accelLumpAmount') this.accelLumpAmount = parsed;
+        if (name === 'accelLumpStartMonth') this.accelLumpStartMonth = parsed;
+    }
+
+    computeAcceleration() {
+        // Validate base loan inputs
+        if (!Number.isFinite(this.price) || !Number.isFinite(this.interestRate) || !Number.isFinite(this.tenure) || this.price <= 0 || this.tenure <= 0) {
+            this.accelMessage = 'Enter valid price, rate, and tenure to evaluate acceleration strategies.';
+            this.accelRows = [];
+            return;
+        }
+        const p = this.price;
+        const rMonthly = (this.interestRate / 100) / MONTHS_IN_YEAR;
+        const n = this.tenure * MONTHS_IN_YEAR;
+        const start = this.calendarStartDate ? new Date(this.calendarStartDate) : new Date();
+        const emi = this.calculateEmi(p, rMonthly, n);
+
+        // Baseline
+        const base = this.buildMonthlySchedule(p, rMonthly, n, emi, start, { amount: 0, start: null, frequency: 'none', months: null });
+
+        // Bi-weekly
+        let biw = null;
+        if (this.biweeklyEnabled) {
+            biw = this.buildBiWeeklySchedule(p, (this.interestRate / 100), emi, start);
+        }
+
+        // Extra monthly
+        let extraMonthly = null;
+        if (Number.isFinite(this.accelExtraMonthly) && this.accelExtraMonthly > 0) {
+            extraMonthly = this.buildMonthlySchedule(p, rMonthly, n, emi, start, { amount: this.accelExtraMonthly, start: 1, frequency: 'monthly', months: null });
+        }
+
+        // Lump sum
+        let lump = null;
+        if (Number.isFinite(this.accelLumpAmount) && this.accelLumpAmount > 0 && Number.isFinite(this.accelLumpStartMonth) && this.accelLumpStartMonth > 0) {
+            lump = this.buildMonthlySchedule(p, rMonthly, n, emi, start, { amount: this.accelLumpAmount, start: Math.floor(this.accelLumpStartMonth), frequency: 'one', months: 1 });
+        }
+
+        const rows = [];
+        const fmtRow = (name, s) => {
+            return {
+                id: name,
+                strategy: name,
+                payments: s.payments,
+                monthsSaved: base.payments - s.payments,
+                interestSaved: base.totalInterest - s.totalInterest,
+                payoffDate: s.lastDate
+            };
+        };
+        rows.push(fmtRow('Baseline', base));
+        if (biw) rows.push(fmtRow('Bi-weekly', biw));
+        if (extraMonthly) rows.push(fmtRow('Extra Monthly', extraMonthly));
+        if (lump) rows.push(fmtRow('Lump Sum', lump));
+
+        this.accelRows = rows;
+        this.accelMessage = null;
+    }
+
+    get accelColumns() {
+        const code = this.currencyCode;
+        return [
+            { label: 'Strategy', fieldName: 'strategy' },
+            { label: 'Payments (months)', fieldName: 'payments', type: 'number' },
+            { label: 'Months Saved', fieldName: 'monthsSaved', type: 'number' },
+            { label: 'Interest Saved', fieldName: 'interestSaved', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Payoff', fieldName: 'payoffDate', type: 'date', typeAttributes: { year: 'numeric', month: 'short', day: '2-digit' } }
+        ];
+    }
+
+    // Build bi-weekly schedule using 26 periods/year, payment = half monthly EMI every 2 weeks
+    buildBiWeeklySchedule(principal, annualRate, monthlyEmi, startDate) {
+        const payment = monthlyEmi / 2; // half of monthly payment paid every two weeks
+        const periodRate = annualRate / 26; // approximate per bi-weekly period
+        let balance = principal;
+        let totalInterest = 0;
+        let periods = 0;
+        let current = new Date(startDate.getTime());
+        while (balance > 0 && periods < 26 * this.tenure + 120) { // safety cap
+            const interest = balance * periodRate;
+            let principalPaid = payment - interest;
+            if (principalPaid < 0) principalPaid = 0; // guard
+            if (principalPaid > balance) principalPaid = balance;
+            balance -= principalPaid;
+            totalInterest += interest;
+            periods += 1;
+            current.setDate(current.getDate() + 14);
+        }
+        const monthsApprox = Math.ceil(periods * (12 / 26));
+        return { schedule: [], payments: monthsApprox, totalInterest, lastDate: current };
     }
 
     // =========================

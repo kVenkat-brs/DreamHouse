@@ -1,16 +1,21 @@
 <template>
-    <lightning-card title="Mortgage Calculator" icon-name="standard:solution">
-        <div class="mortgage-calculator slds-p-around_medium">
+    <a href="#main-calculator" class="skip-link">Skip to main calculator</a>
+    <lightning-card title="Mortgage Calculator" icon-name="standard:solution" aria-label="Mortgage Calculator Module">
+        <div class="mortgage-calculator slds-p-around_medium" id="main-calculator" role="region" aria-live="polite">
             <div class="slds-m-bottom_medium slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
                 <div class="theme-indicator slds-text-title">
                     <span class="theme-pill" title="Theme Accent"></span>
                     <span>Theme</span>
                 </div>
-                <lightning-button-group>
+                <lightning-button-group aria-label="Theme selector">
                     <lightning-button label="Standard" data-theme="standard" onclick={handleThemeChange}></lightning-button>
                     <lightning-button label="Dark Mode" data-theme="dark" onclick={handleThemeChange}></lightning-button>
                     <lightning-button label="Professional" data-theme="pro" onclick={handleThemeChange}></lightning-button>
                 </lightning-button-group>
+            </div>
+            <div class="slds-m-bottom_small slds-grid slds-grid_align-spread slds-grid_vertical-align-center" aria-label="Contrast Settings">
+                <span class="slds-text-title">High Contrast</span>
+                <lightning-input type="toggle" message-toggle-active="On" message-toggle-inactive="Off" onchange={toggleHighContrast} aria-label="Toggle High Contrast Mode"></lightning-input>
             </div>
             <div class="slds-m-bottom_small slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
                 <span class="slds-text-title">Currency</span>
@@ -43,11 +48,11 @@
             </div>
 
             <!-- What‑If Scenario Planner -->
-            <div class="slds-m-bottom_medium slds-box slds-theme_default">
-                <h2 class="slds-text-title_caps slds-m-bottom_small">What‑If Scenario Planner</h2>
+            <div class="slds-m-bottom_medium slds-box slds-theme_default" role="region" aria-label="What‑If Scenario Planner">
+                <h2 class="slds-text-title_caps slds-m-bottom_small" id="scenario-planner-heading">What‑If Scenario Planner</h2>
                 <div class="slds-grid slds-wrap slds-gutters">
                     <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-4">
-                        <lightning-combobox name="scenarioName" label="Scenario Name" value={scenarioDraft.name} options={scenarioNameOptions} onchange={handleScenarioFieldChange}></lightning-combobox>
+                        <lightning-combobox name="scenarioName" label="Scenario Name" value={scenarioDraft.name} options={scenarioNameOptions} onchange={handleScenarioFieldChange} aria-describedby="scenario-planner-heading"></lightning-combobox>
                     </div>
                     <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-4">
                         <lightning-input name="scenarioPrice" type="currency" label="Price" value={scenarioDraft.price} onchange={handleScenarioFieldChange}></lightning-input>
@@ -81,7 +86,7 @@
                                 </div>
                             </template>
                         </div>
-                        <div class="slds-box slds-theme_default">
+                        <div class="slds-box slds-theme_default" role="region" aria-label="Scenario Comparison">
                             <h3 class="slds-text-title_caps slds-m-bottom_small">Comparison</h3>
                             <div class="slds-grid slds-wrap slds-gutters">
                                 <template for:each={compareScenarios} for:item="c">
@@ -1050,6 +1055,40 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </lightning-card>
+
+    <!-- Payment Acceleration Strategies -->
+    <lightning-card title="Payment Acceleration" icon-name="utility:steps">
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input type="toggle" label="Enable Bi-weekly" message-toggle-active="On" message-toggle-inactive="Off" onchange={handleAccelToggle}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="accelExtraMonthly" type="currency" label="Extra Monthly" value={accelExtraMonthly} onchange={handleAccelFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="accelLumpAmount" type="currency" label="Lump Sum Amount" value={accelLumpAmount} onchange={handleAccelFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="accelLumpStartMonth" type="number" label="Lump Sum at Payment #" value={accelLumpStartMonth} onchange={handleAccelFieldChange}></lightning-input>
+                </div>
+            </div>
+            <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                <lightning-button label="Compute" variant="brand" onclick={computeAcceleration}></lightning-button>
+            </div>
+            <template lwc:if={accelMessage}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
+                    <span class="slds-assistive-text">Error</span>
+                    <h2>{accelMessage}</h2>
+                </div>
+            </template>
+            <template lwc:if={accelRows.length}>
+                <div class="slds-m-top_medium">
+                    <lightning-datatable key-field="id" data={accelRows} columns={accelColumns} hide-checkbox-column></lightning-datatable>
+                </div>
+            </template>
         </div>
     </lightning-card>
 </template>
