@@ -1,4 +1,5 @@
 import { LightningElement, track } from 'lwc';
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 
 const MONTHS_IN_YEAR = 12;
 
@@ -121,6 +122,20 @@ export default class MortgageCalculator extends LightningElement {
         } else {
             host.classList.remove('theme-high-contrast');
         }
+    }
+
+    // Mobile bottom nav focus helpers
+    focusInputs() {
+        const el = this.template.querySelector('lightning-accordion');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    focusResults() {
+        const el = this.template.querySelector('h2.slds-text-title_caps');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    focusPlans() {
+        const el = this.template.querySelector('#scenario-planner-heading');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     handleComparisonToggle(event) {
@@ -1494,6 +1509,109 @@ export default class MortgageCalculator extends LightningElement {
         const base = this.buyingMonthlyCost; // includes EMI + maint + HOA
         if (!Number.isFinite(base)) return null;
         return base + this.riskInsuranceBreakdown.total;
+    }
+
+    // =========================
+    // Share, PDF, CSV, Email Results
+    // =========================
+    @track emailTo = '';
+    @track emailSubject = '';
+    @track emailBody = '';
+    @track emailTemplate = 'plain';
+
+    get emailTemplateOptions() {
+        return [
+            { label: 'Plain Summary', value: 'plain' },
+            { label: 'Detailed (with Amortization)', value: 'detailed' },
+            { label: 'Comparison Focus', value: 'compare' }
+        ];
+    }
+
+    handleEmailFieldChange(event) {
+        const { name, value } = event.target;
+        this[name] = value;
+    }
+
+    getResultsSummary() {
+        const lines = [];
+        if (Number.isFinite(this.price)) lines.push(`Price: ${this.formatCurrency(this.price)}`);
+        if (Number.isFinite(this.interestRate)) lines.push(`Rate: ${this.interestRate}%`);
+        if (Number.isFinite(this.tenure)) lines.push(`Tenure: ${this.tenure} years`);
+        if (Number.isFinite(this.monthlyPayment)) lines.push(`Monthly: ${this.formatCurrency(this.monthlyPayment)}`);
+        if (this.summaryA) {
+            lines.push(`Total Paid: ${this.summaryA.totalPaid}`);
+            lines.push(`Total Interest: ${this.summaryA.totalInterest}`);
+        }
+        if (this.lenderComparisonRows?.length) {
+            const top = this.lenderComparisonRows[0];
+            lines.push(`Top Lender: ${top.lender} @ ${top.rate}% APR ${top.apr}%`);
+        }
+        return lines.join('\n');
+    }
+
+    async handleShare() {
+        const text = this.getResultsSummary();
+        try {
+            if (navigator.share) {
+                await navigator.share({ title: 'Mortgage Summary', text });
+            } else if (navigator.clipboard) {
+                await navigator.clipboard.writeText(text);
+                this.dispatchEvent(new ShowToastEvent({ title: 'Copied', message: 'Summary copied to clipboard', variant: 'success' }));
+            } else {
+                this.dispatchEvent(new ShowToastEvent({ title: 'Share unavailable', message: 'Copy the summary manually.', variant: 'warning' }));
+            }
+        } catch (e) {
+            this.dispatchEvent(new ShowToastEvent({ title: 'Share canceled', message: e?.message || 'User canceled or unsupported.', variant: 'info' }));
+        }
+    }
+
+    exportCsv() {
+        // Prefer exporting lender comparison or amortization schedule if available
+        const headers = [];
+        let rows = [];
+        if (this.lenderComparisonRows?.length) {
+            headers.push(['Lender', 'Rate', 'APR', 'Fees', 'Monthly', 'Recommendation']);
+            rows = this.lenderComparisonRows.map(r => [r.lender, r.rate, r.apr, r.fees, r.monthly, r.recommendation]);
+        } else if (this.monthlySchedule?.length) {
+            headers.push(['#', 'Due Date', 'Interest', 'Principal', 'Extra', 'Balance']);
+            rows = this.monthlySchedule.map(r => [r.n, new Date(r.dueDate).toISOString().slice(0,10), r.interest, r.principal, r.extra, r.balance]);
+        } else {
+            headers.push(['Field', 'Value']);
+            const summary = this.getResultsSummary().split('\n').map(line => line.split(': '));
+            rows = summary;
+        }
+        const csv = [headers[0].join(','), ...rows.map(r => r.join(','))].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'mortgage-results.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+        this.dispatchEvent(new ShowToastEvent({ title: 'Exported', message: 'CSV downloaded', variant: 'success' }));
+    }
+
+    generatePdf() {
+        // Placeholder: open print dialog with a simple summary; integrate with Apex for true PDF service
+        const w = window.open('', '_blank', 'noopener');
+        if (!w) {
+            this.dispatchEvent(new ShowToastEvent({ title: 'Popup blocked', message: 'Allow popups to generate PDF.', variant: 'warning' }));
+            return;
+        }
+        const summary = this.getResultsSummary().replace(/\n/g, '<br/>');
+        w.document.write(`<html><head><title>Mortgage Summary</title></head><body><h1>Mortgage Summary</h1><p>${summary}</p></body></html>`);
+        w.document.close();
+        w.focus();
+        w.print();
+    }
+
+    sendEmail() {
+        // Placeholder: Wire to Apex email service; current impl shows a toast
+        if (!this.emailTo) {
+            this.dispatchEvent(new ShowToastEvent({ title: 'Recipient required', message: 'Enter an email address.', variant: 'error' }));
+            return;
+        }
+        this.dispatchEvent(new ShowToastEvent({ title: 'Email queued', message: `Prepared email to ${this.emailTo} (template: ${this.emailTemplate}). Integrate with Apex to send.`, variant: 'success' }));
     }
 
     // =========================

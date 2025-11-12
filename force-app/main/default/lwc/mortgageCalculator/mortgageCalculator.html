@@ -23,7 +23,7 @@
             </div>
 
             <!-- Credit Score Impact (dynamic slider) -->
-            <div class="slds-m-bottom_medium slds-box slds-theme_default">
+            <div class="slds-m-bottom_medium slds-box slds-theme_default" aria-label="Credit Score Impact">
                 <h2 class="slds-text-title_caps slds-m-bottom_small">Credit Score Impact</h2>
                 <div class="slds-grid slds-wrap slds-gutters slds-m-bottom_small">
                     <div class="slds-col slds-size_1-of-1 slds-medium-size_3-of-4 slds-p-bottom_small">
@@ -41,10 +41,21 @@
                 </template>
             </div>
             <!-- Lender Comparison -->
-            <div class="slds-m-bottom_medium slds-box slds-theme_default">
+            <div class="slds-m-bottom_medium slds-box slds-theme_default desktop-only" aria-label="Lender Comparison">
                 <h2 class="slds-text-title_caps slds-m-bottom_small">Lender Comparison</h2>
                 <p class="slds-text-body_small slds-m-bottom_small">Personalized estimates based on your loan type and credit profile.</p>
                 <lightning-datatable key-field="id" data={lenderComparisonRows} columns={lenderComparisonColumns} hide-checkbox-column></lightning-datatable>
+                <div class="slds-m-top_small slds-grid slds-grid_align-spread">
+                    <lightning-button label="Share Summary" onclick={handleShare}></lightning-button>
+                    <lightning-button label="Export CSV" onclick={exportCsv}></lightning-button>
+                    <lightning-button label="Generate PDF" onclick={generatePdf}></lightning-button>
+                </div>
+            </div>
+            <!-- Mobile bottom navigation shortcuts -->
+            <div class="mobile-only mobile-bottom-nav slds-grid slds-grid_align-spread" role="navigation" aria-label="Mobile bottom navigation">
+                <lightning-button label="Inputs" onclick={focusInputs}></lightning-button>
+                <lightning-button label="Results" onclick={focusResults} variant="brand"></lightning-button>
+                <lightning-button label="Plans" onclick={focusPlans}></lightning-button>
             </div>
 
             <!-- What‑If Scenario Planner -->
@@ -952,6 +963,32 @@
                 </div>
                 <p class="slds-text-color_weak slds-m-top_small slds-text-body_small">Note: This is an estimate and not tax advice. Consult a tax professional.</p>
             </template>
+        </div>
+    </lightning-card>
+
+    <!-- Share / Email Results -->
+    <lightning-card title="Share & Email Results" icon-name="utility:share">
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="emailTo" type="email" label="Recipient Email" value={emailTo} onchange={handleEmailFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="emailSubject" type="text" label="Subject" value={emailSubject} onchange={handleEmailFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-combobox name="emailTemplate" label="Template" value={emailTemplate} options={emailTemplateOptions} onchange={handleEmailFieldChange}></lightning-combobox>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-p-bottom_small">
+                    <lightning-textarea name="emailBody" label="Message" value={emailBody} onchange={handleEmailFieldChange}></lightning-textarea>
+                </div>
+            </div>
+            <div class="slds-m-top_small slds-grid slds-grid_align-spread">
+                <lightning-button label="Copy Summary" onclick={handleShare}></lightning-button>
+                <lightning-button label="Export CSV" onclick={exportCsv}></lightning-button>
+                <lightning-button label="Generate PDF" onclick={generatePdf}></lightning-button>
+                <lightning-button label="Send Email" variant="brand" onclick={sendEmail}></lightning-button>
+            </div>
         </div>
     </lightning-card>
 
