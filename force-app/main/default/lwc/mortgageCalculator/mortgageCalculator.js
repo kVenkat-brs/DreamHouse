@@ -1118,6 +1118,67 @@ export default class MortgageCalculator extends LightningElement {
     }
 
     // =========================
+    // Advanced Affordability (holistic costs + lifestyle)
+    // =========================
+    @track affLifestyleFood = null; // monthly
+    @track affLifestyleTransport = null; // monthly
+    @track affLifestyleChildcare = null; // monthly
+    @track affLifestyleHealthcare = null; // monthly
+    @track affLifestyleSavingsGoal = null; // target monthly savings
+    @track affPropertyTaxMonthly = null; // explicit monthly property tax input (optional override)
+    @track affInsuranceMonthly = null; // explicit monthly homeowner insurance (optional override)
+    @track affHoaMonthly = null; // explicit HOA (optional override)
+    @track affMaxComfortablePrice = null;
+    @track affComfortMessage = null;
+
+    handleAffHolisticChange(event) {
+        const { name } = event.target;
+        const v = parseFloat(event.detail?.value);
+        const parsed = Number.isFinite(v) && v >= 0 ? v : null;
+        if (['affLifestyleFood','affLifestyleTransport','affLifestyleChildcare','affLifestyleHealthcare','affLifestyleSavingsGoal','affPropertyTaxMonthly','affInsuranceMonthly','affHoaMonthly'].includes(name)) {
+            this[name] = parsed;
+        }
+        this.affComfortMessage = null;
+    }
+
+    // Finds comfortable max home price ensuring: income - lifestyle - debts - tax/ins/HOA - savings >= housing P&I
+    computeComfortablePrice() {
+        const incomeMonthly = Number.isFinite(this.affMonthlyIncome) ? this.affMonthlyIncome : (Number.isFinite(this.incomeAnnual) ? (this.incomeAnnual / 12) : null);
+        if (!Number.isFinite(incomeMonthly) || incomeMonthly <= 0) {
+            this.affComfortMessage = 'Enter your monthly income (or annual income).';
+            this.affMaxComfortablePrice = null;
+            return;
+        }
+        const debts = Number.isFinite(this.affMonthlyDebts) ? this.affMonthlyDebts : (Number.isFinite(this.monthlyDebt) ? this.monthlyDebt : 0);
+        const save = Number.isFinite(this.affLifestyleSavingsGoal) ? this.affLifestyleSavingsGoal : 0;
+        const lifestyle = (this.affLifestyleFood||0) + (this.affLifestyleTransport||0) + (this.affLifestyleChildcare||0) + (this.affLifestyleHealthcare||0);
+
+        // Fixed monthly housing add-ons
+        const hoa = Number.isFinite(this.affHoaMonthly) ? this.affHoaMonthly : (Number.isFinite(this.hoaMonthly) ? this.hoaMonthly : 0);
+        const tax = Number.isFinite(this.affPropertyTaxMonthly) ? this.affPropertyTaxMonthly : (Number.isFinite(this.estimatedMonthlyTaxValueA) ? this.estimatedMonthlyTaxValueA : 0);
+        const ins = Number.isFinite(this.affInsuranceMonthly) ? this.affInsuranceMonthly : 0;
+
+        const availableForPI = incomeMonthly - (debts + save + lifestyle + hoa + tax + ins);
+        if (availableForPI <= 0) {
+            this.affComfortMessage = 'Your current expenses exceed income for home purchase. Reduce expenses or increase income.';
+            this.affMaxComfortablePrice = 0;
+            return;
+        }
+
+        // Translate available P&I into principal using selected rate/term
+        const annualRate = Number.isFinite(this.interestRate) ? this.interestRate : this.getDefaultRateForLoanType(this.loanType);
+        const years = Number.isFinite(this.tenure) && this.tenure > 0 ? this.tenure : 30;
+        const r = (annualRate / 100) / MONTHS_IN_YEAR;
+        const n = years * MONTHS_IN_YEAR;
+        const principal = this.paymentToPrincipal(availableForPI, r, n);
+
+        // Add down payment to get max price
+        const down = Number.isFinite(this.affDownPayment) ? this.affDownPayment : 0;
+        this.affMaxComfortablePrice = Math.max(0, principal + down);
+        this.affComfortMessage = null;
+    }
+
+    // =========================
     // =========================
     // Escrow Analysis (tax/insurance reserves and projections)
     // =========================

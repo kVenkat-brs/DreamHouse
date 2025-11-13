@@ -819,6 +819,53 @@
             </template>
         </div>
     </lightning-card>
+
+    <!-- Advanced Affordability -->
+    <lightning-card title="Advanced Affordability" icon-name="utility:moneybag">
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="affLifestyleFood" type="currency" label="Food (Monthly)" value={affLifestyleFood} onchange={handleAffHolisticChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="affLifestyleTransport" type="currency" label="Transport (Monthly)" value={affLifestyleTransport} onchange={handleAffHolisticChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="affLifestyleChildcare" type="currency" label="Childcare (Monthly)" value={affLifestyleChildcare} onchange={handleAffHolisticChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="affLifestyleHealthcare" type="currency" label="Healthcare (Monthly)" value={affLifestyleHealthcare} onchange={handleAffHolisticChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="affLifestyleSavingsGoal" type="currency" label="Savings Goal (Monthly)" value={affLifestyleSavingsGoal} onchange={handleAffHolisticChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="affPropertyTaxMonthly" type="currency" label="Property Tax (Monthly)" value={affPropertyTaxMonthly} onchange={handleAffHolisticChange} field-level-help="Leave blank to auto-calc from inputs."></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="affInsuranceMonthly" type="currency" label="Home Insurance (Monthly)" value={affInsuranceMonthly} onchange={handleAffHolisticChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="affHoaMonthly" type="currency" label="HOA (Monthly)" value={affHoaMonthly} onchange={handleAffHolisticChange}></lightning-input>
+                </div>
+            </div>
+            <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                <lightning-button label="Compute Comfortable Price" variant="brand" onclick={computeComfortablePrice}></lightning-button>
+            </div>
+            <template lwc:if={affComfortMessage}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
+                    <span class="slds-assistive-text">Error</span>
+                    <h2>{affComfortMessage}</h2>
+                </div>
+            </template>
+            <template lwc:if={affMaxComfortablePrice}>
+                <div class="slds-m-top_medium slds-box slds-theme_shade">
+                    <p class="slds-text-title_caps slds-m-bottom_x-small">Result</p>
+                    <p>Max Comfortable Purchase Price: <strong>{affMaxComfortablePrice}</strong></p>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
     <!-- VA Loan Calculator -->
     <lightning-card title="VA Loan Calculator" icon-name="utility:milestone">
         <div class="slds-p-around_medium">
