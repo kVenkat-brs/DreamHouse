@@ -50,6 +50,8 @@ export default class MortgageCalculator extends LightningElement {
     @track creditScoreRange = null; // selected credit score band key
     @track preApprovalAmount = null; // estimated max principal approval
     @track preApprovalMessage = null; // validation or info
+    @track preApprovalDecision = null; // 'approved' | 'conditional' | 'declined'
+    @track preApprovalReasons = []; // strings describing decision rationale
 
     // Neighborhood explorer (map-like grid)
     neighborhoods = [
@@ -562,29 +564,37 @@ export default class MortgageCalculator extends LightningElement {
     }
 
     /**
-     * Estimate pre-approval amount using DTI rules and current calculator rate/tenure.
-     * Uses front-end ratio baseline 28% and back-end 36% with score-based adjustment.
+     * Automated Pre‑Approval engine
+     * - Inputs: incomeAnnual, monthlyDebt, creditScoreRange, assets (down payment/reserves via affDownPayment or investDownPayment)
+     * - Rules: Baseline front/back DTI caps, score‑based adjustments, minimum credit band, reserves requirement
+     * - Output: preApprovalAmount (max principal), decision (approved|conditional|declined), reasons list
      */
     calculatePreApproval() {
         // Validate inputs
         if (!Number.isFinite(this.incomeAnnual) || this.incomeAnnual <= 0) {
             this.preApprovalMessage = 'Enter a valid annual income greater than zero.';
             this.preApprovalAmount = null;
+            this.preApprovalDecision = null;
+            this.preApprovalReasons = [];
             return;
         }
         if (!Number.isFinite(this.monthlyDebt) || this.monthlyDebt < 0) {
             this.preApprovalMessage = 'Enter your total monthly debt payments (zero or more).';
             this.preApprovalAmount = null;
+            this.preApprovalDecision = null;
+            this.preApprovalReasons = [];
             return;
         }
         if (!this.creditScoreRange) {
             this.preApprovalMessage = 'Select your credit score range to refine the estimate.';
             this.preApprovalAmount = null;
+            this.preApprovalDecision = null;
+            this.preApprovalReasons = [];
             return;
         }
 
         const monthlyIncome = this.incomeAnnual / MONTHS_IN_YEAR;
-        // Determine max housing payment by DTI rules
+        // Determine max housing payment by DTI rules (score‑adjusted)
         const baseFront = 0.28; // 28% of monthly income
         const baseBack = 0.36; // 36% of monthly income minus debts
         const scoreAdj = this.getScoreAdjustment(this.creditScoreRange); // e.g., 0.95..1.05
@@ -599,7 +609,47 @@ export default class MortgageCalculator extends LightningElement {
         const totalPayments = years * MONTHS_IN_YEAR;
 
         const principal = this.paymentToPrincipal(targetPayment, monthlyRate, totalPayments);
+
+        // Assets / Reserves (use the greater of affDownPayment or investDownPayment if present)
+        const downPayment = Number.isFinite(this.affDownPayment) ? this.affDownPayment : (Number.isFinite(this.investDownPayment) ? this.investDownPayment : 0);
+        const reservesMonthly = Math.max(0, targetPayment + (Number.isFinite(this.monthlyDebt) ? this.monthlyDebt : 0));
+        const requiredReservesMonths = this.creditScoreRange === 'poor' ? 6 : this.creditScoreRange === 'fair' ? 3 : 2; // simple heuristic
+        const requiredReserves = reservesMonthly * requiredReservesMonths;
+        const liquidAssets = downPayment; // treat provided down payment as proof of liquid assets for this heuristic
+
+        // Decision logic
+        const reasons = [];
+        let decision = 'approved';
+        // Minimum credit band
+        if (this.creditScoreRange === 'poor') {
+            decision = 'conditional';
+            reasons.push('Credit score in Poor band; additional documentation or higher down payment may be required.');
+        }
+        // DTI checks against unadjusted baselines
+        const frontDTI = Math.round(((targetPayment) / monthlyIncome) * 1000) / 10;
+        const backDTI = Math.round(((targetPayment + this.monthlyDebt) / monthlyIncome) * 1000) / 10;
+        if (frontDTI > 31) {
+            decision = decision === 'approved' ? 'conditional' : decision;
+            reasons.push(`Front‑end DTI ${frontDTI}% exceeds 31% threshold.`);
+        }
+        if (backDTI > 43) {
+            decision = 'declined';
+            reasons.push(`Back‑end DTI ${backDTI}% exceeds 43% maximum.`);
+        }
+        // Employment seasoning (if provided)
+        if (Number.isFinite(this.employmentYears) && this.employmentYears < 2) {
+            decision = decision === 'approved' ? 'conditional' : decision;
+            reasons.push('Less than 2 years employment history.');
+        }
+        // Reserves sufficiency
+        if (liquidAssets < requiredReserves) {
+            decision = decision === 'approved' ? 'conditional' : decision;
+            reasons.push(`Insufficient reserves: need approx ${this.formatCurrency(requiredReserves)} in liquid assets.`);
+        }
+
         this.preApprovalAmount = Math.max(0, principal);
+        this.preApprovalDecision = decision;
+        this.preApprovalReasons = reasons;
         this.preApprovalMessage = null;
     }
 
@@ -1008,6 +1058,11 @@ export default class MortgageCalculator extends LightningElement {
             principal: this.formatCurrency(this.affordMaxPrincipal),
             price: this.formatCurrency(this.affordMaxHomePrice)
         };
+    }
+
+    get formattedPreApproval() {
+        if (!Number.isFinite(this.preApprovalAmount)) return null;
+        return this.formatCurrency(this.preApprovalAmount);
     }
 
     get affFrontDTI() {
