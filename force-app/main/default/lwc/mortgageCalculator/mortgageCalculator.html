@@ -685,6 +685,496 @@
         </div>
     </lightning-card>
 
+    <!-- USDA Loan Analyzer -->
+    <lightning-card title="USDA Loan Analyzer" icon-name="utility:food_and_drink">
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="usdaPrice" type="currency" label="Price (or Base)" value={usdaPrice} onchange={handleUsdaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="usdaDownPct" type="number" step="0.1" label="Down Payment (%)" value={usdaDownPct} onchange={handleUsdaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="usdaTermYears" type="number" label="Term (years)" value={usdaTermYears} onchange={handleUsdaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="usdaRate" type="number" step="0.01" label="Rate (%) (optional)" value={usdaRate} onchange={handleUsdaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="usdaUpfrontFeePct" type="number" step="0.01" label="Upfront Guarantee Fee (%)" value={usdaUpfrontFeePct} onchange={handleUsdaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="usdaAnnualFeePct" type="number" step="0.01" label="Annual Fee (%)" value={usdaAnnualFeePct} onchange={handleUsdaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="usdaAreaLimit" type="number" step="100" label="Area Income Limit (Annual)" value={usdaAreaLimit} onchange={handleUsdaFieldChange} field-level-help="Enter adjusted limit for household size."></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="usdaHouseholdIncome" type="number" step="100" label="Household Income (Annual)" value={usdaHouseholdIncome} onchange={handleUsdaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="usdaZip" type="text" label="ZIP/Area (optional)" value={usdaZip} onchange={handleUsdaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input type="toggle" name="usdaFinanceUpfront" label="Finance Upfront Fee" message-toggle-active="Yes" message-toggle-inactive="No" onchange={handleUsdaToggle} checked></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input type="toggle" name="usdaRuralEligible" label="Rural Eligible (proxy)" message-toggle-active="Yes" message-toggle-inactive="No" onchange={handleUsdaToggle}></lightning-input>
+                </div>
+            </div>
+            <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                <lightning-button label="Analyze USDA" variant="brand" onclick={calculateUsda}></lightning-button>
+            </div>
+            <template lwc:if={usdaMessage}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
+                    <span class="slds-assistive-text">Error</span>
+                    <h2>{usdaMessage}</h2>
+                </div>
+            </template>
+            <template lwc:if={usdaResults}>
+                <div class="slds-m-top_medium slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_shade">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Eligibility</p>
+                            <p>Geographic: <strong>{usdaResults.geographicEligible}</strong></p>
+                            <p>Income: <strong>{usdaResults.incomeEligible}</strong></p>
+                            <p>Overall Eligible: <strong>{usdaResults.eligible}</strong></p>
+                            <template lwc:if={usdaResults.zip}>
+                                <p>Area: <strong>{usdaResults.zip}</strong></p>
+                            </template>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_default">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Guarantee Fees</p>
+                            <p>Upfront Fee (%): <strong>{usdaResults.upfrontPct}%</strong></p>
+                            <p>Upfront Fee ($): <strong>{usdaResults.upfrontFee}</strong></p>
+                            <p>Annual Fee (%): <strong>{usdaResults.annualFeePct}%</strong></p>
+                            <p>Monthly Annual Fee: <strong>{usdaResults.monthlyAnnualFee}</strong></p>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_default">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Loan</p>
+                            <p>Base Loan: <strong>{usdaResults.baseLoan}</strong></p>
+                            <p>Financed Loan: <strong>{usdaResults.financedLoan}</strong></p>
+                            <p>Monthly P&I: <strong>{usdaResults.monthlyPI}</strong></p>
+                            <p>Monthly Total (PITI w/Annual Fee): <strong>{usdaResults.monthlyTotal}</strong></p>
+                        </div>
+                    </div>
+                    <template lwc:if={usdaResults.reasons.length}>
+                        <div class="slds-col slds-size_1-of-1 slds-p-top_small">
+                            <div class="slds-box slds-theme_error slds-theme_alert-texture">
+                                <p class="slds-text-title_caps slds-m-bottom_x-small">Notes</p>
+                                <ul class="slds-list_dotted">
+                                    <template for:each={usdaResults.reasons} for:item="r" for:index="idx">
+                                        <li key={idx}>{r}</li>
+                                    </template>
+                                </ul>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+    <!-- VA Loan Calculator -->
+    <lightning-card title="VA Loan Calculator" icon-name="utility:milestone">
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="vaPrice" type="currency" label="Price (or Base)" value={vaPrice} onchange={handleVaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="vaDownPct" type="number" step="0.1" label="Down Payment (%)" value={vaDownPct} onchange={handleVaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-combobox name="vaServiceType" label="Service Type" value={vaServiceType} options="[{label:'Regular Military', value:'regular'},{label:'Reserves/Guard', value:'reserve'}]" onchange={handleVaFieldChange}></lightning-combobox>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input type="toggle" name="vaFirstUse" label="First Use" message-toggle-active="Yes" message-toggle-inactive="No" onchange={handleVaToggle} checked></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input type="toggle" name="vaDisabled" label="Disability Exempt" message-toggle-active="Yes" message-toggle-inactive="No" onchange={handleVaToggle}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input type="toggle" name="vaFinanceFee" label="Finance Funding Fee" message-toggle-active="Yes" message-toggle-inactive="No" onchange={handleVaToggle} checked></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="vaTermYears" type="number" label="Term (years)" value={vaTermYears} onchange={handleVaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="vaRate" type="number" step="0.01" label="Rate (%) (optional)" value={vaRate} onchange={handleVaFieldChange}></lightning-input>
+                </div>
+            </div>
+            <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                <lightning-button label="Calculate VA" variant="brand" onclick={calculateVa}></lightning-button>
+            </div>
+            <template lwc:if={vaMessage}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
+                    <span class="slds-assistive-text">Error</span>
+                    <h2>{vaMessage}</h2>
+                </div>
+            </template>
+            <template lwc:if={vaResults}>
+                <div class="slds-m-top_medium slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_shade">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Funding Fee</p>
+                            <p>Fee (%): <strong>{vaResults.feePct}%</strong></p>
+                            <p>Fee ($): <strong>{vaResults.fee}</strong></p>
+                            <p>Financed Loan: <strong>{vaResults.financedLoan}</strong></p>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_default">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Loan</p>
+                            <p>Base Loan: <strong>{vaResults.baseLoan}</strong></p>
+                            <p>Rate/Term: <strong>{vaResults.rate}% / {vaResults.years}y</strong></p>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_default">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Payment</p>
+                            <p>Monthly P&I: <strong>{vaResults.monthly}</strong></p>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <hr class="slds-m-vertical_medium" />
+            <h3 class="slds-text-title_caps slds-m-bottom_small">VA IRRRL (Streamline)</h3>
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="vaIrrrlCurrentBalance" type="currency" label="Current Balance" value={vaIrrrlCurrentBalance} onchange={handleVaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="vaIrrrlCurrentRate" type="number" step="0.01" label="Current Rate (%)" value={vaIrrrlCurrentRate} onchange={handleVaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="vaIrrrlMonthsRemaining" type="number" label="Months Remaining" value={vaIrrrlMonthsRemaining} onchange={handleVaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="vaIrrrlNewRate" type="number" step="0.01" label="New Rate (%)" value={vaIrrrlNewRate} onchange={handleVaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="vaIrrrlClosingCosts" type="currency" label="Closing Costs" value={vaIrrrlClosingCosts} onchange={handleVaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input type="toggle" name="vaIrrrlFinanceFee" label="Finance Funding Fee" message-toggle-active="Yes" message-toggle-inactive="No" onchange={handleVaToggle} checked></lightning-input>
+                </div>
+            </div>
+            <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                <lightning-button label="Evaluate IRRRL" variant="brand" onclick={calculateVaIrrrl}></lightning-button>
+            </div>
+            <template lwc:if={vaIrrrlMessage}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
+                    <span class="slds-assistive-text">Error</span>
+                    <h2>{vaIrrrlMessage}</h2>
+                </div>
+            </template>
+            <template lwc:if={vaIrrrlResults}>
+                <div class="slds-m-top_medium slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_shade">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Funding Fee</p>
+                            <p>Fee (%): <strong>{vaIrrrlResults.feePct}%</strong></p>
+                            <p>Fee ($): <strong>{vaIrrrlResults.fee}</strong></p>
+                            <p>New Principal: <strong>{vaIrrrlResults.newPrincipal}</strong></p>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_default">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Payments</p>
+                            <p>Current P&I: <strong>{vaIrrrlResults.emiCur}</strong></p>
+                            <p>New P&I: <strong>{vaIrrrlResults.emiNew}</strong></p>
+                            <p>Monthly Savings: <strong>{vaIrrrlResults.monthlySavings}</strong></p>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_default">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Break-even</p>
+                            <template lwc:if={vaIrrrlResults.breakEvenMonths}>
+                                <p>Break-even: <strong>{vaIrrrlResults.breakEvenMonths} months</strong></p>
+                                <p>~ <strong><lightning-formatted-date-time value={vaIrrrlResults.breakEvenDate} year="numeric" month="short" day="2-digit"></lightning-formatted-date-time></strong></p>
+                            </template>
+                            <template lwc:else>
+                                <p>No break-even based on inputs.</p>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+    <!-- FHA Calculator -->
+    <lightning-card title="FHA Calculator" icon-name="utility:home">
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="fhaPrice" type="currency" label="Price (or Base)" value={fhaPrice} onchange={handleFhaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="fhaDownPct" type="number" step="0.1" label="Down Payment (%)" value={fhaDownPct} onchange={handleFhaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="fhaUfmipPct" type="number" step="0.01" label="UFMIP (%)" value={fhaUfmipPct} onchange={handleFhaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="fhaTermYears" type="number" label="Term (years)" value={fhaTermYears} onchange={handleFhaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="fhaAnnualMipPct" type="number" step="0.01" label="Annual MIP (%) (optional)" value={fhaAnnualMipPct} onchange={handleFhaFieldChange} field-level-help="Leave blank to auto-derive."></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="fhaRate" type="number" step="0.01" label="Rate (%) (optional)" value={fhaRate} onchange={handleFhaFieldChange} field-level-help="Defaults to current calculator rate."></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input type="toggle" name="fhaFinanceUfmip" label="Finance UFMIP" message-toggle-active="Yes" message-toggle-inactive="No" onchange={handleFhaToggle} checked>
+                    </lightning-input>
+                </div>
+            </div>
+            <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                <lightning-button label="Calculate FHA" variant="brand" onclick={calculateFha}></lightning-button>
+            </div>
+
+            <template lwc:if={fhaMessage}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
+                    <span class="slds-assistive-text">Error</span>
+                    <h2>{fhaMessage}</h2>
+                </div>
+            </template>
+
+            <template lwc:if={fhaResults}>
+                <div class="slds-m-top_medium slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_shade">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Loan & MIP</p>
+                            <p>Base Loan: <strong>{fhaResults.baseLoan}</strong></p>
+                            <p>UFMIP (%): <strong>{fhaResults.ufmipPct}%</strong> | UFMIP: <strong>{fhaResults.ufmip}</strong></p>
+                            <p>Financed Loan: <strong>{fhaResults.financedLoan}</strong></p>
+                            <p>Annual MIP: <strong>{fhaResults.annualMipPct}%</strong></p>
+                            <p>Monthly MIP: <strong>{fhaResults.monthlyMip}</strong></p>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_default">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Payments</p>
+                            <p>Rate: <strong>{fhaResults.rate}%</strong></p>
+                            <p>Term: <strong>{fhaResults.years} years</strong></p>
+                            <p>Monthly P&I: <strong>{fhaResults.monthlyTotal}</strong></p>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_default">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Cancellation</p>
+                            <template lwc:if={fhaResults.cancels}>
+                                <p>MIP cancels after <strong>{fhaResults.cancelMonth}</strong> months</p>
+                                <p>~ <strong><lightning-formatted-date-time value={fhaResults.cancelDate} year="numeric" month="short" day="2-digit"></lightning-formatted-date-time></strong></p>
+                            </template>
+                            <template lwc:else>
+                                <p>MIP remains for the life of the loan.</p>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <hr class="slds-m-vertical_medium" />
+
+            <h3 class="slds-text-title_caps slds-m-bottom_small">FHA Streamline Refinance</h3>
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="fhaStreamCurrentBalance" type="currency" label="Current Balance" value={fhaStreamCurrentBalance} onchange={handleFhaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="fhaStreamCurrentRate" type="number" step="0.01" label="Current Rate (%)" value={fhaStreamCurrentRate} onchange={handleFhaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="fhaStreamMonthsRemaining" type="number" label="Months Remaining" value={fhaStreamMonthsRemaining} onchange={handleFhaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="fhaStreamNewRate" type="number" step="0.01" label="New Rate (%)" value={fhaStreamNewRate} onchange={handleFhaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="fhaStreamAnnualMipPct" type="number" step="0.01" label="Annual MIP (%)" value={fhaStreamAnnualMipPct} onchange={handleFhaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="fhaStreamUfmipPct" type="number" step="0.01" label="UFMIP (%)" value={fhaStreamUfmipPct} onchange={handleFhaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="fhaStreamUfmipRefundPct" type="number" step="0.01" label="UFMIP Refund (%)" value={fhaStreamUfmipRefundPct} onchange={handleFhaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="fhaStreamClosingCosts" type="currency" label="Closing Costs" value={fhaStreamClosingCosts} onchange={handleFhaFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input type="toggle" name="fhaStreamFinanceUfmip" label="Finance UFMIP" message-toggle-active="Yes" message-toggle-inactive="No" onchange={handleFhaToggle} checked>
+                    </lightning-input>
+                </div>
+            </div>
+            <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                <lightning-button label="Evaluate Streamline" variant="brand" onclick={calculateFhaStreamline}></lightning-button>
+            </div>
+
+            <template lwc:if={fhaStreamMessage}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
+                    <span class="slds-assistive-text">Error</span>
+                    <h2>{fhaStreamMessage}</h2>
+                </div>
+            </template>
+
+            <template lwc:if={fhaStreamResults}>
+                <div class="slds-m-top_medium slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_shade">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Current</p>
+                            <p>Monthly P&I: <strong>{fhaStreamResults.emiCur}</strong></p>
+                            <p>Monthly MIP: <strong>{fhaStreamResults.mipCur}</strong></p>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_default">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">New</p>
+                            <p>UFMIP (net): <strong>{fhaStreamResults.newUfmip}</strong></p>
+                            <p>New Principal: <strong>{fhaStreamResults.newPrincipal}</strong></p>
+                            <p>Monthly P&I: <strong>{fhaStreamResults.emiNew}</strong></p>
+                            <p>Monthly MIP: <strong>{fhaStreamResults.mipNew}</strong></p>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_default">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Savings</p>
+                            <p>Monthly Savings: <strong>{fhaStreamResults.monthlySavings}</strong></p>
+                            <template lwc:if={fhaStreamResults.breakEvenMonths}>
+                                <p>Break-even: <strong>{fhaStreamResults.breakEvenMonths} months</strong></p>
+                                <p>~ <strong><lightning-formatted-date-time value={fhaStreamResults.breakEvenDate} year="numeric" month="short" day="2-digit"></lightning-formatted-date-time></strong></p>
+                            </template>
+                            <template lwc:else>
+                                <p>No break-even based on inputs.</p>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+    <!-- Points Purchase Analysis -->
+    <lightning-card title="Points Purchase Analysis" icon-name="utility:money">
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="pointsPercent" type="number" step="0.125" label="Points (%)" value={pointsPercent} onchange={handlePointsFieldChange} field-level-help="1 point = 1% of loan amount."></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="pointsRateNoPoints" type="number" step="0.01" label="Rate (No Points) %" value={pointsRateNoPoints} onchange={handlePointsFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="pointsRateWithPoints" type="number" step="0.01" label="Rate (With Points) %" value={pointsRateWithPoints} onchange={handlePointsFieldChange} field-level-help="Leave blank to auto-calc ≈ 0.25% reduction per point."></lightning-input>
+                </div>
+            </div>
+
+            <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                <lightning-button label="Calculate" variant="brand" onclick={calculatePointsAnalysis}></lightning-button>
+            </div>
+
+            <template lwc:if={pointsMessage}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
+                    <span class="slds-assistive-text">Error</span>
+                    <h2>{pointsMessage}</h2>
+                </div>
+            </template>
+
+            <template lwc:if={pointsResults}>
+                <div class="slds-m-top_medium slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_shade">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Summary</p>
+                            <p>Rate (No Points): <strong>{pointsResults.baseRate}%</strong></p>
+                            <p>Rate (With Points): <strong>{pointsResults.withPointsRate}%</strong></p>
+                            <p>Monthly (No Points): <strong>{pointsResults.emiBase}</strong></p>
+                            <p>Monthly (With Points): <strong>{pointsResults.emiDisc}</strong></p>
+                            <p>Points Cost: <strong>{pointsResults.pointsCost}</strong></p>
+                            <p>Tax Benefit (Year 1): <strong>{pointsResults.upfrontTaxBenefit}</strong></p>
+                            <p>Net Upfront Cost: <strong>{pointsResults.upfrontNet}</strong></p>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_default">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Break-even</p>
+                            <template lwc:if={pointsResults.breakEvenMonth}>
+                                <p>Break-even Month: <strong>{pointsResults.breakEvenMonth}</strong></p>
+                                <p>Break-even Date: <strong><lightning-formatted-date-time value={pointsResults.breakEvenDate} year="numeric" month="short" day="2-digit"></lightning-formatted-date-time></strong></p>
+                            </template>
+                            <template lwc:else>
+                                <p>No break-even within loan term.</p>
+                            </template>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_default">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Net Benefit After Tax</p>
+                            <p>3 Years: <strong>{pointsResults.net3y}</strong></p>
+                            <p>5 Years: <strong>{pointsResults.net5y}</strong></p>
+                            <p>10 Years: <strong>{pointsResults.net10y}</strong></p>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+
+    <!-- Jumbo Loan Analyzer -->
+    <lightning-card title="Jumbo Loan Analyzer" icon-name="utility:warning">
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="jumboLoanAmount" type="currency" label="Loan Amount" value={jumboLoanAmount} onchange={handleJumboFieldChange} field-level-help="Defaults to Price if left blank."></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="jumboConformingLimit" type="currency" label="Conforming Limit" value={jumboConformingLimit} onchange={handleJumboFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="jumboMinCredit" type="number" label="Minimum Credit Score" value={jumboMinCredit} onchange={handleJumboFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="jumboExplicitReserves" type="currency" label="Liquid Reserves Available" value={jumboExplicitReserves} onchange={handleJumboFieldChange}></lightning-input>
+                </div>
+            </div>
+            <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                <lightning-button variant="brand" label="Analyze Jumbo" onclick={calculateJumboAnalysis}></lightning-button>
+            </div>
+
+            <template lwc:if={jumboDecision}>
+                <div class="slds-m-top_medium slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_shade">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Decision</p>
+                            <p>Status: <strong>{jumboDecision}</strong></p>
+                            <template lwc:if={jumboSummary}>
+                                <p>Loan Amount: <strong>{jumboSummary.loanAmount}</strong></p>
+                                <p>Conforming Limit: <strong>{jumboSummary.limit}</strong></p>
+                                <p>Payment (est.): <strong>{jumboSummary.payment}</strong></p>
+                                <p>Reserves Required: <strong>{jumboSummary.requiredReserves}</strong> ({jumboSummary.reservesMonths} months)</p>
+                                <p>Reserves Available: <strong>{jumboSummary.availableReserves}</strong></p>
+                            </template>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_2-of-3">
+                        <div class="slds-box slds-theme_default">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Notes</p>
+                            <ul class="slds-list_dotted">
+                                <template for:each={jumboReasons} for:item="r" for:index="idx">
+                                    <li key={idx}>{r}</li>
+                                </template>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
     <!-- Personal Financial Information / Pre-Approval -->
     <lightning-card title="Personal Financial Information" icon-name="standard:employee_contact">
         <div class="slds-p-around_medium">
@@ -1042,6 +1532,72 @@
                             </div>
                         </div>
                     </template>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+
+    <!-- Escrow Analysis -->
+    <lightning-card title="Escrow Analysis" icon-name="utility:balance">
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="taxAnnual" type="currency" label="Property Tax (Annual)" value={taxAnnual} onchange={handleEscrowFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="insuranceAnnual" type="currency" label="Insurance (Annual)" value={insuranceAnnual} onchange={handleEscrowFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-combobox name="taxMonth1" label="Tax Disbursement #1" value={taxMonth1} options={monthOptions} onchange={handleEscrowFieldChange}></lightning-combobox>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-combobox name="taxMonth2" label="Tax Disbursement #2 (optional)" value={taxMonth2} options={monthOptions} onchange={handleEscrowFieldChange}></lightning-combobox>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-combobox name="insuranceMonth" label="Insurance Disbursement" value={insuranceMonth} options={monthOptions} onchange={handleEscrowFieldChange}></lightning-combobox>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="escrowStartBalance" type="currency" label="Starting Escrow Balance" value={escrowStartBalance} onchange={handleEscrowFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="escrowMonthlyCurrent" type="currency" label="Current Monthly Escrow" value={escrowMonthlyCurrent} onchange={handleEscrowFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-combobox name="escrowStartMonth" label="Projection Start Month" value={escrowStartMonth} options={monthOptions} onchange={handleEscrowFieldChange}></lightning-combobox>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="escrowCushionMonths" type="number" label="Cushion (Months)" value={escrowCushionMonths} onchange={handleEscrowFieldChange} field-level-help="Typical max cushion is 2 months."></lightning-input>
+                </div>
+            </div>
+
+            <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                <lightning-button label="Reset" onclick={resetEscrow}></lightning-button>
+                <lightning-button variant="brand" label="Analyze Escrow" onclick={computeEscrowAnalysis}></lightning-button>
+            </div>
+
+            <template lwc:if={escrowMessage}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
+                    <span class="slds-assistive-text">Error</span>
+                    <h2>{escrowMessage}</h2>
+                </div>
+            </template>
+
+            <template lwc:if={escrowSummary}>
+                <div class="slds-m-top_medium slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_shade">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Summary</p>
+                            <p>Base Monthly: <strong>{escrowSummary.baseMonthly}</strong></p>
+                            <p>Cushion Needed: <strong>{escrowSummary.cushionAmount}</strong></p>
+                            <p>Min Balance (12m): <strong>{escrowSummary.minBalance}</strong></p>
+                            <p>Shortage: <strong>{escrowSummary.shortage}</strong></p>
+                            <p>Surplus: <strong>{escrowSummary.surplus}</strong></p>
+                            <p>Recommended Monthly: <strong>{escrowSummary.recommendedMonthly}</strong></p>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_2-of-3">
+                        <lightning-datatable key-field="id" data={escrowRows} columns={escrowColumns} hide-checkbox-column></lightning-datatable>
+                    </div>
                 </div>
             </template>
         </div>

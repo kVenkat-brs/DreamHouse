@@ -356,6 +356,775 @@ export default class MortgageCalculator extends LightningElement {
     }
 
     // =========================
+    // Points Purchase Analysis (break-even with tax effects)
+    // =========================
+    @track pointsPercent = null; // e.g., 1.0 for 1 point
+    @track pointsRateNoPoints = null; // % APR without buying points (defaults to interestRate)
+    @track pointsRateWithPoints = null; // % APR after buying points (optional)
+    @track pointsResults = null; // summary object
+    @track pointsMessage = null;
+
+    handlePointsFieldChange(event) {
+        const name = event.target.name;
+        const v = parseFloat(event.detail.value);
+        const parsed = Number.isFinite(v) ? v : null;
+        if (name === 'pointsPercent') this.pointsPercent = parsed;
+        if (name === 'pointsRateNoPoints') this.pointsRateNoPoints = parsed;
+        if (name === 'pointsRateWithPoints') this.pointsRateWithPoints = parsed;
+        this.pointsMessage = null;
+    }
+
+    calculatePointsAnalysis() {
+        // Validate basic inputs
+        const principal = Number.isFinite(this.price) && this.price > 0 ? this.price : null;
+        const years = Number.isFinite(this.tenure) && this.tenure > 0 ? this.tenure : 30;
+        const taxBracket = Number.isFinite(this.taxBracketPct) ? (this.taxBracketPct / 100) : 0;
+        if (!principal) {
+            this.pointsMessage = 'Enter a valid property price (loan amount).';
+            this.pointsResults = null;
+            return;
+        }
+        // Baseline rate (no points) defaults to current scenario interestRate
+        const baseRate = Number.isFinite(this.pointsRateNoPoints) ? this.pointsRateNoPoints : (Number.isFinite(this.interestRate) ? this.interestRate : null);
+        if (!Number.isFinite(baseRate)) {
+            this.pointsMessage = 'Provide a valid baseline rate (no points).';
+            this.pointsResults = null;
+            return;
+        }
+        // Heuristic: if with-points rate not provided, reduce by 0.25% per point
+        const points = Number.isFinite(this.pointsPercent) ? this.pointsPercent : 0;
+        const withPointsRate = Number.isFinite(this.pointsRateWithPoints) ? this.pointsRateWithPoints : (baseRate - (0.25 * points));
+        if (!Number.isFinite(withPointsRate) || withPointsRate <= 0) {
+            this.pointsMessage = 'Provide a valid rate after buying points (or adjust points).';
+            this.pointsResults = null;
+            return;
+        }
+
+        const n = years * MONTHS_IN_YEAR;
+        const rBase = (baseRate / 100) / MONTHS_IN_YEAR;
+        const rDisc = (withPointsRate / 100) / MONTHS_IN_YEAR;
+        const emiBase = this.calculateEmi(principal, rBase, n);
+        const emiDisc = this.calculateEmi(principal, rDisc, n);
+
+        const start = new Date();
+        const schedBase = this.buildMonthlySchedule(principal, rBase, n, emiBase, start, { amount: 0, start: null, frequency: 'none', months: null });
+        const schedDisc = this.buildMonthlySchedule(principal, rDisc, n, emiDisc, start, { amount: 0, start: null, frequency: 'none', months: null });
+
+        // Upfront points cost and immediate tax benefit (simplified: fully deductible in year paid)
+        const pointsCost = principal * (points / 100);
+        const upfrontTaxBenefit = pointsCost * taxBracket;
+        const upfrontNet = pointsCost - upfrontTaxBenefit;
+
+        // Month-by-month net savings after tax: payment delta minus tax increase due to lower interest deduction
+        let cumNet = 0;
+        let breakEvenMonth = null;
+        for (let i = 0; i < Math.min(schedBase.schedule.length, schedDisc.schedule.length); i++) {
+            const paymentDelta = (emiBase - emiDisc);
+            const interestDelta = (schedBase.schedule[i].interest || 0) - (schedDisc.schedule[i].interest || 0);
+            const taxEffect = interestDelta * taxBracket; // reduced deduction -> higher taxes -> reduces savings
+            const netMonthly = paymentDelta - taxEffect;
+            cumNet += netMonthly;
+            if (breakEvenMonth == null && cumNet >= upfrontNet) {
+                breakEvenMonth = i + 1; // 1-based month count
+            }
+        }
+
+        // Horizon summaries after tax (3/5/10 years)
+        const sumNet = (months) => {
+            const limit = Math.min(months, schedBase.schedule.length, schedDisc.schedule.length);
+            let totalNet = 0;
+            for (let i = 0; i < limit; i++) {
+                const paymentDelta = (emiBase - emiDisc);
+                const interestDelta = (schedBase.schedule[i].interest || 0) - (schedDisc.schedule[i].interest || 0);
+                const taxEffect = interestDelta * taxBracket;
+                totalNet += (paymentDelta - taxEffect);
+            }
+            return totalNet - upfrontNet; // subtract upfront net cost to show net benefit
+        };
+        const net3y = sumNet(36);
+        const net5y = sumNet(60);
+        const net10y = sumNet(120);
+
+        const breakEvenDate = breakEvenMonth ? (() => { const d = new Date(start.getTime()); d.setMonth(d.getMonth() + breakEvenMonth); return d; })() : null;
+
+        this.pointsResults = {
+            baseRate,
+            withPointsRate,
+            emiBase,
+            emiDisc,
+            pointsCost,
+            upfrontTaxBenefit,
+            upfrontNet,
+            breakEvenMonth,
+            breakEvenDate,
+            net3y,
+            net5y,
+            net10y
+        };
+        this.pointsMessage = null;
+    }
+
+    // =========================
+    // Jumbo Loan Analyzer (stricter DTI, reserves, credit minimums)
+    // =========================
+    @track jumboLoanAmount = null; // defaults to price if not set
+    @track jumboConformingLimit = 766550; // baseline single-unit limit (example)
+    @track jumboMinCredit = 720; // typical jumbo minimum
+    @track jumboExplicitReserves = null; // optional explicit liquid reserves amount
+    @track jumboDecision = null; // approved | conditional | declined | not_jumbo
+    @track jumboReasons = [];
+    @track jumboSummary = null;
+
+    handleJumboFieldChange(event) {
+        const name = event.target.name;
+        const v = parseFloat(event.detail.value);
+        const parsed = Number.isFinite(v) ? v : null;
+        if (name === 'jumboLoanAmount') this.jumboLoanAmount = parsed;
+        if (name === 'jumboConformingLimit') this.jumboConformingLimit = parsed || this.jumboConformingLimit;
+        if (name === 'jumboMinCredit') this.jumboMinCredit = parsed || this.jumboMinCredit;
+        if (name === 'jumboExplicitReserves') this.jumboExplicitReserves = parsed;
+    }
+
+    calculateJumboAnalysis() {
+        const loanAmt = Number.isFinite(this.jumboLoanAmount) && this.jumboLoanAmount > 0
+            ? this.jumboLoanAmount
+            : (Number.isFinite(this.price) ? this.price : null);
+        const limit = Number.isFinite(this.jumboConformingLimit) ? this.jumboConformingLimit : 766550;
+        if (!loanAmt) {
+            this.jumboDecision = null;
+            this.jumboReasons = ['Enter a valid loan amount (or set Price).'];
+            this.jumboSummary = null;
+            return;
+        }
+        if (loanAmt <= limit) {
+            this.jumboDecision = 'not_jumbo';
+            this.jumboReasons = ['Loan amount is at or below conforming limit.'];
+            this.jumboSummary = {
+                loanAmount: loanAmt,
+                limit,
+                note: 'This is not a jumbo loan under the current limit.'
+            };
+            return;
+        }
+
+        // Input context
+        const annualRate = Number.isFinite(this.interestRate) ? this.interestRate : 7.0;
+        const years = Number.isFinite(this.tenure) && this.tenure > 0 ? this.tenure : 30;
+        const monthlyRate = (annualRate / 100) / MONTHS_IN_YEAR;
+        const n = years * MONTHS_IN_YEAR;
+        const payment = this.calculateEmi(loanAmt, monthlyRate, n);
+
+        const monthlyIncome = Number.isFinite(this.incomeAnnual) ? (this.incomeAnnual / MONTHS_IN_YEAR) : null;
+        const monthlyDebts = Number.isFinite(this.monthlyDebt) ? this.monthlyDebt : 0;
+        const backCap = 0.38; // stricter jumbo back-end DTI
+        const frontCap = 0.28; // keep front-end baseline
+
+        const reasons = [];
+        let decision = 'approved';
+
+        // DTI checks
+        if (!Number.isFinite(monthlyIncome) || monthlyIncome <= 0) {
+            reasons.push('Provide annual income to evaluate DTI.');
+            decision = 'conditional';
+        } else {
+            const front = (payment / monthlyIncome) * 100;
+            const back = ((payment + monthlyDebts) / monthlyIncome) * 100;
+            if (front > (frontCap * 100)) {
+                decision = decision === 'approved' ? 'conditional' : decision;
+                reasons.push(`Front‑end DTI ${front.toFixed(1)}% exceeds ${Math.round(frontCap*100)}% jumbo guideline.`);
+            }
+            if (back > (backCap * 100)) {
+                decision = 'declined';
+                reasons.push(`Back‑end DTI ${back.toFixed(1)}% exceeds ${Math.round(backCap*100)}% jumbo maximum.`);
+            }
+        }
+
+        // Credit checks
+        const actualScore = Number.isFinite(this.creditScoreValue) ? this.creditScoreValue : (
+            this.creditScoreRange === 'excellent' ? 810 :
+            this.creditScoreRange === 'verygood' ? 760 :
+            this.creditScoreRange === 'good' ? 700 :
+            this.creditScoreRange === 'fair' ? 630 : 580
+        );
+        if (actualScore < this.jumboMinCredit) {
+            decision = 'declined';
+            reasons.push(`Credit score ${actualScore} below jumbo minimum ${this.jumboMinCredit}.`);
+        }
+
+        // Reserves (6–12 months typical; scale by score and size)
+        let reservesMonths = 6;
+        if (actualScore < 740) reservesMonths = 9;
+        if (loanAmt >= 1000000) reservesMonths = 12;
+        const requiredReserves = (payment + monthlyDebts) * reservesMonths;
+        const assets = Number.isFinite(this.jumboExplicitReserves)
+            ? this.jumboExplicitReserves
+            : (Number.isFinite(this.affDownPayment) ? this.affDownPayment : (Number.isFinite(this.investDownPayment) ? this.investDownPayment : 0));
+        if (assets < requiredReserves) {
+            decision = decision === 'approved' ? 'conditional' : decision;
+            reasons.push(`Reserves short by ${this.formatCurrency(requiredReserves - assets)} (need ~${reservesMonths} months of housing + debts).`);
+        }
+
+        this.jumboDecision = decision;
+        this.jumboReasons = reasons;
+        this.jumboSummary = {
+            loanAmount: loanAmt,
+            limit,
+            rate: annualRate,
+            tenureYears: years,
+            payment,
+            reservesMonths,
+            requiredReserves,
+            availableReserves: assets
+        };
+    }
+
+    // =========================
+    // FHA Calculator (UFMIP, Annual MIP, Cancellation, Streamline Refi)
+    // =========================
+    @track fhaPrice = null;
+    @track fhaDownPct = 3.5; // typical FHA minimum
+    @track fhaUfmipPct = 1.75; // standard upfront MIP
+    @track fhaFinanceUfmip = true; // finance UFMIP into loan
+    @track fhaTermYears = 30;
+    @track fhaAnnualMipPct = null; // optional override; if null, auto-derive
+    @track fhaRate = null; // optional override; defaults to interestRate
+    @track fhaResults = null;
+    @track fhaMessage = null;
+
+    // Streamline Refinance inputs
+    @track fhaStreamCurrentBalance = null;
+    @track fhaStreamCurrentRate = null;
+    @track fhaStreamMonthsRemaining = null;
+    @track fhaStreamNewRate = null;
+    @track fhaStreamAnnualMipPct = null; // annual MIP for new loan
+    @track fhaStreamUfmipPct = 1.75; // UFMIP on new streamline
+    @track fhaStreamUfmipRefundPct = 0; // credit from prior UFMIP (percentage of new base loan)
+    @track fhaStreamFinanceUfmip = true;
+    @track fhaStreamClosingCosts = null;
+    @track fhaStreamResults = null;
+    @track fhaStreamMessage = null;
+
+    handleFhaFieldChange(event) {
+        const { name } = event.target;
+        const v = parseFloat(event.detail.value);
+        const parsed = Number.isFinite(v) ? v : null;
+        switch (name) {
+            case 'fhaPrice': this.fhaPrice = parsed; break;
+            case 'fhaDownPct': this.fhaDownPct = parsed; break;
+            case 'fhaUfmipPct': this.fhaUfmipPct = parsed; break;
+            case 'fhaTermYears': this.fhaTermYears = Number.isFinite(v) ? Math.max(1, Math.floor(v)) : this.fhaTermYears; break;
+            case 'fhaAnnualMipPct': this.fhaAnnualMipPct = parsed; break;
+            case 'fhaRate': this.fhaRate = parsed; break;
+            case 'fhaStreamCurrentBalance': this.fhaStreamCurrentBalance = parsed; break;
+            case 'fhaStreamCurrentRate': this.fhaStreamCurrentRate = parsed; break;
+            case 'fhaStreamMonthsRemaining': this.fhaStreamMonthsRemaining = Number.isFinite(v) ? Math.max(1, Math.floor(v)) : this.fhaStreamMonthsRemaining; break;
+            case 'fhaStreamNewRate': this.fhaStreamNewRate = parsed; break;
+            case 'fhaStreamAnnualMipPct': this.fhaStreamAnnualMipPct = parsed; break;
+            case 'fhaStreamUfmipPct': this.fhaStreamUfmipPct = parsed; break;
+            case 'fhaStreamUfmipRefundPct': this.fhaStreamUfmipRefundPct = parsed; break;
+            case 'fhaStreamClosingCosts': this.fhaStreamClosingCosts = parsed; break;
+            default: break;
+        }
+        this.fhaMessage = null;
+        this.fhaStreamMessage = null;
+    }
+
+    handleFhaToggle(event) {
+        const { name } = event.target;
+        const checked = !!event.detail.checked;
+        if (name === 'fhaFinanceUfmip') this.fhaFinanceUfmip = checked;
+        if (name === 'fhaStreamFinanceUfmip') this.fhaStreamFinanceUfmip = checked;
+    }
+
+    fhaDeriveAnnualMipRate(ltvPct, years) {
+        // Simplified FHA MIP matrix (approximate, for illustration)
+        if (years <= 15) {
+            if (ltvPct > 90) return 0.70; // >= 90% LTV ~0.70%
+            return 0.45; // <= 90%
+        }
+        // 30-year
+        if (ltvPct > 95) return 0.85; // >95%
+        if (ltvPct > 90) return 0.80; // 90-95%
+        return 0.50; // <=90%
+    }
+
+    calculateFha() {
+        const price = Number.isFinite(this.fhaPrice) ? this.fhaPrice : (Number.isFinite(this.price) ? this.price : null);
+        const downPct = Number.isFinite(this.fhaDownPct) ? this.fhaDownPct : 3.5;
+        if (!Number.isFinite(price) || price <= 0) {
+            this.fhaMessage = 'Enter a valid price or FHA loan amount basis.';
+            this.fhaResults = null;
+            return;
+        }
+        const baseLoan = price * (1 - (downPct / 100));
+        const ufmipPct = Number.isFinite(this.fhaUfmipPct) ? this.fhaUfmipPct : 1.75;
+        const ufmip = baseLoan * (ufmipPct / 100);
+        const financedLoan = this.fhaFinanceUfmip ? (baseLoan + ufmip) : baseLoan;
+        const years = Number.isFinite(this.fhaTermYears) ? this.fhaTermYears : 30;
+        const rate = Number.isFinite(this.fhaRate) ? this.fhaRate : (Number.isFinite(this.interestRate) ? this.interestRate : 0);
+        const monthlyRate = (rate / 100) / MONTHS_IN_YEAR;
+        const n = years * MONTHS_IN_YEAR;
+        const emi = this.calculateEmi(financedLoan, monthlyRate, n);
+        const ltvPct = (baseLoan / price) * 100;
+        const annualMipPct = Number.isFinite(this.fhaAnnualMipPct) ? this.fhaAnnualMipPct : this.fhaDeriveAnnualMipRate(ltvPct, years);
+        const monthlyMip = financedLoan * ((annualMipPct / 100) / 12);
+
+        // Cancellation rules (post-2013): down <10% → life-of-loan; >=10% → cancels after 11 years
+        const cancels = downPct >= 10;
+        let cancelMonth = null;
+        let cancelDate = null;
+        if (cancels) {
+            cancelMonth = 11 * 12; // 132
+            const start = new Date();
+            cancelDate = new Date(start.getTime());
+            cancelDate.setMonth(cancelDate.getMonth() + cancelMonth);
+        }
+
+        this.fhaResults = {
+            price,
+            downPct,
+            baseLoan,
+            ufmipPct,
+            ufmip,
+            financedLoan,
+            rate,
+            years,
+            annualMipPct,
+            monthlyMip,
+            monthlyTotal: emi + monthlyMip,
+            cancels,
+            cancelMonth,
+            cancelDate
+        };
+        this.fhaMessage = null;
+    }
+
+    calculateFhaStreamline() {
+        // Validate inputs
+        const curBal = this.fhaStreamCurrentBalance;
+        const curRate = this.fhaStreamCurrentRate;
+        const curMonths = this.fhaStreamMonthsRemaining;
+        const newRate = this.fhaStreamNewRate;
+        const annMip = this.fhaStreamAnnualMipPct;
+        if (!Number.isFinite(curBal) || !Number.isFinite(curRate) || !Number.isFinite(curMonths) || !Number.isFinite(newRate)) {
+            this.fhaStreamMessage = 'Enter current balance, rate, remaining months, and new rate.';
+            this.fhaStreamResults = null;
+            return;
+        }
+        const rCur = (curRate / 100) / MONTHS_IN_YEAR;
+        const emiCur = this.calculateEmi(curBal, rCur, curMonths);
+        const mipCur = Number.isFinite(annMip) ? (curBal * ((annMip / 100) / 12)) : 0;
+
+        const ufmipPct = Number.isFinite(this.fhaStreamUfmipPct) ? this.fhaStreamUfmipPct : 1.75;
+        const ufmipRefundPct = Number.isFinite(this.fhaStreamUfmipRefundPct) ? this.fhaStreamUfmipRefundPct : 0;
+        const ufmipNetPct = Math.max(0, ufmipPct - ufmipRefundPct);
+        const newBase = curBal; // streamline often uses current payoff as base
+        const newUfmip = newBase * (ufmipNetPct / 100);
+        const newPrincipal = this.fhaStreamFinanceUfmip ? (newBase + newUfmip) : newBase;
+        const rNew = (newRate / 100) / MONTHS_IN_YEAR;
+        const emiNew = this.calculateEmi(newPrincipal, rNew, curMonths);
+        const mipNew = Number.isFinite(annMip) ? (newPrincipal * ((annMip / 100) / 12)) : 0;
+
+        const closing = Number.isFinite(this.fhaStreamClosingCosts) ? this.fhaStreamClosingCosts : 0;
+        const monthlySavings = (emiCur + mipCur) - (emiNew + mipNew);
+        const breakEvenMonths = monthlySavings > 0 ? Math.ceil(closing / monthlySavings) : null;
+        const breakEvenDate = Number.isFinite(breakEvenMonths) ? (() => { const d = new Date(); d.setMonth(d.getMonth() + breakEvenMonths); return d; })() : null;
+
+        this.fhaStreamResults = {
+            emiCur,
+            mipCur,
+            emiNew,
+            mipNew,
+            newUfmip,
+            newPrincipal,
+            monthlySavings,
+            closing,
+            breakEvenMonths,
+            breakEvenDate
+        };
+        this.fhaStreamMessage = null;
+    }
+
+    // =========================
+    // VA Loan Calculator (Funding Fee + IRRRL)
+    // =========================
+    @track vaPrice = null;
+    @track vaDownPct = 0; // VA can be 0% down
+    @track vaServiceType = 'regular'; // regular | reserve
+    @track vaFirstUse = true;
+    @track vaDisabled = false; // disability exemption
+    @track vaFinanceFee = true;
+    @track vaTermYears = 30;
+    @track vaRate = null; // optional override
+    @track vaResults = null;
+    @track vaMessage = null;
+
+    // IRRRL (VA streamline)
+    @track vaIrrrlCurrentBalance = null;
+    @track vaIrrrlCurrentRate = null;
+    @track vaIrrrlMonthsRemaining = null;
+    @track vaIrrrlNewRate = null;
+    @track vaIrrrlFinanceFee = true;
+    @track vaIrrrlClosingCosts = null;
+    @track vaIrrrlResults = null;
+    @track vaIrrrlMessage = null;
+
+    handleVaFieldChange(event) {
+        const { name } = event.target;
+        const v = event.detail?.value;
+        const num = parseFloat(v);
+        const parsed = Number.isFinite(num) ? num : null;
+        switch (name) {
+            case 'vaPrice': this.vaPrice = parsed; break;
+            case 'vaDownPct': this.vaDownPct = parsed; break;
+            case 'vaTermYears': this.vaTermYears = Number.isFinite(num) ? Math.max(1, Math.floor(num)) : this.vaTermYears; break;
+            case 'vaRate': this.vaRate = parsed; break;
+            case 'vaServiceType': this.vaServiceType = v || 'regular'; break;
+            case 'vaIrrrlCurrentBalance': this.vaIrrrlCurrentBalance = parsed; break;
+            case 'vaIrrrlCurrentRate': this.vaIrrrlCurrentRate = parsed; break;
+            case 'vaIrrrlMonthsRemaining': this.vaIrrrlMonthsRemaining = Number.isFinite(num) ? Math.max(1, Math.floor(num)) : this.vaIrrrlMonthsRemaining; break;
+            case 'vaIrrrlNewRate': this.vaIrrrlNewRate = parsed; break;
+            case 'vaIrrrlClosingCosts': this.vaIrrrlClosingCosts = parsed; break;
+            default: break;
+        }
+        this.vaMessage = null;
+        this.vaIrrrlMessage = null;
+    }
+
+    handleVaToggle(event) {
+        const { name } = event.target;
+        const checked = !!event.detail.checked;
+        if (name === 'vaFirstUse') this.vaFirstUse = checked;
+        if (name === 'vaDisabled') this.vaDisabled = checked;
+        if (name === 'vaFinanceFee') this.vaFinanceFee = checked;
+        if (name === 'vaIrrrlFinanceFee') this.vaIrrrlFinanceFee = checked;
+    }
+
+    vaFundingFeeRate(serviceType, firstUse, downPct, disabled, loanKind = 'purchase') {
+        if (disabled) return 0.0; // funding fee waived
+        if (loanKind === 'irrrl') return 0.5; // IRRRL typical funding fee
+        // Purchase/cash-out simplified matrix (approximate common rates)
+        const isReserve = (serviceType === 'reserve');
+        const bracket = downPct >= 10 ? '10' : (downPct >= 5 ? '5' : '0');
+        if (firstUse) {
+            if (!isReserve) {
+                // Regular military, first use
+                if (bracket === '10') return 1.25;
+                if (bracket === '5') return 1.50;
+                return 2.15; // 0-4.99%
+            }
+            // Reserve/National Guard, first use
+            if (bracket === '10') return 1.50;
+            if (bracket === '5') return 1.75;
+            return 2.40;
+        }
+        // Subsequent use (both service types share 3.3% top bracket in many cases)
+        if (bracket === '10') return isReserve ? 1.50 : 1.25;
+        if (bracket === '5') return isReserve ? 1.75 : 1.50;
+        return 3.30; // 0-4.99%
+    }
+
+    calculateVa() {
+        const price = Number.isFinite(this.vaPrice) ? this.vaPrice : (Number.isFinite(this.price) ? this.price : null);
+        if (!Number.isFinite(price) || price <= 0) {
+            this.vaMessage = 'Enter a valid price or VA loan amount basis.';
+            this.vaResults = null;
+            return;
+        }
+        const downPct = Number.isFinite(this.vaDownPct) && this.vaDownPct >= 0 ? this.vaDownPct : 0;
+        const baseLoan = price * (1 - (downPct / 100));
+        const feePct = this.vaFundingFeeRate(this.vaServiceType, this.vaFirstUse, downPct, this.vaDisabled, 'purchase');
+        const fee = baseLoan * (feePct / 100);
+        const financedLoan = this.vaFinanceFee ? (baseLoan + fee) : baseLoan;
+        const years = Number.isFinite(this.vaTermYears) ? this.vaTermYears : 30;
+        const rate = Number.isFinite(this.vaRate) ? this.vaRate : (Number.isFinite(this.interestRate) ? this.interestRate : 0);
+        const r = (rate / 100) / MONTHS_IN_YEAR;
+        const n = years * MONTHS_IN_YEAR;
+        const emi = this.calculateEmi(financedLoan, r, n);
+
+        this.vaResults = {
+            price,
+            downPct,
+            serviceType: this.vaServiceType,
+            firstUse: this.vaFirstUse,
+            disabled: this.vaDisabled,
+            baseLoan,
+            feePct,
+            fee,
+            financedLoan,
+            rate,
+            years,
+            monthly: emi
+        };
+        this.vaMessage = null;
+    }
+
+    calculateVaIrrrl() {
+        const bal = this.vaIrrrlCurrentBalance;
+        const curRate = this.vaIrrrlCurrentRate;
+        const months = this.vaIrrrlMonthsRemaining;
+        const newRate = this.vaIrrrlNewRate;
+        if (!Number.isFinite(bal) || !Number.isFinite(curRate) || !Number.isFinite(months) || !Number.isFinite(newRate)) {
+            this.vaIrrrlMessage = 'Enter current balance, current rate, months remaining, and new rate.';
+            this.vaIrrrlResults = null;
+            return;
+        }
+        const feePct = this.vaFundingFeeRate(this.vaServiceType, this.vaFirstUse, 0, this.vaDisabled, 'irrrl');
+        const fee = this.vaIrrrlFinanceFee ? (bal * (feePct / 100)) : 0;
+        const newPrincipal = this.vaIrrrlFinanceFee ? (bal + fee) : bal;
+        const rCur = (curRate / 100) / MONTHS_IN_YEAR;
+        const rNew = (newRate / 100) / MONTHS_IN_YEAR;
+        const emiCur = this.calculateEmi(bal, rCur, months);
+        const emiNew = this.calculateEmi(newPrincipal, rNew, months);
+        const closing = Number.isFinite(this.vaIrrrlClosingCosts) ? this.vaIrrrlClosingCosts : 0;
+        const monthlySavings = emiCur - emiNew;
+        const breakEvenMonths = monthlySavings > 0 ? Math.ceil(closing / monthlySavings) : null;
+        const breakEvenDate = Number.isFinite(breakEvenMonths) ? (() => { const d = new Date(); d.setMonth(d.getMonth() + breakEvenMonths); return d; })() : null;
+
+        this.vaIrrrlResults = {
+            feePct,
+            fee,
+            newPrincipal,
+            emiCur,
+            emiNew,
+            monthlySavings,
+            closing,
+            breakEvenMonths,
+            breakEvenDate
+        };
+        this.vaIrrrlMessage = null;
+    }
+
+    // =========================
+    // USDA Loan Analyzer (eligibility + guarantee fees)
+    // =========================
+    @track usdaPrice = null;
+    @track usdaDownPct = 0; // typically 0% down
+    @track usdaTermYears = 30;
+    @track usdaRate = null; // optional override; defaults to calculator rate
+    @track usdaUpfrontFeePct = 1.0; // USDA upfront guarantee fee (approx.)
+    @track usdaAnnualFeePct = 0.35; // Annual fee (basis points %)
+    @track usdaFinanceUpfront = true;
+    @track usdaAreaLimit = null; // Income limit for household (annual)
+    @track usdaHouseholdIncome = null; // Borrower household income (annual)
+    @track usdaRuralEligible = false; // Geographic eligibility toggle (proxy for live check)
+    @track usdaZip = null; // optional informational field
+    @track usdaResults = null;
+    @track usdaMessage = null;
+
+    handleUsdaFieldChange(event) {
+        const { name } = event.target;
+        const v = event.detail?.value;
+        const num = parseFloat(v);
+        const parsed = Number.isFinite(num) ? num : null;
+        switch (name) {
+            case 'usdaPrice': this.usdaPrice = parsed; break;
+            case 'usdaDownPct': this.usdaDownPct = parsed; break;
+            case 'usdaTermYears': this.usdaTermYears = Number.isFinite(num) ? Math.max(1, Math.floor(num)) : this.usdaTermYears; break;
+            case 'usdaRate': this.usdaRate = parsed; break;
+            case 'usdaUpfrontFeePct': this.usdaUpfrontFeePct = parsed; break;
+            case 'usdaAnnualFeePct': this.usdaAnnualFeePct = parsed; break;
+            case 'usdaAreaLimit': this.usdaAreaLimit = parsed; break;
+            case 'usdaHouseholdIncome': this.usdaHouseholdIncome = parsed; break;
+            case 'usdaZip': this.usdaZip = v; break;
+            default: break;
+        }
+        this.usdaMessage = null;
+    }
+
+    handleUsdaToggle(event) {
+        const { name } = event.target;
+        const checked = !!event.detail.checked;
+        if (name === 'usdaFinanceUpfront') this.usdaFinanceUpfront = checked;
+        if (name === 'usdaRuralEligible') this.usdaRuralEligible = checked;
+    }
+
+    calculateUsda() {
+        const price = Number.isFinite(this.usdaPrice) ? this.usdaPrice : (Number.isFinite(this.price) ? this.price : null);
+        if (!Number.isFinite(price) || price <= 0) {
+            this.usdaMessage = 'Enter a valid price or USDA loan amount basis.';
+            this.usdaResults = null;
+            return;
+        }
+        if (!Number.isFinite(this.usdaAreaLimit) || this.usdaAreaLimit <= 0 || !Number.isFinite(this.usdaHouseholdIncome) || this.usdaHouseholdIncome < 0) {
+            this.usdaMessage = 'Enter area income limit and your household income (annual).';
+            this.usdaResults = null;
+            return;
+        }
+
+        const downPct = Number.isFinite(this.usdaDownPct) ? this.usdaDownPct : 0;
+        const baseLoan = price * (1 - (downPct / 100));
+        const upfrontPct = Number.isFinite(this.usdaUpfrontFeePct) ? this.usdaUpfrontFeePct : 1.0;
+        const annualFeePct = Number.isFinite(this.usdaAnnualFeePct) ? this.usdaAnnualFeePct : 0.35;
+        const upfrontFee = baseLoan * (upfrontPct / 100);
+        const financedLoan = this.usdaFinanceUpfront ? (baseLoan + upfrontFee) : baseLoan;
+        const years = Number.isFinite(this.usdaTermYears) ? this.usdaTermYears : 30;
+        const rate = Number.isFinite(this.usdaRate) ? this.usdaRate : (Number.isFinite(this.interestRate) ? this.interestRate : 0);
+        const r = (rate / 100) / MONTHS_IN_YEAR;
+        const n = years * MONTHS_IN_YEAR;
+        const emi = this.calculateEmi(financedLoan, r, n);
+        const monthlyAnnualFee = financedLoan * ((annualFeePct / 100) / 12);
+
+        // Eligibility checks
+        const geographicEligible = !!this.usdaRuralEligible; // proxy toggle (offline)
+        const incomeEligible = this.usdaHouseholdIncome <= this.usdaAreaLimit; // user-provided limit already sized to household
+        const eligible = geographicEligible && incomeEligible;
+
+        const reasons = [];
+        if (!geographicEligible) reasons.push('Property not marked as rural-eligible (toggle to confirm eligibility).');
+        if (!incomeEligible) reasons.push('Household income exceeds entered area limit.');
+
+        this.usdaResults = {
+            price,
+            downPct,
+            baseLoan,
+            upfrontPct,
+            upfrontFee,
+            financedLoan,
+            annualFeePct,
+            monthlyAnnualFee,
+            rate,
+            years,
+            monthlyPI: emi,
+            monthlyTotal: emi + monthlyAnnualFee,
+            geographicEligible,
+            incomeEligible,
+            eligible,
+            reasons,
+            zip: this.usdaZip
+        };
+        this.usdaMessage = null;
+    }
+
+    // =========================
+    // =========================
+    // Escrow Analysis (tax/insurance reserves and projections)
+    // =========================
+    @track escrowStartMonth = (new Date().getMonth() + 1);
+    @track escrowStartBalance = null;
+    @track escrowMonthlyCurrent = null;
+    @track escrowCushionMonths = 2;
+    @track taxAnnual = null;
+    @track taxMonth1 = 1;
+    @track taxMonth2 = null;
+    @track insuranceAnnual = null;
+    @track insuranceMonth = 1;
+    @track escrowRows = [];
+    @track escrowMessage = null;
+    @track escrowSummary = null;
+
+    get monthOptions() {
+        return [
+            { label: 'January', value: 1 },
+            { label: 'February', value: 2 },
+            { label: 'March', value: 3 },
+            { label: 'April', value: 4 },
+            { label: 'May', value: 5 },
+            { label: 'June', value: 6 },
+            { label: 'July', value: 7 },
+            { label: 'August', value: 8 },
+            { label: 'September', value: 9 },
+            { label: 'October', value: 10 },
+            { label: 'November', value: 11 },
+            { label: 'December', value: 12 }
+        ];
+    }
+
+    handleEscrowFieldChange(event) {
+        const name = event.target.name;
+        const raw = event.detail?.value;
+        const num = parseFloat(raw);
+        const parsed = Number.isFinite(num) ? num : null;
+        switch (name) {
+            case 'escrowStartMonth': this.escrowStartMonth = parseInt(raw, 10) || 1; break;
+            case 'escrowStartBalance': this.escrowStartBalance = parsed; break;
+            case 'escrowMonthlyCurrent': this.escrowMonthlyCurrent = parsed; break;
+            case 'escrowCushionMonths': this.escrowCushionMonths = Number.isFinite(num) ? Math.max(0, Math.floor(num)) : 2; break;
+            case 'taxAnnual': this.taxAnnual = parsed; break;
+            case 'taxMonth1': this.taxMonth1 = parseInt(raw, 10) || null; break;
+            case 'taxMonth2': this.taxMonth2 = raw ? (parseInt(raw, 10) || null) : null; break;
+            case 'insuranceAnnual': this.insuranceAnnual = parsed; break;
+            case 'insuranceMonth': this.insuranceMonth = parseInt(raw, 10) || null; break;
+            default: break;
+        }
+        this.escrowMessage = null;
+    }
+
+    get escrowColumns() {
+        const code = this.currencyCode;
+        return [
+            { label: 'Month', fieldName: 'month' },
+            { label: 'Beginning', fieldName: 'begin', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Deposit', fieldName: 'deposit', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Disbursement', fieldName: 'disburse', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Ending', fieldName: 'end', type: 'currency', typeAttributes: { currencyCode: code } }
+        ];
+    }
+
+    computeEscrowAnalysis() {
+        if (!Number.isFinite(this.taxAnnual) || this.taxAnnual < 0 || !Number.isFinite(this.insuranceAnnual) || this.insuranceAnnual < 0) {
+            this.escrowMessage = 'Enter valid annual Property Tax and Insurance amounts.';
+            this.escrowRows = [];
+            this.escrowSummary = null;
+            return;
+        }
+        const startBal = Number.isFinite(this.escrowStartBalance) ? this.escrowStartBalance : 0;
+        const baseMonthly = (this.taxAnnual + this.insuranceAnnual) / 12;
+        const monthlyDeposit = Number.isFinite(this.escrowMonthlyCurrent) ? this.escrowMonthlyCurrent : baseMonthly;
+        const startMonth = (Number.isFinite(this.escrowStartMonth) && this.escrowStartMonth >= 1 && this.escrowStartMonth <= 12) ? this.escrowStartMonth : 1;
+        const taxMonths = [this.taxMonth1, this.taxMonth2].filter((m) => Number.isFinite(m) && m >= 1 && m <= 12);
+        const twoTax = taxMonths.length === 2;
+        const taxPerDisb = twoTax ? (this.taxAnnual / 2) : this.taxAnnual;
+        const insMonth = this.insuranceMonth;
+
+        let bal = startBal;
+        let minBal = Number.POSITIVE_INFINITY;
+        const rows = [];
+        const monthName = (i) => this.monthOptions[i - 1]?.label || `M${i}`;
+        for (let k = 0; k < 12; k++) {
+            const monthNum = ((startMonth - 1 + k) % 12) + 1;
+            const begin = bal;
+            const deposit = monthlyDeposit;
+            let disburse = 0;
+            if (taxMonths.includes(monthNum)) disburse += taxPerDisb;
+            if (insMonth === monthNum) disburse += (this.insuranceAnnual || 0);
+            const end = begin + deposit - disburse;
+            bal = end;
+            if (end < minBal) minBal = end;
+            rows.push({ id: k + 1, month: monthName(monthNum), begin, deposit, disburse, end });
+        }
+
+        const cushionAmount = (this.taxAnnual + this.insuranceAnnual) * (Math.min(2, this.escrowCushionMonths || 0) / 12);
+        const shortage = Math.max(0, cushionAmount - minBal);
+        const surplus = Math.max(0, minBal - cushionAmount);
+        const recommendedMonthly = baseMonthly + (shortage > 0 ? (shortage / 12) : 0);
+
+        this.escrowRows = rows;
+        this.escrowSummary = {
+            baseMonthly,
+            cushionAmount,
+            minBalance: minBal,
+            shortage,
+            surplus,
+            recommendedMonthly
+        };
+        this.escrowMessage = null;
+    }
+
+    resetEscrow() {
+        this.escrowStartBalance = null;
+        this.escrowMonthlyCurrent = null;
+        this.escrowCushionMonths = 2;
+        this.taxAnnual = null;
+        this.taxMonth1 = 1;
+        this.taxMonth2 = null;
+        this.insuranceAnnual = null;
+        this.insuranceMonth = 1;
+        this.escrowRows = [];
+        this.escrowSummary = null;
+        this.escrowMessage = null;
+    }
+
     // Credit Score Simulation (hard inquiry + new mortgage + payment history)
     // =========================
     @track simStartScore = 720;
