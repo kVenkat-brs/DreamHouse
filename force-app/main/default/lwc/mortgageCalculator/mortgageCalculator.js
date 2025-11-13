@@ -261,17 +261,17 @@ export default class MortgageCalculator extends LightningElement {
                 interest: totalInterest
             });
         }
-        return rows;
+        return rows.sort((a, b) => (b._score - a._score));
     }
 
     // =========================
     // Lender comparison (rates/APR/fees + recommendation)
     // =========================
     lendersCatalog = [
-        { id: 'acme', name: 'Acme Bank', rateAdj: 0.0, aprAdj: 0.10, baseFee: 1500, specialties: ['fixed30', 'fixed15'] },
-        { id: 'homefirst', name: 'HomeFirst Mortgage', rateAdj: -0.05, aprAdj: 0.05, baseFee: 995, specialties: ['fha', 'va'] },
-        { id: 'citywide', name: 'Citywide Credit Union', rateAdj: -0.10, aprAdj: 0.00, baseFee: 700, specialties: ['fixed30', 'arm5_1'] },
-        { id: 'neighborhood', name: 'Neighborhood Lenders', rateAdj: 0.05, aprAdj: 0.12, baseFee: 1200, specialties: ['arm5_1', 'fixed15'] }
+        { id: 'acme', name: 'Acme Bank', rateAdj: 0.0,  aprAdj: 0.10, baseFee: 1500, points: 0.50, specialties: ['fixed30', 'fixed15'] },
+        { id: 'homefirst', name: 'HomeFirst Mortgage', rateAdj: -0.05, aprAdj: 0.05, baseFee:  995, points: 0.25, specialties: ['fha', 'va'] },
+        { id: 'citywide', name: 'Citywide Credit Union', rateAdj: -0.10, aprAdj: 0.00, baseFee:  700, points: 0.00, specialties: ['fixed30', 'arm5_1'] },
+        { id: 'neighborhood', name: 'Neighborhood Lenders', rateAdj: 0.05,  aprAdj: 0.12, baseFee: 1200, points: 0.75, specialties: ['arm5_1', 'fixed15'] }
     ];
 
     get lenderComparisonColumns() {
@@ -280,8 +280,12 @@ export default class MortgageCalculator extends LightningElement {
             { label: 'Lender', fieldName: 'lender' },
             { label: 'Rate (%)', fieldName: 'rate', type: 'number', typeAttributes: { minimumIntegerDigits: 1, maximumFractionDigits: 2 } },
             { label: 'APR (%)', fieldName: 'apr', type: 'number', typeAttributes: { minimumIntegerDigits: 1, maximumFractionDigits: 2 } },
+            { label: 'Points (%)', fieldName: 'points', type: 'number', typeAttributes: { minimumIntegerDigits: 1, maximumFractionDigits: 2 } },
             { label: 'Fees', fieldName: 'fees', type: 'currency', typeAttributes: { currencyCode: code } },
             { label: 'Monthly', fieldName: 'monthly', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Total Cost 3y', fieldName: 'total3y', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Total Cost 5y', fieldName: 'total5y', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Total Cost 10y', fieldName: 'total10y', type: 'currency', typeAttributes: { currencyCode: code } },
             { label: 'Recommendation', fieldName: 'recommendation' }
         ];
     }
@@ -295,13 +299,28 @@ export default class MortgageCalculator extends LightningElement {
         const tenure = Number.isFinite(this.tenure) && this.tenure > 0 ? this.tenure : null;
         const totalPayments = tenure ? tenure * MONTHS_IN_YEAR : null;
 
+        const start = new Date();
         const rows = this.lendersCatalog.map((l) => {
             const rate = Math.max(0, Math.round((baseRate + bandAdj + l.rateAdj) * 100) / 100);
             const apr = Math.max(0, Math.round((rate + l.aprAdj) * 100) / 100);
             let monthly = null;
+            let total3y = null, total5y = null, total10y = null;
+            const pointsCost = price ? (price * ((l.points || 0) / 100)) : 0;
             if (price && totalPayments) {
                 const monthlyRate = (rate / 100) / MONTHS_IN_YEAR;
                 monthly = this.calculateEmi(price, monthlyRate, totalPayments);
+                // Build baseline monthly schedule once and sum interest to horizons
+                const sched = this.buildMonthlySchedule(price, monthlyRate, totalPayments, monthly, start, { amount: 0, start: null, frequency: 'none', months: null });
+                const sumInterest = (m) => {
+                    const limit = Math.min(m, sched.schedule.length);
+                    let sum = 0;
+                    for (let i = 0; i < limit; i++) sum += (sched.schedule[i].interest || 0);
+                    return sum;
+                };
+                const fees = l.baseFee || 0;
+                total3y = sumInterest(36) + fees + pointsCost;
+                total5y = sumInterest(60) + fees + pointsCost;
+                total10y = sumInterest(120) + fees + pointsCost;
             }
             // Simple recommendation reasons
             const aligns = l.specialties?.includes(this.loanType);
@@ -311,10 +330,14 @@ export default class MortgageCalculator extends LightningElement {
                 lender: l.name,
                 rate,
                 apr,
+                points: l.points || 0,
                 fees: l.baseFee,
                 monthly,
+                total3y,
+                total5y,
+                total10y,
                 recommendation: rec,
-                _score: (monthly ? -monthly : 0) - (l.baseFee / 500) + (aligns ? 1 : 0) // internal score for ranking
+                _score: (monthly ? -monthly : 0) - (l.baseFee / 500) + (aligns ? 1 : 0) - ((l.points || 0) / 2) // internal score for ranking
             };
         });
 
@@ -1968,6 +1991,20 @@ export default class MortgageCalculator extends LightningElement {
         if (name === 'accelLumpStartMonth') this.accelLumpStartMonth = parsed;
     }
 
+    // Frequency selection for accelerated schedules
+    @track accelFrequency = 'biweekly';
+    get accelFrequencyOptions() {
+        return [
+            { label: 'Bi-weekly (26/yr)', value: 'biweekly' },
+            { label: 'Semi-monthly (24/yr)', value: 'semiMonthly' },
+            { label: 'Monthly (12/yr)', value: 'monthly' },
+            { label: 'Weekly (52/yr)', value: 'weekly' }
+        ];
+    }
+    handleAccelFrequencyChange(event) {
+        this.accelFrequency = event.detail.value || 'biweekly';
+    }
+
     computeAcceleration() {
         // Validate base loan inputs
         if (!Number.isFinite(this.price) || !Number.isFinite(this.interestRate) || !Number.isFinite(this.tenure) || this.price <= 0 || this.tenure <= 0) {
@@ -1984,10 +2021,10 @@ export default class MortgageCalculator extends LightningElement {
         // Baseline
         const base = this.buildMonthlySchedule(p, rMonthly, n, emi, start, { amount: 0, start: null, frequency: 'none', months: null });
 
-        // Bi-weekly
+        // Accelerated frequency variants (including bi-weekly)
         let biw = null;
         if (this.biweeklyEnabled) {
-            biw = this.buildBiWeeklySchedule(p, (this.interestRate / 100), emi, start);
+            biw = this.buildAcceleratedSchedule(p, this.interestRate, emi, start, this.accelFrequency || 'biweekly');
         }
 
         // Extra monthly
@@ -2033,26 +2070,33 @@ export default class MortgageCalculator extends LightningElement {
         ];
     }
 
-    // Build bi-weekly schedule using 26 periods/year, payment = half monthly EMI every 2 weeks
-    buildBiWeeklySchedule(principal, annualRate, monthlyEmi, startDate) {
-        const payment = monthlyEmi / 2; // half of monthly payment paid every two weeks
-        const periodRate = annualRate / 26; // approximate per bi-weekly period
+    // Flexible accelerated schedule builder supporting multiple payment frequencies
+    // 'monthly' (12/yr), 'biweekly' (26/yr), 'weekly' (52/yr), 'semiMonthly' (24/yr)
+    buildAcceleratedSchedule(principal, annualRatePercent, monthlyEmi, startDate, frequency = 'biweekly') {
+        const freqMap = {
+            monthly: { periodsPerYear: 12, daysPerPeriod: 30, payment: monthlyEmi },
+            semiMonthly: { periodsPerYear: 24, daysPerPeriod: 15, payment: monthlyEmi / 2 },
+            biweekly: { periodsPerYear: 26, daysPerPeriod: 14, payment: monthlyEmi / 2 },
+            weekly: { periodsPerYear: 52, daysPerPeriod: 7, payment: monthlyEmi / 4 },
+        };
+        const cfg = freqMap[frequency] || freqMap.biweekly;
+        const ratePerPeriod = (annualRatePercent / 100) / cfg.periodsPerYear;
         let balance = principal;
         let totalInterest = 0;
         let periods = 0;
         let current = new Date(startDate.getTime());
-        while (balance > 0 && periods < 26 * this.tenure + 120) { // safety cap
-            const interest = balance * periodRate;
-            let principalPaid = payment - interest;
-            if (principalPaid < 0) principalPaid = 0; // guard
+        while (balance > 0 && periods < cfg.periodsPerYear * this.tenure + 240) { // generous cap
+            const interest = balance * ratePerPeriod;
+            let principalPaid = cfg.payment - interest;
+            if (principalPaid < 0) principalPaid = 0;
             if (principalPaid > balance) principalPaid = balance;
             balance -= principalPaid;
             totalInterest += interest;
             periods += 1;
-            current.setDate(current.getDate() + 14);
+            current.setDate(current.getDate() + cfg.daysPerPeriod);
         }
-        const monthsApprox = Math.ceil(periods * (12 / 26));
-        return { schedule: [], payments: monthsApprox, totalInterest, lastDate: current };
+        const monthsApprox = Math.ceil((periods / cfg.periodsPerYear) * 12);
+        return { schedule: [], payments: monthsApprox, totalInterest, lastDate: current, frequency };
     }
 
     // =========================

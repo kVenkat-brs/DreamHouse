@@ -1192,6 +1192,9 @@
                 <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
                     <lightning-input name="accelLumpStartMonth" type="number" label="Lump Sum at Payment #" value={accelLumpStartMonth} onchange={handleAccelFieldChange}></lightning-input>
                 </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-combobox name="accelFrequency" label="Frequency" value={accelFrequency} options={accelFrequencyOptions} onchange={handleAccelFrequencyChange}></lightning-combobox>
+                </div>
             </div>
             <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
                 <lightning-button label="Compute" variant="brand" onclick={computeAcceleration}></lightning-button>
