@@ -779,6 +779,46 @@
             </template>
         </div>
     </lightning-card>
+
+    <!-- Stress Testing -->
+    <lightning-card title="Stress Testing" icon-name="utility:warning">
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="stressRateShocksInput" type="text" label="Rate Shocks (% pts, CSV)" value={stressRateShocksInput} onchange={handleStressFieldChange} field-level-help="Example: -1,0,1,2"></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="stressJobLossMonths" type="number" label="Job Loss Months" value={stressJobLossMonths} onchange={handleStressFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="stressIncomeDropPct" type="number" step="1" label="Income Drop (%)" value={stressIncomeDropPct} onchange={handleStressFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="stressExpenseIncreasePct" type="number" step="1" label="Expense Increase (%)" value={stressExpenseIncreasePct} onchange={handleStressFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="stressValueDropPct" type="number" step="1" label="Value Drop (%)" value={stressValueDropPct} onchange={handleStressFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="stressReserves" type="currency" label="Available Reserves" value={stressReserves} onchange={handleStressFieldChange} field-level-help="If empty, uses current savings."></lightning-input>
+                </div>
+            </div>
+            <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                <lightning-button label="Run Stress Tests" variant="brand" onclick={runStressTests}></lightning-button>
+            </div>
+            <template lwc:if={stressMessage}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
+                    <span class="slds-assistive-text">Error</span>
+                    <h2>{stressMessage}</h2>
+                </div>
+            </template>
+            <template lwc:if={stressRows.length}>
+                <div class="slds-m-top_medium">
+                    <lightning-datatable key-field="id" data={stressRows} columns={stressColumns} hide-checkbox-column></lightning-datatable>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
     <!-- VA Loan Calculator -->
     <lightning-card title="VA Loan Calculator" icon-name="utility:milestone">
         <div class="slds-p-around_medium">

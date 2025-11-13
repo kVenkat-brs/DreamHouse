@@ -997,6 +997,127 @@ export default class MortgageCalculator extends LightningElement {
     }
 
     // =========================
+    // Stress Testing (rate shocks, job loss, downturns)
+    // =========================
+    @track stressRateShocksInput = '-1,0,1,2'; // CSV of percentage point changes
+    @track stressJobLossMonths = 3; // months with zero income
+    @track stressIncomeDropPct = 20; // % income reduction (non-zero months)
+    @track stressExpenseIncreasePct = 10; // % increase to non-housing debts/expenses
+    @track stressValueDropPct = 15; // % property value decline
+    @track stressReserves = null; // fallback reserves; defaults to savingsCurrent if null
+    @track stressRows = [];
+    @track stressMessage = null;
+
+    handleStressFieldChange(event) {
+        const { name } = event.target;
+        const v = event.detail?.value;
+        if (name === 'stressRateShocksInput') {
+            this.stressRateShocksInput = v ?? '';
+            return;
+        }
+        const num = parseFloat(v);
+        const parsed = Number.isFinite(num) ? num : null;
+        switch (name) {
+            case 'stressJobLossMonths': this.stressJobLossMonths = Number.isFinite(num) ? Math.max(0, Math.floor(num)) : this.stressJobLossMonths; break;
+            case 'stressIncomeDropPct': this.stressIncomeDropPct = parsed ?? this.stressIncomeDropPct; break;
+            case 'stressExpenseIncreasePct': this.stressExpenseIncreasePct = parsed ?? this.stressExpenseIncreasePct; break;
+            case 'stressValueDropPct': this.stressValueDropPct = parsed ?? this.stressValueDropPct; break;
+            case 'stressReserves': this.stressReserves = parsed; break;
+            default: break;
+        }
+        this.stressMessage = null;
+    }
+
+    get stressColumns() {
+        const code = this.currencyCode;
+        return [
+            { label: 'Scenario', fieldName: 'name' },
+            { label: 'Rate (%)', fieldName: 'rate', type: 'number', typeAttributes: { maximumFractionDigits: 2 } },
+            { label: 'Payment', fieldName: 'payment', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Front DTI (%)', fieldName: 'front', type: 'number', typeAttributes: { maximumFractionDigits: 1 } },
+            { label: 'Back DTI (%)', fieldName: 'back', type: 'number', typeAttributes: { maximumFractionDigits: 1 } },
+            { label: 'LTV (%)', fieldName: 'ltv', type: 'number', typeAttributes: { maximumFractionDigits: 1 } },
+            { label: 'Runway (mo)', fieldName: 'runway', type: 'number', typeAttributes: { maximumFractionDigits: 0 } },
+            { label: 'Covers Job Loss', fieldName: 'covers', type: 'text' },
+            { label: 'Status', fieldName: 'status' }
+        ];
+    }
+
+    parseRateShocks() {
+        const raw = (this.stressRateShocksInput || '').split(',');
+        const arr = raw
+            .map((s) => parseFloat(String(s).trim()))
+            .filter((v) => Number.isFinite(v));
+        return arr.length ? arr : [0];
+    }
+
+    runStressTests() {
+        // Validate core inputs
+        if (!Number.isFinite(this.price) || this.price <= 0 || !Number.isFinite(this.tenure) || this.tenure <= 0) {
+            this.stressMessage = 'Enter valid price and tenure to run stress tests.';
+            this.stressRows = [];
+            return;
+        }
+        const baseRate = Number.isFinite(this.interestRate) ? this.interestRate : this.getDefaultRateForLoanType(this.loanType);
+        const down = Number.isFinite(this.affDownPayment) ? this.affDownPayment : (Number.isFinite(this.investDownPayment) ? this.investDownPayment : 0);
+        const principal = Math.max(0, this.price - (down || 0));
+        const n = this.tenure * MONTHS_IN_YEAR;
+        const monthlyIncome = Number.isFinite(this.incomeAnnual) ? (this.incomeAnnual / MONTHS_IN_YEAR) : null;
+        const baseDebts = Number.isFinite(this.monthlyDebt) ? this.monthlyDebt : 0;
+        const reserves = Number.isFinite(this.stressReserves) ? this.stressReserves : (Number.isFinite(this.savingsCurrent) ? this.savingsCurrent : 0);
+
+        const valueDrop = Number.isFinite(this.stressValueDropPct) ? (this.stressValueDropPct / 100) : 0.15;
+        const newValue = this.price * (1 - valueDrop);
+        const expenseBump = Number.isFinite(this.stressExpenseIncreasePct) ? (this.stressExpenseIncreasePct / 100) : 0.10;
+        const incDrop = Number.isFinite(this.stressIncomeDropPct) ? (this.stressIncomeDropPct / 100) : 0.20;
+        const jobLossMonths = Number.isFinite(this.stressJobLossMonths) ? this.stressJobLossMonths : 0;
+
+        const rows = [];
+        for (const shock of this.parseRateShocks()) {
+            const rate = Math.max(0, baseRate + shock);
+            const r = (rate / 100) / MONTHS_IN_YEAR;
+            const payment = this.calculateEmi(principal, r, n);
+
+            // Income/expense under stress
+            const stressedIncome = monthlyIncome != null ? Math.max(0, monthlyIncome * (1 - incDrop)) : null;
+            const stressedDebts = baseDebts * (1 + expenseBump);
+
+            const front = stressedIncome ? Math.round(((payment) / stressedIncome) * 1000) / 10 : null;
+            const back = stressedIncome ? Math.round(((payment + stressedDebts) / stressedIncome) * 1000) / 10 : null;
+
+            // LTV with value drop
+            const ltv = newValue > 0 ? Math.round(((principal) / newValue) * 1000) / 10 : null;
+
+            // Runway months with reserves to cover payment during job loss
+            const runway = payment > 0 ? Math.floor((reserves || 0) / payment) : null;
+            const covers = (runway != null && jobLossMonths > 0) ? (runway >= jobLossMonths ? 'Yes' : `No (${runway} mo)`) : 'N/A';
+
+            // Status
+            let status = 'OK';
+            if (back != null && back > 43) status = 'At Risk';
+            else if (front != null && front > 31) status = 'Watch';
+            if (ltv != null && ltv > 97) status = status === 'At Risk' ? status : 'Watch';
+            if (jobLossMonths > 0 && runway != null && runway < jobLossMonths) status = 'At Risk';
+
+            rows.push({
+                id: `shock_${shock}`,
+                name: shock === 0 ? 'Base' : (shock > 0 ? `+${shock}%` : `${shock}%`),
+                rate,
+                payment,
+                front,
+                back,
+                ltv,
+                runway,
+                covers,
+                status
+            });
+        }
+
+        this.stressRows = rows;
+        this.stressMessage = null;
+    }
+
+    // =========================
     // =========================
     // Escrow Analysis (tax/insurance reserves and projections)
     // =========================
