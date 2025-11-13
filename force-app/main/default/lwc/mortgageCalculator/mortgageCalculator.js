@@ -1179,6 +1179,235 @@ export default class MortgageCalculator extends LightningElement {
     }
 
     // =========================
+    // Loan Modification Calculator
+    // =========================
+    @track modCurrentBalance = null;
+    @track modCurrentRate = null; // % APR
+    @track modMonthsRemaining = null; // months
+    @track modRateReductionPct = null; // percentage points to reduce (optional)
+    @track modNewRate = null; // optional explicit new rate
+    @track modTermExtensionMonths = null; // months to add (optional)
+    @track modNewTermMonths = null; // optional explicit new term (months)
+    @track modPrincipalForgiveness = null; // amount to deduct from principal
+    @track modResults = null;
+    @track modMessage = null;
+
+    handleModFieldChange(event) {
+        const { name } = event.target;
+        const v = parseFloat(event.detail?.value);
+        const parsed = Number.isFinite(v) ? v : null;
+        switch (name) {
+            case 'modCurrentBalance': this.modCurrentBalance = parsed; break;
+            case 'modCurrentRate': this.modCurrentRate = parsed; break;
+            case 'modMonthsRemaining': this.modMonthsRemaining = Number.isFinite(v) ? Math.max(1, Math.floor(v)) : this.modMonthsRemaining; break;
+            case 'modRateReductionPct': this.modRateReductionPct = parsed; break;
+            case 'modNewRate': this.modNewRate = parsed; break;
+            case 'modTermExtensionMonths': this.modTermExtensionMonths = Number.isFinite(v) ? Math.max(0, Math.floor(v)) : this.modTermExtensionMonths; break;
+            case 'modNewTermMonths': this.modNewTermMonths = Number.isFinite(v) ? Math.max(1, Math.floor(v)) : this.modNewTermMonths; break;
+            case 'modPrincipalForgiveness': this.modPrincipalForgiveness = parsed; break;
+            default: break;
+        }
+        this.modMessage = null;
+    }
+
+    evaluateLoanModification() {
+        const curBal = this.modCurrentBalance;
+        const curRate = this.modCurrentRate;
+        const curMonths = this.modMonthsRemaining;
+        if (!Number.isFinite(curBal) || curBal <= 0 || !Number.isFinite(curRate) || curRate < 0 || !Number.isFinite(curMonths) || curMonths <= 0) {
+            this.modMessage = 'Enter current balance, current rate, and remaining months.';
+            this.modResults = null;
+            return;
+        }
+        const rCur = (curRate / 100) / MONTHS_IN_YEAR;
+        const emiCur = this.calculateEmi(curBal, rCur, curMonths);
+
+        // Determine new terms
+        const forgiveness = Math.max(0, Number.isFinite(this.modPrincipalForgiveness) ? this.modPrincipalForgiveness : 0);
+        const newPrincipal = Math.max(0, curBal - forgiveness);
+        const newRate = Number.isFinite(this.modNewRate)
+            ? Math.max(0, this.modNewRate)
+            : (Number.isFinite(this.modRateReductionPct) ? Math.max(0, curRate - this.modRateReductionPct) : curRate);
+        const rNew = (newRate / 100) / MONTHS_IN_YEAR;
+
+        let newMonths = Number.isFinite(this.modNewTermMonths) ? Math.floor(this.modNewTermMonths) : null;
+        if (!Number.isFinite(newMonths)) {
+            const ext = Number.isFinite(this.modTermExtensionMonths) ? Math.floor(this.modTermExtensionMonths) : 0;
+            newMonths = Math.max(1, curMonths + ext);
+        }
+
+        const emiNew = this.calculateEmi(newPrincipal, rNew, newMonths);
+
+        // Build schedules to compute remaining interest totals
+        const start = new Date();
+        const schedCur = this.buildMonthlySchedule(curBal, rCur, curMonths, emiCur, start, { amount: 0, start: null, frequency: 'none', months: null });
+        const schedNew = this.buildMonthlySchedule(newPrincipal, rNew, newMonths, emiNew, start, { amount: 0, start: null, frequency: 'none', months: null });
+        const sumInterest = (sched) => sched.schedule.reduce((acc, m) => acc + (m.interest || 0), 0);
+        const curInterest = sumInterest(schedCur);
+        const newInterest = sumInterest(schedNew);
+
+        const monthlySavings = emiCur - emiNew;
+        const interestSaved = curInterest - newInterest;
+        const paymentReductionPct = emiCur > 0 ? Math.round(((emiCur - emiNew) / emiCur) * 1000) / 10 : null;
+
+        // Estimated new maturity date
+        const newMat = new Date(start.getTime());
+        newMat.setMonth(newMat.getMonth() + newMonths);
+
+        this.modResults = {
+            curRate,
+            curMonths,
+            curPayment: emiCur,
+            curInterest,
+            newRate,
+            newMonths,
+            newPayment: emiNew,
+            newInterest,
+            forgiveness,
+            newPrincipal,
+            monthlySavings,
+            interestSaved,
+            paymentReductionPct,
+            newMaturity: newMat
+        };
+        this.modMessage = null;
+    }
+
+    // =========================
+    // Reverse Mortgage Calculator (HECM-style approximation)
+    // =========================
+    @track revHomeValue = null;
+    @track revExistingMortgage = 0;
+    @track revBorrowerAge = 62;
+    @track revExpectedRate = 5.0; // annual expected rate
+    @track revAnnualMipPct = 0.5; // annual MIP (basis points %)
+    @track revOrigination = 0; // origination/costs
+    @track revServiceSetAside = 0; // SFSA
+    @track revOtherSetAsides = 0; // life/repair set-asides
+    @track revInitialDraw = 0; // initial advance at closing
+    @track revTermYears = 20; // used for term/tenure payment modeling
+    @track revPlfOverride = null; // optional PLF override (%)
+    @track revNatLendingLimit = 1149825; // cap for MCA
+    @track revResults = null;
+    @track revMessage = null;
+    @track revLocRows = [];
+    @track revBalRows = [];
+
+    handleReverseFieldChange(event) {
+        const { name } = event.target;
+        const vStr = event.detail?.value;
+        const vNum = parseFloat(vStr);
+        const parsed = Number.isFinite(vNum) ? vNum : null;
+        switch (name) {
+            case 'revHomeValue': this.revHomeValue = parsed; break;
+            case 'revExistingMortgage': this.revExistingMortgage = parsed ?? 0; break;
+            case 'revBorrowerAge': this.revBorrowerAge = Number.isFinite(vNum) ? Math.max(18, Math.floor(vNum)) : this.revBorrowerAge; break;
+            case 'revExpectedRate': this.revExpectedRate = parsed ?? this.revExpectedRate; break;
+            case 'revAnnualMipPct': this.revAnnualMipPct = parsed ?? this.revAnnualMipPct; break;
+            case 'revOrigination': this.revOrigination = parsed ?? 0; break;
+            case 'revServiceSetAside': this.revServiceSetAside = parsed ?? 0; break;
+            case 'revOtherSetAsides': this.revOtherSetAsides = parsed ?? 0; break;
+            case 'revInitialDraw': this.revInitialDraw = parsed ?? 0; break;
+            case 'revTermYears': this.revTermYears = Number.isFinite(vNum) ? Math.max(1, Math.floor(vNum)) : this.revTermYears; break;
+            case 'revPlfOverride': this.revPlfOverride = parsed; break;
+            case 'revNatLendingLimit': this.revNatLendingLimit = parsed ?? this.revNatLendingLimit; break;
+            default: break;
+        }
+        this.revMessage = null;
+    }
+
+    // Very simplified PLF approximation: increases with age, decreases with expected rate
+    reversePlf(age, expRate) {
+        if (Number.isFinite(this.revPlfOverride) && this.revPlfOverride > 0) return Math.min(0.75, Math.max(0.1, this.revPlfOverride / 100));
+        const a = Math.max(62, Math.min(95, age));
+        // Base at 62 with 5% ~ 0.35; +0.01 per year; -0.02 per rate point above 5%
+        const base = 0.35 + (a - 62) * 0.01 - (Math.max(0, expRate - 5) * 0.02);
+        return Math.min(0.75, Math.max(0.1, Math.round(base * 100) / 100));
+    }
+
+    computeReverseMortgage() {
+        const value = Number.isFinite(this.revHomeValue) ? this.revHomeValue : (Number.isFinite(this.price) ? this.price : null);
+        if (!Number.isFinite(value) || value <= 0) {
+            this.revMessage = 'Enter a valid home value.';
+            this.revResults = null;
+            return;
+        }
+        const age = this.revBorrowerAge || 62;
+        const expRate = Number.isFinite(this.revExpectedRate) ? this.revExpectedRate : 5.0;
+        const mipAnn = Number.isFinite(this.revAnnualMipPct) ? this.revAnnualMipPct : 0.5;
+        const mca = Math.min(value, Number.isFinite(this.revNatLendingLimit) ? this.revNatLendingLimit : value);
+        const plf = this.reversePlf(age, expRate); // fraction
+        const principalLimit = mca * plf;
+
+        const obligations = (this.revExistingMortgage || 0) + (this.revOrigination || 0) + (this.revServiceSetAside || 0) + (this.revOtherSetAsides || 0);
+        const netAtClosing = Math.max(0, principalLimit - obligations);
+        const initialDraw = Math.min(netAtClosing, Math.max(0, this.revInitialDraw || 0));
+        const locStart = Math.max(0, netAtClosing - initialDraw);
+
+        // Tenure payment (term-like) using exp rate + MIP as effective accrual
+        const effAnnual = (expRate / 100) + (mipAnn / 100);
+        const r = effAnnual / 12;
+        const n = Math.max(12, (this.revTermYears || 20) * 12);
+        const tenurePayment = r > 0 ? (locStart * r) / (1 - Math.pow(1 + r, -n)) : (locStart / n);
+
+        // Project line of credit growth on unused funds (10-year projection)
+        const years = 10;
+        const locRows = [];
+        let loc = locStart;
+        for (let y = 1; y <= years; y++) {
+            // assume no additional draws; unused grows at effAnnual
+            loc = loc * Math.pow(1 + effAnnual, 1);
+            locRows.push({ id: `loc_${y}`, year: y, line: loc });
+        }
+
+        // Project loan balance under tenure draws and accrual; compare to value (non-recourse)
+        const balRows = [];
+        let bal = initialDraw;
+        let propVal = value;
+        const appr = 0.03; // assume 3% appreciation
+        for (let y = 1; y <= years; y++) {
+            for (let m = 0; m < 12; m++) {
+                bal = bal * (1 + r) + tenurePayment; // accrual on balance plus monthly advance
+            }
+            propVal = propVal * (1 + appr);
+            balRows.push({ id: `bal_${y}`, year: y, balance: bal, value: propVal, nonrecourse: bal > propVal ? 'Covered (non-recourse)' : 'Equity remains' });
+        }
+
+        this.revLocRows = locRows;
+        this.revBalRows = balRows;
+        this.revResults = {
+            mca,
+            plfPct: Math.round(plf * 1000) / 10,
+            principalLimit,
+            obligations,
+            netAtClosing,
+            initialDraw,
+            lineOfCreditStart: locStart,
+            expectedRate: expRate,
+            annualMipPct: mipAnn,
+            tenurePayment
+        };
+        this.revMessage = null;
+    }
+
+    get reverseColumnsLoc() {
+        const code = this.currencyCode;
+        return [
+            { label: 'Year', fieldName: 'year', type: 'number' },
+            { label: 'Line of Credit', fieldName: 'line', type: 'currency', typeAttributes: { currencyCode: code } }
+        ];
+    }
+    get reverseColumnsBal() {
+        const code = this.currencyCode;
+        return [
+            { label: 'Year', fieldName: 'year', type: 'number' },
+            { label: 'Loan Balance', fieldName: 'balance', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Home Value', fieldName: 'value', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Non-Recourse', fieldName: 'nonrecourse' }
+        ];
+    }
+
+    // =========================
     // =========================
     // Escrow Analysis (tax/insurance reserves and projections)
     // =========================

@@ -685,6 +685,99 @@
         </div>
     </lightning-card>
 
+    <!-- Reverse Mortgage Calculator -->
+    <lightning-card title="Reverse Mortgage (HECM Approximation)" icon-name="utility:retail_banking">
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="revHomeValue" type="currency" label="Home Value" value={revHomeValue} onchange={handleReverseFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="revExistingMortgage" type="currency" label="Existing Mortgage Payoff" value={revExistingMortgage} onchange={handleReverseFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="revBorrowerAge" type="number" label="Borrower Age" value={revBorrowerAge} onchange={handleReverseFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="revExpectedRate" type="number" step="0.01" label="Expected Rate (%)" value={revExpectedRate} onchange={handleReverseFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="revAnnualMipPct" type="number" step="0.01" label="Annual MIP (%)" value={revAnnualMipPct} onchange={handleReverseFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="revOrigination" type="currency" label="Origination/Costs" value={revOrigination} onchange={handleReverseFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="revServiceSetAside" type="currency" label="Service Set-Aside" value={revServiceSetAside} onchange={handleReverseFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="revOtherSetAsides" type="currency" label="Other Set-Asides" value={revOtherSetAsides} onchange={handleReverseFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="revInitialDraw" type="currency" label="Initial Draw" value={revInitialDraw} onchange={handleReverseFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="revTermYears" type="number" label="Tenure/Term (years)" value={revTermYears} onchange={handleReverseFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="revPlfOverride" type="number" step="0.1" label="PLF Override (%)" value={revPlfOverride} onchange={handleReverseFieldChange} field-level-help="Optional—use HECM table value."></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="revNatLendingLimit" type="currency" label="National Lending Limit" value={revNatLendingLimit} onchange={handleReverseFieldChange}></lightning-input>
+                </div>
+            </div>
+            <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                <lightning-button label="Compute Reverse Mortgage" variant="brand" onclick={computeReverseMortgage}></lightning-button>
+            </div>
+            <template lwc:if={revMessage}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
+                    <span class="slds-assistive-text">Error</span>
+                    <h2>{revMessage}</h2>
+                </div>
+            </template>
+
+            <template lwc:if={revResults}>
+                <div class="slds-m-top_medium slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_shade">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Principal Limit</p>
+                            <p>MCA: <strong>{revResults.mca}</strong></p>
+                            <p>PLF: <strong>{revResults.plfPct}%</strong></p>
+                            <p>Principal Limit: <strong>{revResults.principalLimit}</strong></p>
+                            <p>Obligations: <strong>{revResults.obligations}</strong></p>
+                            <p>Net at Closing: <strong>{revResults.netAtClosing}</strong></p>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_default">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Tenure/Term</p>
+                            <p>Expected Rate: <strong>{revResults.expectedRate}%</strong></p>
+                            <p>Annual MIP: <strong>{revResults.annualMipPct}%</strong></p>
+                            <p>Monthly Tenure Payment: <strong>{revResults.tenurePayment}</strong></p>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_default">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Non-Recourse Check</p>
+                            <template lwc:if={revBalRows.length}>
+                                <p>Year 10: <strong>{revBalRows[revBalRows.length-1].nonrecourse}</strong></p>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+                <div class="slds-m-top_medium slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+                        <p class="slds-text-title_caps slds-m-bottom_x-small">Line of Credit Growth</p>
+                        <lightning-datatable key-field="id" data={revLocRows} columns={reverseColumnsLoc} hide-checkbox-column></lightning-datatable>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+                        <p class="slds-text-title_caps slds-m-bottom_x-small">Balance vs Home Value</p>
+                        <lightning-datatable key-field="id" data={revBalRows} columns={reverseColumnsBal} hide-checkbox-column></lightning-datatable>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
     <!-- USDA Loan Analyzer -->
     <lightning-card title="USDA Loan Analyzer" icon-name="utility:food_and_drink">
         <div class="slds-p-around_medium">
