@@ -685,6 +685,371 @@
         </div>
     </lightning-card>
 
+    <!-- Payment Calendar -->
+    <lightning-card title="Payment Calendar" icon-name="utility:date_time">
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="payCalStartDate" type="date" label="Start From" value={payCalStartDate} onchange={handlePayCalFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="payCalDueDay" type="number" label="Due Day (1–31)" value={payCalDueDay} onchange={handlePayCalFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="payCalGraceDays" type="number" label="Grace Period (days)" value={payCalGraceDays} onchange={handlePayCalFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="payCalLateFeeFlat" type="currency" label="Late Fee (Flat)" value={payCalLateFeeFlat} onchange={handlePayCalFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="payCalLateFeePct" type="number" step="0.1" label="Late Fee (%)" value={payCalLateFeePct} onchange={handlePayCalFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="payCalMonths" type="number" label="Months to Generate" value={payCalMonths} onchange={handlePayCalFieldChange}></lightning-input>
+                </div>
+            </div>
+            <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                <lightning-button label="Generate Calendar" variant="brand" onclick={generatePaymentCalendar}></lightning-button>
+            </div>
+            <template lwc:if={payCalMessage}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
+                    <span class="slds-assistive-text">Error</span>
+                    <h2>{payCalMessage}</h2>
+                </div>
+            </template>
+            <template lwc:if={payCalRows.length}>
+                <div class="slds-m-top_medium">
+                    <lightning-datatable key-field="id" data={payCalRows} columns={payCalColumns} hide-checkbox-column></lightning-datatable>
+                </div>
+                <div class="slds-m-top_medium slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_2-of-3">
+                        <lightning-input name="uiPayMonth" type="number" label="Record Payment for Month #" onchange={handlePayEntryFieldChange}></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <lightning-input name="uiPayDate" type="date" label="Paid Date" onchange={handlePayEntryFieldChange}></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-m-top_small">
+                        <lightning-input name="uiPayAmount" type="currency" label="Paid Amount" onchange={handlePayEntryFieldChange}></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1">
+                        <lightning-button class="slds-m-top_small" label="Add Payment" onclick={handleAddPayment}></lightning-button>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+    <!-- Home Sale Calculator -->
+    <lightning-card title="Home Sale (Net Proceeds)" icon-name="utility:money">
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="salePrice" type="currency" label="Sale Price" value={salePrice} onchange={handleSaleFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="saleCommissionPct" type="number" step="0.1" label="Commission (%)" value={saleCommissionPct} onchange={handleSaleFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="saleClosingCostPct" type="number" step="0.1" label="Closing Costs (%)" value={saleClosingCostPct} onchange={handleSaleFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="saleClosingCostFixed" type="currency" label="Closing Costs (Fixed)" value={saleClosingCostFixed} onchange={handleSaleFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="saleMortgagePayoff1" type="currency" label="Mortgage Payoff #1" value={saleMortgagePayoff1} onchange={handleSaleFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="saleMortgagePayoff2" type="currency" label="Mortgage Payoff #2 (optional)" value={saleMortgagePayoff2} onchange={handleSaleFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="salePurchaseBasis" type="currency" label="Original Purchase Price (Basis)" value={salePurchaseBasis} onchange={handleSaleFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="saleImprovements" type="currency" label="Capital Improvements" value={saleImprovements} onchange={handleSaleFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="saleExclusion" type="currency" label="Sec 121 Exclusion" value={saleExclusion} onchange={handleSaleFieldChange} field-level-help="$250k single, $500k married."></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="saleCapGainRatePct" type="number" step="0.1" label="Fed Cap Gains Rate (%)" value={saleCapGainRatePct} onchange={handleSaleFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="saleStateGainRatePct" type="number" step="0.1" label="State Cap Gains Rate (%)" value={saleStateGainRatePct} onchange={handleSaleFieldChange}></lightning-input>
+                </div>
+            </div>
+            <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                <lightning-button variant="brand" label="Compute Net Proceeds" onclick={computeHomeSale}></lightning-button>
+            </div>
+            <template lwc:if={saleMessage}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
+                    <span class="slds-assistive-text">Error</span>
+                    <h2>{saleMessage}</h2>
+                </div>
+            </template>
+            <template lwc:if={saleResults}>
+                <div class="slds-m-top_medium slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                        <div class="slds-box slds-theme_shade">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Costs & Payoffs</p>
+                            <p>Commission: <strong>{saleResults.commission}</strong></p>
+                            <p>Closing Costs: <strong>{saleResults.closing}</strong></p>
+                            <p>Selling Costs Total: <strong>{saleResults.sellingCosts}</strong></p>
+                            <p>Mortgage Payoffs: <strong>{saleResults.totalPayoff}</strong></p>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                        <div class="slds-box slds-theme_default">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Proceeds & Taxes</p>
+                            <p>Gross Proceeds: <strong>{saleResults.grossProceeds}</strong></p>
+                            <p>Proceeds Before Tax: <strong>{saleResults.proceedsBeforeTax}</strong></p>
+                            <p>Taxable Gain: <strong>{saleResults.taxableGain}</strong> (Fed: <strong>{saleResults.taxFed}</strong>, State: <strong>{saleResults.taxState}</strong>)</p>
+                            <p>Net Proceeds: <strong>{saleResults.netProceeds}</strong></p>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+    <!-- Recasting Calculator -->
+    <lightning-card title="Recasting vs. Refinancing" icon-name="utility:merge_field">
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="recastCurrentBalance" type="currency" label="Current Balance" value={recastCurrentBalance} onchange={handleRecastFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="recastRate" type="number" step="0.01" label="Current Rate (%)" value={recastRate} onchange={handleRecastFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="recastMonthsRemaining" type="number" label="Months Remaining" value={recastMonthsRemaining} onchange={handleRecastFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small slds-m-top_small">
+                    <lightning-input name="recastLumpSum" type="currency" label="Lump Sum (Principal Curtailment)" value={recastLumpSum} onchange={handleRecastFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small slds-m-top_small">
+                    <lightning-input name="recastFee" type="currency" label="Recast Fee" value={recastFee} onchange={handleRecastFieldChange}></lightning-input>
+                </div>
+            </div>
+            <div class="slds-grid slds-wrap slds-gutters slds-m-top_small">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="recastRefiRate" type="number" step="0.01" label="Refi Rate (%)" value={recastRefiRate} onchange={handleRecastFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="recastRefiTermMonths" type="number" label="Refi Term (months)" value={recastRefiTermMonths} onchange={handleRecastFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="recastRefiCosts" type="currency" label="Refi Costs" value={recastRefiCosts} onchange={handleRecastFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input type="toggle" name="recastRefiFinanceCosts" label="Finance Refi Costs" message-toggle-active="Yes" message-toggle-inactive="No" onchange={handleRecastToggle} checked></lightning-input>
+                </div>
+            </div>
+            <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                <lightning-button variant="brand" label="Evaluate Recast vs Refi" onclick={evaluateRecast}></lightning-button>
+            </div>
+            <template lwc:if={recastMessage}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
+                    <span class="slds-assistive-text">Error</span>
+                    <h2>{recastMessage}</h2>
+                </div>
+            </template>
+            <template lwc:if={recastResults}>
+                <div class="slds-m-top_medium slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_shade">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Current</p>
+                            <p>Payment: <strong>{recastResults.current.payment}</strong></p>
+                            <p>Interest Remaining: <strong>{recastResults.current.interest}</strong></p>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_default">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">After Recast</p>
+                            <p>New Payment: <strong>{recastResults.recast.payment}</strong></p>
+                            <p>Reduction: <strong>{recastResults.recast.reduction}</strong></p>
+                            <p>New Interest: <strong>{recastResults.recast.interest}</strong></p>
+                            <p>Lump/Fee: <strong>{recastResults.recast.lump}</strong> / <strong>{recastResults.recast.fee}</strong></p>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_default">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Refinance</p>
+                            <template lwc:if={recastResults.refinance}>
+                                <p>Payment: <strong>{recastResults.refinance.payment}</strong></p>
+                                <p>Interest: <strong>{recastResults.refinance.interest}</strong></p>
+                                <p>Costs: <strong>{recastResults.refinance.costs}</strong> (Financed: <strong>{recastResults.refinance.financeCosts}</strong>)</p>
+                            </template>
+                            <template lwc:else>
+                                <p>Enter refi rate to compare.</p>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+                <template lwc:if={recastResults.comparison}>
+                    <div class="slds-m-top_medium slds-box slds-theme_shade">
+                        <p class="slds-text-title_caps slds-m-bottom_x-small">Comparison</p>
+                        <p>Extra Upfront (Refi vs Recast): <strong>{recastResults.comparison.extraUpfront}</strong></p>
+                        <p>Extra Monthly Savings (Refi vs Recast): <strong>{recastResults.comparison.extraMonthly}</strong></p>
+                        <template lwc:if={recastResults.comparison.breakEvenMonths}>
+                            <p>Break-even: <strong>{recastResults.comparison.breakEvenMonths} months</strong></p>
+                        </template>
+                    </div>
+                </template>
+            </template>
+        </div>
+    </lightning-card>
+    <!-- Bridge Loan Calculator -->
+    <lightning-card title="Bridge Loan (Purchase Before Sale)" icon-name="utility:switch">
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="bridgePurchasePrice" type="currency" label="New Purchase Price" value={bridgePurchasePrice} onchange={handleBridgeFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="bridgeDownPct" type="number" step="0.1" label="Down Payment (%)" value={bridgeDownPct} onchange={handleBridgeFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="bridgeExistingValue" type="currency" label="Existing Home Value" value={bridgeExistingValue} onchange={handleBridgeFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="bridgeExistingMortgage" type="currency" label="Existing Mortgage Payoff" value={bridgeExistingMortgage} onchange={handleBridgeFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="bridgeExistingMortgageMonthly" type="currency" label="Existing Mortgage Monthly" value={bridgeExistingMortgageMonthly} onchange={handleBridgeFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="bridgeSalePrice" type="currency" label="Expected Sale Price" value={bridgeSalePrice} onchange={handleBridgeFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="bridgeSellCostPct" type="number" step="0.1" label="Seller Costs (%)" value={bridgeSellCostPct} onchange={handleBridgeFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="bridgeMonthsToSale" type="number" label="Months Until Sale" value={bridgeMonthsToSale} onchange={handleBridgeFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="bridgeRate" type="number" step="0.01" label="Bridge Rate (%)" value={bridgeRate} onchange={handleBridgeFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="bridgeClosingCostsPurchase" type="currency" label="Purchase Closing Costs" value={bridgeClosingCostsPurchase} onchange={handleBridgeFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="bridgeCarryOtherMonthly" type="currency" label="Other Carry (Taxes/Ins/HOA)" value={bridgeCarryOtherMonthly} onchange={handleBridgeFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="bridgeLtvMaxPct" type="number" step="0.1" label="Max CLTV (%)" value={bridgeLtvMaxPct} onchange={handleBridgeFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="bridgePermRate" type="number" step="0.01" label="New Mortgage Rate (%)" value={bridgePermRate} onchange={handleBridgeFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="bridgePermYears" type="number" label="New Mortgage Term (years)" value={bridgePermYears} onchange={handleBridgeFieldChange}></lightning-input>
+                </div>
+            </div>
+            <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                <lightning-button variant="brand" label="Compute Bridge Scenario" onclick={computeBridgeLoan}></lightning-button>
+            </div>
+            <template lwc:if={bridgeMessage}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
+                    <span class="slds-assistive-text">Error</span>
+                    <h2>{bridgeMessage}</h2>
+                </div>
+            </template>
+            <template lwc:if={bridgeResults}>
+                <div class="slds-m-top_medium slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_shade">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Equity & Draw</p>
+                            <p>Available Equity: <strong>{bridgeResults.availableEquity}</strong></p>
+                            <p>Bridge Draw: <strong>{bridgeResults.bridgeDraw}</strong></p>
+                            <p>Cash to Close: <strong>{bridgeResults.cashToClose}</strong></p>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_default">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">New Mortgage</p>
+                            <p>Principal: <strong>{bridgeResults.newMortgagePrincipal}</strong></p>
+                            <p>Rate/Term: <strong>{bridgeResults.newMortgageRate}% / {bridgePermYears}y</strong></p>
+                            <p>Payment: <strong>{bridgeResults.newMortgagePayment}</strong></p>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-theme_default">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Carry & Exit</p>
+                            <p>Monthly Carry: <strong>{bridgeResults.monthlyCarry}</strong></p>
+                            <p>Total Carry ({bridgeResults.monthsOverlap} mo): <strong>{bridgeResults.totalCarry}</strong></p>
+                            <template lwc:if={bridgeResults.netProceedsAtSale}>
+                                <p>Net Proceeds at Sale: <strong>{bridgeResults.netProceedsAtSale}</strong></p>
+                            </template>
+                            <p>Slip Scenario ({bridgeResults.slipMonths} mo): <strong>{bridgeResults.slipCarry}</strong></p>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+    <!-- Construction Loan Calculator -->
+    <lightning-card title="Construction Loan" icon-name="utility:build">
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="consBudget" type="currency" label="Total Budget (Max Line)" value={consBudget} onchange={handleConstructionFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="consMonths" type="number" label="Construction Months" value={consMonths} onchange={handleConstructionFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="consRate" type="number" step="0.01" label="Construction Rate (%)" value={consRate} onchange={handleConstructionFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="consPermRate" type="number" step="0.01" label="Permanent Rate (%)" value={consPermRate} onchange={handleConstructionFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="consPermYears" type="number" label="Permanent Term (years)" value={consPermYears} onchange={handleConstructionFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="consConvFees" type="currency" label="Conversion/Closing Fees" value={consConvFees} onchange={handleConstructionFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input type="toggle" name="consCapitalizeInterest" label="Capitalize Interest at Conversion" message-toggle-active="Yes" message-toggle-inactive="No" onchange={handleConstructionToggle} checked></lightning-input>
+                </div>
+            </div>
+            <div class="slds-m-top_medium">
+                <lightning-textarea name="consDrawScheduleText" label="Draw Schedule (month,amount per line)" value={consDrawScheduleText} onchange={handleConstructionFieldChange}></lightning-textarea>
+                <div class="slds-m-top_small">
+                    <lightning-button label="Equal Draws" onclick={generateEqualDraws}></lightning-button>
+                    <lightning-button class="slds-m-left_small" variant="brand" label="Compute" onclick={computeConstructionLoan}></lightning-button>
+                </div>
+            </div>
+            <template lwc:if={consMessage}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
+                    <span class="slds-assistive-text">Error</span>
+                    <h2>{consMessage}</h2>
+                </div>
+            </template>
+            <template lwc:if={consRows.length}>
+                <div class="slds-m-top_medium">
+                    <p class="slds-text-title_caps slds-m-bottom_x-small">Construction Period</p>
+                    <lightning-datatable key-field="id" data={consRows} columns="[
+                        {label:'Month', fieldName:'month', type:'number'},
+                        {label:'Draw', fieldName:'draw', type:'currency'},
+                        {label:'End Balance', fieldName:'balance', type:'currency'},
+                        {label:'Interest', fieldName:'interest', type:'currency'},
+                        {label:'Cum Interest', fieldName:'cumInterest', type:'currency'}
+                    ]" hide-checkbox-column></lightning-datatable>
+                </div>
+            </template>
+            <template lwc:if={consResults}>
+                <div class="slds-m-top_medium slds-box slds-theme_shade">
+                    <p class="slds-text-title_caps slds-m-bottom_x-small">Conversion Summary</p>
+                    <p>Total Drawn: <strong>{consResults.totalDrawn}</strong></p>
+                    <p>Construction Interest: <strong>{consResults.totalConstructionInterest}</strong> (Capitalized: <strong>{consResults.capitalizedInterest}</strong>)</p>
+                    <p>Conversion Fees: <strong>{consResults.conversionFees}</strong></p>
+                    <p>Permanent Principal: <strong>{consResults.permanentPrincipal}</strong></p>
+                    <p>Permanent Rate/Term: <strong>{consResults.permanentRate}% / {consResults.permanentYears}y</strong></p>
+                    <p>Permanent Payment: <strong>{consResults.permanentPayment}</strong></p>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
     <!-- Reverse Mortgage Calculator -->
     <lightning-card title="Reverse Mortgage (HECM Approximation)" icon-name="utility:retail_banking">
         <div class="slds-p-around_medium">

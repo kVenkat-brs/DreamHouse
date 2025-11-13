@@ -1408,6 +1408,587 @@ export default class MortgageCalculator extends LightningElement {
     }
 
     // =========================
+    // Bridge Loan Calculator (purchase before sale)
+    // =========================
+    @track bridgePurchasePrice = null;
+    @track bridgeDownPct = 20; // % down on new purchase
+    @track bridgeExistingValue = null; // current home value
+    @track bridgeExistingMortgage = null; // current payoff
+    @track bridgeExistingMortgageMonthly = null; // current monthly payment
+    @track bridgeSalePrice = null; // expected sale price of current home
+    @track bridgeSellCostPct = 6.0; // % selling costs
+    @track bridgeMonthsToSale = 3; // overlap months
+    @track bridgeRate = 9.0; // annual interest on bridge (interest-only)
+    @track bridgeClosingCostsPurchase = 0; // purchase-side closing costs
+    @track bridgeCarryOtherMonthly = 0; // taxes/insurance/HOA during overlap
+    @track bridgeLtvMaxPct = 80; // max CLTV allowed on bridge
+    @track bridgePermRate = null; // optional override for new mortgage rate
+    @track bridgePermYears = 30;
+    @track bridgeResults = null;
+    @track bridgeMessage = null;
+
+    handleBridgeFieldChange(event) {
+        const { name } = event.target;
+        const raw = event.detail?.value;
+        const num = parseFloat(raw);
+        const parsed = Number.isFinite(num) ? num : null;
+        switch (name) {
+            case 'bridgePurchasePrice': this.bridgePurchasePrice = parsed; break;
+            case 'bridgeDownPct': this.bridgeDownPct = parsed ?? this.bridgeDownPct; break;
+            case 'bridgeExistingValue': this.bridgeExistingValue = parsed; break;
+            case 'bridgeExistingMortgage': this.bridgeExistingMortgage = parsed; break;
+            case 'bridgeExistingMortgageMonthly': this.bridgeExistingMortgageMonthly = parsed; break;
+            case 'bridgeSalePrice': this.bridgeSalePrice = parsed; break;
+            case 'bridgeSellCostPct': this.bridgeSellCostPct = parsed ?? this.bridgeSellCostPct; break;
+            case 'bridgeMonthsToSale': this.bridgeMonthsToSale = Number.isFinite(num) ? Math.max(0, Math.floor(num)) : this.bridgeMonthsToSale; break;
+            case 'bridgeRate': this.bridgeRate = parsed ?? this.bridgeRate; break;
+            case 'bridgeClosingCostsPurchase': this.bridgeClosingCostsPurchase = parsed ?? 0; break;
+            case 'bridgeCarryOtherMonthly': this.bridgeCarryOtherMonthly = parsed ?? 0; break;
+            case 'bridgeLtvMaxPct': this.bridgeLtvMaxPct = parsed ?? this.bridgeLtvMaxPct; break;
+            case 'bridgePermRate': this.bridgePermRate = parsed; break;
+            case 'bridgePermYears': this.bridgePermYears = Number.isFinite(num) ? Math.max(1, Math.floor(num)) : this.bridgePermYears; break;
+            default: break;
+        }
+        this.bridgeMessage = null;
+    }
+
+    computeBridgeLoan() {
+        const price = Number.isFinite(this.bridgePurchasePrice) ? this.bridgePurchasePrice : (Number.isFinite(this.price) ? this.price : null);
+        const downPct = Number.isFinite(this.bridgeDownPct) ? this.bridgeDownPct : 20;
+        const existVal = this.bridgeExistingValue;
+        const existPayoff = this.bridgeExistingMortgage;
+        const salePrice = this.bridgeSalePrice;
+        if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(existVal) || !Number.isFinite(existPayoff)) {
+            this.bridgeMessage = 'Enter purchase price, existing home value and payoff.';
+            this.bridgeResults = null;
+            return;
+        }
+        const sellPct = Number.isFinite(this.bridgeSellCostPct) ? (this.bridgeSellCostPct / 100) : 0.06;
+        const months = Number.isFinite(this.bridgeMonthsToSale) ? this.bridgeMonthsToSale : 0;
+        const bridgeR = (Number.isFinite(this.bridgeRate) ? this.bridgeRate : 9) / 100 / 12;
+        const closingPurchase = Number.isFinite(this.bridgeClosingCostsPurchase) ? this.bridgeClosingCostsPurchase : 0;
+        const carryOther = Number.isFinite(this.bridgeCarryOtherMonthly) ? this.bridgeCarryOtherMonthly : 0;
+        const existMonthly = Number.isFinite(this.bridgeExistingMortgageMonthly) ? this.bridgeExistingMortgageMonthly : 0;
+
+        // Equity available for bridge
+        const ltvMax = Number.isFinite(this.bridgeLtvMaxPct) ? (this.bridgeLtvMaxPct / 100) : 0.8;
+        const maxLien = Math.min(existVal, existVal * ltvMax);
+        const availableEquity = Math.max(0, maxLien - (existPayoff || 0));
+
+        // Cash needed at purchase
+        const down = price * (downPct / 100);
+        const cashNeeded = down + closingPurchase;
+        const bridgeDraw = Math.min(availableEquity, cashNeeded);
+        const cashToClose = Math.max(0, cashNeeded - bridgeDraw);
+
+        // New permanent mortgage on purchase
+        const ratePerm = Number.isFinite(this.bridgePermRate) ? this.bridgePermRate : (Number.isFinite(this.interestRate) ? this.interestRate : 0);
+        const permR = (ratePerm / 100) / 12;
+        const permN = (Number.isFinite(this.bridgePermYears) ? this.bridgePermYears : 30) * 12;
+        const newPrincipal = Math.max(0, price - down);
+        const newPmt = this.calculateEmi(newPrincipal, permR, permN);
+
+        // Carry costs during overlap
+        const bridgeInterestMonthly = bridgeDraw * bridgeR;
+        const monthlyCarry = bridgeInterestMonthly + existMonthly + carryOther + newPmt;
+        const totalCarry = monthlyCarry * months;
+
+        // Exit at sale
+        let netProceeds = null;
+        if (Number.isFinite(salePrice)) {
+            const sellingCosts = salePrice * sellPct;
+            netProceeds = salePrice - sellingCosts - (existPayoff || 0) - bridgeDraw;
+        }
+
+        // Simple sensitivity if sale slips 3 months
+        const slipMonths = months + 3;
+        const slipCarry = monthlyCarry * slipMonths;
+
+        this.bridgeResults = {
+            availableEquity,
+            bridgeDraw,
+            cashToClose,
+            newMortgagePrincipal: newPrincipal,
+            newMortgageRate: ratePerm,
+            newMortgagePayment: newPmt,
+            monthlyCarry,
+            totalCarry,
+            monthsOverlap: months,
+            netProceedsAtSale: netProceeds,
+            slipMonths,
+            slipCarry
+        };
+        this.bridgeMessage = null;
+    }
+
+    // =========================
+    // Recasting Calculator (principal curtailment vs refinance)
+    // =========================
+    @track recastCurrentBalance = null;
+    @track recastRate = null; // % APR current
+    @track recastMonthsRemaining = null;
+    @track recastLumpSum = null; // principal curtailment
+    @track recastFee = 0; // small administrative fee
+    // Refi comparison
+    @track recastRefiRate = null; // % APR new
+    @track recastRefiTermMonths = null; // months
+    @track recastRefiCosts = 0; // total refi costs
+    @track recastRefiFinanceCosts = true; // roll costs into new loan
+    @track recastResults = null;
+    @track recastMessage = null;
+
+    handleRecastFieldChange(event) {
+        const { name } = event.target;
+        const v = parseFloat(event.detail?.value);
+        const parsed = Number.isFinite(v) ? v : null;
+        switch (name) {
+            case 'recastCurrentBalance': this.recastCurrentBalance = parsed; break;
+            case 'recastRate': this.recastRate = parsed; break;
+            case 'recastMonthsRemaining': this.recastMonthsRemaining = Number.isFinite(v) ? Math.max(1, Math.floor(v)) : this.recastMonthsRemaining; break;
+            case 'recastLumpSum': this.recastLumpSum = parsed; break;
+            case 'recastFee': this.recastFee = parsed ?? 0; break;
+            case 'recastRefiRate': this.recastRefiRate = parsed; break;
+            case 'recastRefiTermMonths': this.recastRefiTermMonths = Number.isFinite(v) ? Math.max(1, Math.floor(v)) : this.recastRefiTermMonths; break;
+            case 'recastRefiCosts': this.recastRefiCosts = parsed ?? 0; break;
+            default: break;
+        }
+        this.recastMessage = null;
+    }
+
+    handleRecastToggle(event) {
+        const { name } = event.target;
+        const checked = !!event.detail.checked;
+        if (name === 'recastRefiFinanceCosts') this.recastRefiFinanceCosts = checked;
+    }
+
+    evaluateRecast() {
+        const curBal = this.recastCurrentBalance;
+        const curRate = this.recastRate;
+        const curMonths = this.recastMonthsRemaining;
+        if (!Number.isFinite(curBal) || curBal <= 0 || !Number.isFinite(curRate) || curRate < 0 || !Number.isFinite(curMonths) || curMonths <= 0) {
+            this.recastMessage = 'Enter current balance, rate, and remaining months.';
+            this.recastResults = null;
+            return;
+        }
+        const rCur = (curRate / 100) / MONTHS_IN_YEAR;
+        const pmtCur = this.calculateEmi(curBal, rCur, curMonths);
+        const start = new Date();
+        const schedCur = this.buildMonthlySchedule(curBal, rCur, curMonths, pmtCur, start, { amount: 0, start: null, frequency: 'none', months: null });
+        const interestRemaining = schedCur.totalInterest ?? schedCur.schedule.reduce((a, m) => a + (m.interest || 0), 0);
+
+        // Recast after lump sum
+        const lump = Math.max(0, Number.isFinite(this.recastLumpSum) ? this.recastLumpSum : 0);
+        const fee = Math.max(0, Number.isFinite(this.recastFee) ? this.recastFee : 0);
+        const newPrincipalRecast = Math.max(0, curBal - lump);
+        const pmtRecast = this.calculateEmi(newPrincipalRecast, rCur, curMonths);
+        const schedRecast = this.buildMonthlySchedule(newPrincipalRecast, rCur, curMonths, pmtRecast, start, { amount: 0, start: null, frequency: 'none', months: null });
+        const interestRecast = schedRecast.totalInterest ?? schedRecast.schedule.reduce((a, m) => a + (m.interest || 0), 0);
+        const reductionRecast = pmtCur - pmtRecast;
+
+        // Refinance comparison (assume no lump unless user also plans to pay it)
+        const rateNew = Number.isFinite(this.recastRefiRate) ? this.recastRefiRate : null;
+        const termNew = Number.isFinite(this.recastRefiTermMonths) ? this.recastRefiTermMonths : curMonths;
+        let pmtRefi = null, newPrincipalRefi = null, interestRefi = null;
+        if (Number.isFinite(rateNew)) {
+            const rNew = (rateNew / 100) / MONTHS_IN_YEAR;
+            const costs = Math.max(0, Number.isFinite(this.recastRefiCosts) ? this.recastRefiCosts : 0);
+            newPrincipalRefi = this.recastRefiFinanceCosts ? (curBal + costs) : curBal;
+            pmtRefi = this.calculateEmi(newPrincipalRefi, rNew, termNew);
+            const schedRefi = this.buildMonthlySchedule(newPrincipalRefi, rNew, termNew, pmtRefi, start, { amount: 0, start: null, frequency: 'none', months: null });
+            interestRefi = schedRefi.totalInterest ?? schedRefi.schedule.reduce((a, m) => a + (m.interest || 0), 0);
+        }
+
+        // Break-even: extra monthly savings of refi vs recast against extra upfront cost
+        let extraUpfront = null, extraMonthly = null, breakEvenMonths = null;
+        if (Number.isFinite(pmtRefi)) {
+            extraUpfront = Math.max(0, (this.recastRefiCosts || 0) - fee);
+            extraMonthly = Math.max(0, pmtRecast - pmtRefi);
+            breakEvenMonths = extraMonthly > 0 ? Math.ceil(extraUpfront / extraMonthly) : null;
+        }
+
+        this.recastResults = {
+            current: { payment: pmtCur, interest: interestRemaining, balance: curBal },
+            recast: { payment: pmtRecast, interest: interestRecast, principal: newPrincipalRecast, lump, fee, reduction: reductionRecast },
+            refinance: Number.isFinite(pmtRefi) ? { payment: pmtRefi, interest: interestRefi, principal: newPrincipalRefi, rate: rateNew, termMonths: termNew, costs: (this.recastRefiCosts || 0), financeCosts: this.recastRefiFinanceCosts } : null,
+            comparison: Number.isFinite(pmtRefi) ? { extraUpfront, extraMonthly, breakEvenMonths } : null
+        };
+        this.recastMessage = null;
+    }
+
+    // =========================
+    // Home Sale Calculator (net proceeds after payoff, costs, taxes)
+    // =========================
+    @track salePrice = null;
+    @track saleCommissionPct = 5.0; // % of sale price
+    @track saleClosingCostPct = 1.0; // % of sale price
+    @track saleClosingCostFixed = 0; // additional fixed costs
+    @track saleMortgagePayoff1 = null; // primary payoff
+    @track saleMortgagePayoff2 = 0; // second lien payoff (optional)
+    @track salePurchaseBasis = null; // original purchase price (basis)
+    @track saleImprovements = 0; // capital improvements added to basis
+    @track saleCapGainRatePct = 15.0; // estimated LTCG %
+    @track saleExclusion = 250000; // Sec 121 exclusion (single default)
+    @track saleStateGainRatePct = 0; // optional state tax %
+    @track saleResults = null;
+    @track saleMessage = null;
+
+    handleSaleFieldChange(event) {
+        const { name } = event.target;
+        const v = parseFloat(event.detail?.value);
+        const parsed = Number.isFinite(v) ? v : null;
+        switch (name) {
+            case 'salePrice': this.salePrice = parsed; break;
+            case 'saleCommissionPct': this.saleCommissionPct = parsed ?? this.saleCommissionPct; break;
+            case 'saleClosingCostPct': this.saleClosingCostPct = parsed ?? this.saleClosingCostPct; break;
+            case 'saleClosingCostFixed': this.saleClosingCostFixed = parsed ?? 0; break;
+            case 'saleMortgagePayoff1': this.saleMortgagePayoff1 = parsed; break;
+            case 'saleMortgagePayoff2': this.saleMortgagePayoff2 = parsed ?? 0; break;
+            case 'salePurchaseBasis': this.salePurchaseBasis = parsed; break;
+            case 'saleImprovements': this.saleImprovements = parsed ?? 0; break;
+            case 'saleCapGainRatePct': this.saleCapGainRatePct = parsed ?? this.saleCapGainRatePct; break;
+            case 'saleExclusion': this.saleExclusion = parsed ?? this.saleExclusion; break;
+            case 'saleStateGainRatePct': this.saleStateGainRatePct = parsed ?? 0; break;
+            default: break;
+        }
+        this.saleMessage = null;
+    }
+
+    computeHomeSale() {
+        const price = this.salePrice;
+        const payoff1 = this.saleMortgagePayoff1;
+        if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(payoff1) || payoff1 < 0) {
+            this.saleMessage = 'Enter sale price and primary mortgage payoff.';
+            this.saleResults = null;
+            return;
+        }
+        const comm = (Number.isFinite(this.saleCommissionPct) ? this.saleCommissionPct : 0) / 100;
+        const closePct = (Number.isFinite(this.saleClosingCostPct) ? this.saleClosingCostPct : 0) / 100;
+        const closeFixed = Number.isFinite(this.saleClosingCostFixed) ? this.saleClosingCostFixed : 0;
+        const commission = price * comm;
+        const closing = price * closePct + closeFixed;
+        const sellingCosts = commission + closing;
+        const payoff2 = Number.isFinite(this.saleMortgagePayoff2) ? this.saleMortgagePayoff2 : 0;
+        const totalPayoff = payoff1 + payoff2;
+
+        const grossProceeds = price - sellingCosts;
+        const proceedsBeforeTax = grossProceeds - totalPayoff;
+
+        // Capital gains
+        const basis = (Number.isFinite(this.salePurchaseBasis) ? this.salePurchaseBasis : 0) + (Number.isFinite(this.saleImprovements) ? this.saleImprovements : 0);
+        const gain = Math.max(0, price - sellingCosts - basis);
+        const exclusion = Math.max(0, Number.isFinite(this.saleExclusion) ? this.saleExclusion : 0);
+        const taxableGain = Math.max(0, gain - exclusion);
+        const fedRate = (Number.isFinite(this.saleCapGainRatePct) ? this.saleCapGainRatePct : 0) / 100;
+        const stateRate = (Number.isFinite(this.saleStateGainRatePct) ? this.saleStateGainRatePct : 0) / 100;
+        const taxFed = taxableGain * fedRate;
+        const taxState = taxableGain * stateRate;
+        const taxes = taxFed + taxState;
+
+        const netProceeds = proceedsBeforeTax - taxes;
+
+        this.saleResults = {
+            commission,
+            closing,
+            sellingCosts,
+            payoff1,
+            payoff2,
+            totalPayoff,
+            grossProceeds,
+            proceedsBeforeTax,
+            gain,
+            exclusion,
+            taxableGain,
+            taxFed,
+            taxState,
+            taxes,
+            netProceeds
+        };
+        this.saleMessage = null;
+    }
+
+    // =========================
+    // Payment Calendar (due dates, grace, late fees, history)
+    // =========================
+    @track payCalStartDate = null; // ISO date string
+    @track payCalDueDay = 1; // 1..31
+    @track payCalGraceDays = 5; // grace period in days
+    @track payCalLateFeeFlat = 0; // fixed late fee
+    @track payCalLateFeePct = 0; // percent of amount due
+    @track payCalMonths = 12; // number of months to generate
+    @track payCalRows = [];
+    @track payCalMessage = null;
+    @track payCalHistory = []; // { month: number (1-based), paidDate: Date, amount: number }
+
+    handlePayCalFieldChange(event) {
+        const { name } = event.target;
+        const vRaw = event.detail?.value;
+        const num = parseFloat(vRaw);
+        switch (name) {
+            case 'payCalStartDate':
+                this.payCalStartDate = vRaw || null;
+                break;
+            case 'payCalDueDay':
+                this.payCalDueDay = Number.isFinite(num) ? Math.max(1, Math.min(31, Math.floor(num))) : this.payCalDueDay;
+                break;
+            case 'payCalGraceDays':
+                this.payCalGraceDays = Number.isFinite(num) ? Math.max(0, Math.floor(num)) : this.payCalGraceDays;
+                break;
+            case 'payCalLateFeeFlat':
+                this.payCalLateFeeFlat = Number.isFinite(num) ? Math.max(0, num) : this.payCalLateFeeFlat;
+                break;
+            case 'payCalLateFeePct':
+                this.payCalLateFeePct = Number.isFinite(num) ? Math.max(0, num) : this.payCalLateFeePct;
+                break;
+            case 'payCalMonths':
+                this.payCalMonths = Number.isFinite(num) ? Math.max(1, Math.floor(num)) : this.payCalMonths;
+                break;
+            default:
+                break;
+        }
+        this.payCalMessage = null;
+    }
+
+    get payCalColumns() {
+        const code = this.currencyCode;
+        return [
+            { label: 'Month #', fieldName: 'month', type: 'number' },
+            { label: 'Due Date', fieldName: 'dueDisplay' },
+            { label: 'Grace Date', fieldName: 'graceDisplay' },
+            { label: 'Amount Due', fieldName: 'amount', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Paid Date', fieldName: 'paidDisplay' },
+            { label: 'Paid Amount', fieldName: 'paidAmount', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Late Fee', fieldName: 'lateFee', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Status', fieldName: 'status' }
+        ];
+    }
+
+    // Add/overwrite a payment record in history
+    addPaymentRecord(monthIndex, paidDateIso, amount) {
+        if (!Number.isFinite(monthIndex) || monthIndex < 1) return;
+        const idx = this.payCalHistory.findIndex((p) => p.month === monthIndex);
+        const record = { month: monthIndex, paidDate: paidDateIso ? new Date(paidDateIso) : null, amount: Number.isFinite(amount) ? amount : null };
+        if (idx >= 0) this.payCalHistory.splice(idx, 1, record); else this.payCalHistory.push(record);
+    }
+
+    // Entry point from UI
+    handleAddPayment(event) {
+        const monthIdx = parseInt(this._uiPayMonth || '0', 10);
+        const paidIso = this._uiPayDate || null;
+        const amt = parseFloat(this._uiPayAmount || '');
+        this.addPaymentRecord(monthIdx, paidIso, amt);
+        this.generatePaymentCalendar();
+    }
+
+    handlePayEntryFieldChange(event) {
+        const { name } = event.target;
+        const v = event.detail?.value;
+        if (name === 'uiPayMonth') this._uiPayMonth = v;
+        if (name === 'uiPayDate') this._uiPayDate = v;
+        if (name === 'uiPayAmount') this._uiPayAmount = v;
+    }
+
+    // Helper to compute days in month
+    daysInMonth(year, monthIndex1) {
+        return new Date(year, monthIndex1, 0).getDate();
+    }
+
+    // Build payment schedule rows
+    generatePaymentCalendar() {
+        // Determine monthly payment amount (EMI)
+        let amount = this.monthlyPayment;
+        if (!Number.isFinite(amount)) {
+            if (Number.isFinite(this.price) && Number.isFinite(this.interestRate) && Number.isFinite(this.tenure) && this.tenure > 0) {
+                const r = (this.interestRate / 100) / MONTHS_IN_YEAR;
+                amount = this.calculateEmi(this.price, r, this.tenure * MONTHS_IN_YEAR);
+            } else {
+                this.payCalMessage = 'Enter price, rate, and term to generate calendar or ensure monthly payment is available.';
+                this.payCalRows = [];
+                return;
+            }
+        }
+
+        const start = this.payCalStartDate ? new Date(this.payCalStartDate) : new Date();
+        const months = Number.isFinite(this.payCalMonths) ? this.payCalMonths : 12;
+        const dueDay = Number.isFinite(this.payCalDueDay) ? this.payCalDueDay : 1;
+        const grace = Number.isFinite(this.payCalGraceDays) ? this.payCalGraceDays : 0;
+        const lateFlat = Number.isFinite(this.payCalLateFeeFlat) ? this.payCalLateFeeFlat : 0;
+        const latePct = Number.isFinite(this.payCalLateFeePct) ? this.payCalLateFeePct : 0;
+
+        const rows = [];
+        for (let i = 0; i < months; i++) {
+            const y = start.getFullYear();
+            const m0 = start.getMonth();
+            const date = new Date(y, m0 + i, 1);
+            const dim = this.daysInMonth(date.getFullYear(), date.getMonth() + 1);
+            const dueDate = new Date(date.getFullYear(), date.getMonth(), Math.min(dueDay, dim));
+            const graceDate = new Date(dueDate.getTime());
+            graceDate.setDate(graceDate.getDate() + grace);
+
+            // Find payment history for this month
+            const hist = this.payCalHistory.find((h) => h.month === (i + 1));
+            const paidDate = hist?.paidDate || null;
+            const paidAmount = Number.isFinite(hist?.amount) ? hist.amount : null;
+
+            let status = 'Pending';
+            let lateFee = 0;
+            if (paidDate) {
+                if (paidDate > graceDate) {
+                    status = 'Paid Late';
+                    lateFee = Math.max(lateFlat, amount * (latePct / 100));
+                } else {
+                    status = 'Paid On Time';
+                }
+            } else {
+                const today = new Date();
+                if (today > graceDate) status = 'Late';
+            }
+
+            rows.push({
+                id: `pm_${i + 1}`,
+                month: i + 1,
+                dueDate,
+                dueDisplay: dueDate.toLocaleDateString(),
+                graceDisplay: graceDate.toLocaleDateString(),
+                amount,
+                paidDisplay: paidDate ? paidDate.toLocaleDateString() : '',
+                paidAmount: paidAmount || null,
+                lateFee,
+                status
+            });
+        }
+
+        this.payCalRows = rows;
+        this.payCalMessage = null;
+    }
+
+    // =========================
+    // Construction Loan Calculator
+    // =========================
+    @track consBudget = null; // total project budget (max line)
+    @track consMonths = null; // construction period in months
+    @track consRate = null; // annual % interest during construction
+    @track consPermRate = null; // permanent loan rate (%)
+    @track consPermYears = 30; // amortization term (years)
+    @track consConvFees = 0; // conversion/closing fees at perm
+    @track consCapitalizeInterest = true; // add interest to principal at conversion
+    @track consDrawScheduleText = '';
+    @track consRows = [];
+    @track consResults = null;
+    @track consMessage = null;
+
+    handleConstructionFieldChange(event) {
+        const { name } = event.target;
+        const raw = event.detail?.value;
+        const num = parseFloat(raw);
+        const parsed = Number.isFinite(num) ? num : null;
+        switch (name) {
+            case 'consBudget': this.consBudget = parsed; break;
+            case 'consMonths': this.consMonths = Number.isFinite(num) ? Math.max(1, Math.floor(num)) : this.consMonths; break;
+            case 'consRate': this.consRate = parsed; break;
+            case 'consPermRate': this.consPermRate = parsed; break;
+            case 'consPermYears': this.consPermYears = Number.isFinite(num) ? Math.max(1, Math.floor(num)) : this.consPermYears; break;
+            case 'consConvFees': this.consConvFees = parsed ?? 0; break;
+            case 'consDrawScheduleText': this.consDrawScheduleText = String(raw ?? ''); break;
+            default: break;
+        }
+        this.consMessage = null;
+    }
+
+    handleConstructionToggle(event) {
+        const { name } = event.target;
+        const checked = !!event.detail.checked;
+        if (name === 'consCapitalizeInterest') this.consCapitalizeInterest = checked;
+    }
+
+    generateEqualDraws() {
+        if (!Number.isFinite(this.consBudget) || !Number.isFinite(this.consMonths) || this.consMonths <= 0) {
+            this.consMessage = 'Enter total budget and construction months to auto-generate draws.';
+            return;
+        }
+        const per = this.consBudget / this.consMonths;
+        const lines = [];
+        for (let m = 1; m <= this.consMonths; m++) lines.push(`${m},${Math.round(per * 100) / 100}`);
+        this.consDrawScheduleText = lines.join('\n');
+        this.consMessage = null;
+    }
+
+    parseDrawSchedule() {
+        const items = [];
+        const text = this.consDrawScheduleText || '';
+        const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+        for (const line of lines) {
+            // formats accepted: "month,amount" or "month:amount"
+            const parts = line.split(/[:|,]/).map((s) => s.trim());
+            if (parts.length >= 2) {
+                const m = parseInt(parts[0], 10);
+                const a = parseFloat(parts[1]);
+                if (Number.isFinite(m) && m >= 1 && Number.isFinite(a) && a >= 0) {
+                    items.push({ month: m, amount: a });
+                }
+            }
+        }
+        return items.sort((a, b) => a.month - b.month);
+    }
+
+    computeConstructionLoan() {
+        // Validate
+        if (!Number.isFinite(this.consBudget) || this.consBudget <= 0 || !Number.isFinite(this.consMonths) || this.consMonths <= 0) {
+            this.consMessage = 'Enter a valid total budget and construction months.';
+            this.consRows = [];
+            this.consResults = null;
+            return;
+        }
+        const rAnn = Number.isFinite(this.consRate) ? this.consRate : (Number.isFinite(this.interestRate) ? this.interestRate : 0);
+        const r = (rAnn / 100) / 12;
+        const draws = this.parseDrawSchedule();
+        if (!draws.length) {
+            this.consMessage = 'Provide a draw schedule (month,amount) per line or use Equal Draws.';
+            this.consRows = [];
+            this.consResults = null;
+            return;
+        }
+        // Build month-by-month schedule up to consMonths
+        let balance = 0;
+        let cumInterest = 0;
+        const rows = [];
+        let totalDrawn = 0;
+        for (let m = 1; m <= this.consMonths; m++) {
+            const draw = draws.filter((d) => d.month === m).reduce((acc, d) => acc + d.amount, 0);
+            totalDrawn += draw;
+            // approximate interest for month on average balance: previous balance plus half of new draw
+            const avgBal = balance + draw / 2;
+            const interest = avgBal * r;
+            cumInterest += interest;
+            const endBal = balance + draw; // interest-only (not reducing principal)
+            rows.push({ id: m, month: m, draw, balance: endBal, interest, cumInterest });
+            balance = endBal;
+        }
+
+        // Conversion to permanent loan
+        const capInterest = this.consCapitalizeInterest ? cumInterest : 0;
+        const convFees = Number.isFinite(this.consConvFees) ? this.consConvFees : 0;
+        const permPrincipal = Math.max(0, totalDrawn + capInterest + convFees);
+        const permRate = Number.isFinite(this.consPermRate) ? this.consPermRate : (Number.isFinite(this.interestRate) ? this.interestRate : 0);
+        const permYears = Number.isFinite(this.consPermYears) ? this.consPermYears : 30;
+        const permR = (permRate / 100) / 12;
+        const permN = permYears * 12;
+        const permPmt = this.calculateEmi(permPrincipal, permR, permN);
+
+        this.consRows = rows;
+        this.consResults = {
+            totalDrawn,
+            totalConstructionInterest: cumInterest,
+            capitalizedInterest: capInterest,
+            conversionFees: convFees,
+            permanentPrincipal: permPrincipal,
+            permanentRate: permRate,
+            permanentYears: permYears,
+            permanentPayment: permPmt
+        };
+        this.consMessage = null;
+    }
+
+    // =========================
     // =========================
     // Escrow Analysis (tax/insurance reserves and projections)
     // =========================
@@ -2002,26 +2583,65 @@ export default class MortgageCalculator extends LightningElement {
         const code = this.currencyCode;
         return [
             { label: 'Horizon', fieldName: 'horizon' },
-            { label: 'Renting', fieldName: 'renting', type: 'currency', typeAttributes: { currencyCode: code } },
-            { label: 'Buying', fieldName: 'buying', type: 'currency', typeAttributes: { currencyCode: code } },
-            { label: 'Difference (Buy - Rent)', fieldName: 'delta', type: 'currency', typeAttributes: { currencyCode: code } }
+            { label: 'Rent (Net)', fieldName: 'renting', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Buy (Net)', fieldName: 'buying', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Equity', fieldName: 'equity', type: 'currency', typeAttributes: { currencyCode: code } },
+            { label: 'Delta (Buy - Rent)', fieldName: 'delta', type: 'currency', typeAttributes: { currencyCode: code } }
         ];
     }
 
     get rentBuyRows() {
         const horizons = [5, 10, 30];
         return horizons.map((y) => {
-            const rent = this.rentingTotal(y);
-            const buy = this.buyingTotal(y);
-            const delta = rent != null && buy != null ? (buy - rent) : null;
+            const adv = this.computeAdvancedRentBuy(y);
             return {
                 id: `h${y}`,
                 horizon: `${y} years`,
-                renting: rent != null ? rent : null,
-                buying: buy != null ? buy : null,
-                delta: delta != null ? delta : null
+                renting: adv?.rentNet ?? null,
+                buying: adv?.buyNet ?? null,
+                equity: adv?.equity ?? null,
+                delta: adv?.delta ?? null
             };
         });
+    }
+
+    computeAdvancedRentBuy(years) {
+        if (!Number.isFinite(this.price) || !Number.isFinite(this.tenure) || this.tenure <= 0) return null;
+        const n = this.tenure * MONTHS_IN_YEAR;
+        const r = (Number.isFinite(this.interestRate) ? this.interestRate : this.getDefaultRateForLoanType(this.loanType)) / 100 / 12;
+        const down = Number.isFinite(this.affDownPayment) ? this.affDownPayment : 0;
+        const principal = Math.max(0, (this.price || 0) - down);
+        const emi = this.calculateEmi(principal, r, n);
+        const start = new Date();
+        const sched = this.buildMonthlySchedule(principal, r, n, emi, start, { amount: 0, start: null, frequency: 'none', months: null });
+        const months = Math.min(years * 12, sched.schedule.length);
+
+        let totalInterest = 0;
+        for (let i = 0; i < months; i++) totalInterest += (sched.schedule[i].interest || 0);
+        const propertyTaxMonthly = Number.isFinite(this.estimatedMonthlyTaxValueA) ? this.estimatedMonthlyTaxValueA : 0;
+        const hoa = Number.isFinite(this.hoaMonthly) ? this.hoaMonthly : 0;
+        const maintenance = Number.isFinite(this.maintenanceMonthly) ? this.maintenanceMonthly : 0;
+        const ins = Number.isFinite(this.insuranceMonthly) ? this.insuranceMonthly : 0;
+        const buyCarrying = (propertyTaxMonthly + hoa + maintenance + ins) * months;
+        const bracket = Number.isFinite(this.taxBracketPct) ? this.taxBracketPct / 100 : 0;
+        const taxBenefit = (totalInterest + propertyTaxMonthly * months) * bracket;
+        const oppAnnual = Number.isFinite(this.opportunityAnnualPct) ? (this.opportunityAnnualPct / 100) : 0.04;
+        const oppCost = down * (Math.pow(1 + oppAnnual, years) - 1);
+        const appr = Number.isFinite(this.appreciationAnnualPct) ? (this.appreciationAnnualPct / 100) : 0.03;
+        const valueAtHorizon = (this.price || 0) * Math.pow(1 + appr, years);
+        const balanceAtHorizon = sched.schedule[months - 1]?.balance ?? principal;
+        const equity = Math.max(0, valueAtHorizon - balanceAtHorizon);
+        const buyNet = totalInterest + buyCarrying + oppCost - taxBenefit;
+
+        const rent0 = Number.isFinite(this.currentRent) ? this.currentRent : 0;
+        const rentInc = Number.isFinite(this.rentIncrease) ? (this.rentIncrease / 100) : 0;
+        let rentTotal = 0;
+        let rentMonthly = rent0;
+        for (let y = 1; y <= years; y++) { rentTotal += rentMonthly * 12; rentMonthly *= (1 + rentInc); }
+        const renterSavings = (hoa + maintenance + ins) * years * 12;
+        const rentNet = Math.max(0, rentTotal - renterSavings);
+        const delta = buyNet - rentNet;
+        return { buyNet, rentNet, delta, equity };
     }
 
     // =========================
