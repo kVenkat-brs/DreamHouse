@@ -93,6 +93,183 @@ export default class MortgageCalculator extends LightningElement {
         }
     }
 
+    // =========================
+    // Property Tax Calculator (millage, assessment ratio, homestead)
+    // =========================
+    // Catalog with example locations. Values are illustrative and editable by users.
+    taxLocationCatalog = [
+        {
+            key: 'atl_fulton_ga',
+            label: 'Atlanta, GA (Fulton County) — example',
+            mills: 41.0, // total mills (city + county + schools) ~ 41 → 4.1%
+            assessmentRatioPct: 40, // Georgia residential assessment ratio
+            homesteadTypical: 2000 // typical fixed homestead amount (example only)
+        },
+        {
+            key: 'austin_travis_tx',
+            label: 'Austin, TX (Travis County) — example',
+            mills: 21.0, // ~2.1% combined (county + city + school) in mills
+            assessmentRatioPct: 100, // Texas typically assesses at market value
+            homesteadTypical: 100000 // Texas increased school homestead exemption (example)
+        },
+        {
+            key: 'charleston_sc',
+            label: 'Charleston, SC — example',
+            mills: 250.0, // SC has high mills but low assessment ratios
+            assessmentRatioPct: 4, // Primary residence often 4% (non‑primary 6%)
+            homesteadTypical: 50000 // example state homestead for seniors/disabled (illustrative)
+        },
+        {
+            key: 'custom',
+            label: 'Custom (enter your own values)',
+            mills: null,
+            assessmentRatioPct: null,
+            homesteadTypical: 0
+        }
+    ];
+
+    @track taxLocationKey = 'custom';
+    @track taxMarketValue = null; // defaults to price if available
+    @track taxMills = null; // mills (per $1,000 of taxable assessed value)
+    @track taxAssessmentRatioPct = null; // % of market value used as assessed value
+    @track taxHomesteadType = 'none'; // none | fixed | percent
+    @track taxHomesteadAmount = null; // fixed amount off assessed value
+    @track taxHomesteadPercent = null; // percent off assessed value
+    @track taxPrimaryResidence = true;
+    @track taxMessage = null;
+
+    get taxLocationOptions() {
+        return this.taxLocationCatalog.map((l) => ({ label: l.label, value: l.key }));
+    }
+
+    handleTaxLocationChange(event) {
+        const key = event.detail.value;
+        this.taxLocationKey = key;
+        const found = this.taxLocationCatalog.find((l) => l.key === key);
+        if (found) {
+            this.taxMills = Number.isFinite(found.mills) ? found.mills : this.taxMills;
+            this.taxAssessmentRatioPct = Number.isFinite(found.assessmentRatioPct) ? found.assessmentRatioPct : this.taxAssessmentRatioPct;
+            if (this.taxHomesteadType === 'fixed' && Number.isFinite(found.homesteadTypical)) {
+                this.taxHomesteadAmount = found.homesteadTypical;
+            }
+        }
+        if (!Number.isFinite(this.taxMarketValue) && Number.isFinite(this.price)) {
+            this.taxMarketValue = this.price;
+        }
+        this.taxMessage = null;
+    }
+
+    handleTaxFieldChange(event) {
+        const { name } = event.target;
+        const raw = event.detail?.value;
+        const num = parseFloat(raw);
+        switch (name) {
+            case 'taxMarketValue':
+                this.taxMarketValue = Number.isFinite(num) && num >= 0 ? num : null;
+                break;
+            case 'taxMills':
+                this.taxMills = Number.isFinite(num) && num >= 0 ? num : null;
+                break;
+            case 'taxAssessmentRatioPct':
+                this.taxAssessmentRatioPct = Number.isFinite(num) && num >= 0 ? num : null;
+                break;
+            case 'taxHomesteadAmount':
+                this.taxHomesteadAmount = Number.isFinite(num) && num >= 0 ? num : null;
+                break;
+            case 'taxHomesteadPercent':
+                this.taxHomesteadPercent = Number.isFinite(num) && num >= 0 ? num : null;
+                break;
+            default:
+                break;
+        }
+        this.taxMessage = null;
+    }
+
+    handleTaxHomesteadTypeChange(event) {
+        this.taxHomesteadType = event.detail.value;
+        this.taxMessage = null;
+    }
+
+    handleTaxPrimaryToggle(event) {
+        this.taxPrimaryResidence = !!event.detail.checked;
+        this.taxMessage = null;
+    }
+
+    // Computed assessment base (market value input falls back to price if empty)
+    get taxEffectiveMarketValue() {
+        const mv = Number.isFinite(this.taxMarketValue) ? this.taxMarketValue : (Number.isFinite(this.price) ? this.price : null);
+        return Number.isFinite(mv) ? mv : null;
+    }
+
+    get taxAssessedValue() {
+        const mv = this.taxEffectiveMarketValue;
+        const ratioPct = Number.isFinite(this.taxAssessmentRatioPct) ? this.taxAssessmentRatioPct : null;
+        if (!Number.isFinite(mv) || !Number.isFinite(ratioPct)) return null;
+        return (mv * (ratioPct / 100));
+    }
+
+    get taxHomesteadDeduction() {
+        // Apply homestead only when flagged as primary and type set
+        if (!this.taxPrimaryResidence) return 0;
+        const assessed = this.taxAssessedValue;
+        if (!Number.isFinite(assessed)) return 0;
+        if (this.taxHomesteadType === 'fixed') {
+            return Number.isFinite(this.taxHomesteadAmount) ? Math.min(this.taxHomesteadAmount, assessed) : 0;
+        }
+        if (this.taxHomesteadType === 'percent') {
+            const pct = Number.isFinite(this.taxHomesteadPercent) ? this.taxHomesteadPercent : 0;
+            return Math.max(0, Math.min(assessed, assessed * (pct / 100)));
+        }
+        return 0;
+    }
+
+    get taxTaxableAssessed() {
+        const assessed = this.taxAssessedValue;
+        if (!Number.isFinite(assessed)) return null;
+        const deduction = Number.isFinite(this.taxHomesteadDeduction) ? this.taxHomesteadDeduction : 0;
+        return Math.max(0, assessed - deduction);
+    }
+
+    get taxAnnual() {
+        const taxable = this.taxTaxableAssessed;
+        const mills = Number.isFinite(this.taxMills) ? this.taxMills : null;
+        if (!Number.isFinite(taxable) || !Number.isFinite(mills)) return null;
+        // Mills are per $1,000 of taxable assessed value
+        return (taxable / 1000) * mills;
+    }
+
+    get taxMonthly() {
+        const annual = this.taxAnnual;
+        return Number.isFinite(annual) ? (annual / 12) : null;
+    }
+
+    get taxSummary() {
+        if (!Number.isFinite(this.taxAnnual)) return null;
+        return {
+            assessed: this.formatCurrency(this.taxAssessedValue),
+            deduction: this.formatCurrency(this.taxHomesteadDeduction),
+            taxable: this.formatCurrency(this.taxTaxableAssessed),
+            annual: this.formatCurrency(this.taxAnnual),
+            monthly: this.formatCurrency(this.taxMonthly)
+        };
+    }
+
+    get taxHomesteadOptions() {
+        return [
+            { label: 'None', value: 'none' },
+            { label: 'Fixed Amount', value: 'fixed' },
+            { label: 'Percent', value: 'percent' }
+        ];
+    }
+
+    get disableHomesteadAmount() {
+        return this.taxHomesteadType !== 'fixed';
+    }
+
+    get disableHomesteadPercent() {
+        return this.taxHomesteadType !== 'percent';
+    }
+
     get hostClass() {
         switch (this.theme) {
             case 'dark':

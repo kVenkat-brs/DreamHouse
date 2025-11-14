@@ -58,6 +58,129 @@
                 <lightning-button label="Plans" onclick={focusPlans}></lightning-button>
             </div>
 
+            <!-- Property Tax Calculator -->
+            <div class="slds-m-bottom_medium slds-box slds-theme_default" role="region" aria-label="Property Tax Calculator">
+                <h2 class="slds-text-title_caps slds-m-bottom_small">Property Tax Calculator</h2>
+                <p class="slds-text-body_small slds-m-bottom_small">Calculate annual and monthly property taxes using local millage rates, assessment ratios, and homestead exemptions.</p>
+                <div class="slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                        <lightning-combobox
+                            label="Location Preset"
+                            value={taxLocationKey}
+                            options={taxLocationOptions}
+                            onchange={handleTaxLocationChange}
+                        ></lightning-combobox>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                        <lightning-input
+                            name="taxMarketValue"
+                            type="currency"
+                            label="Market Value"
+                            value={taxMarketValue}
+                            onchange={handleTaxFieldChange}
+                            placeholder="Defaults to main Price if blank"
+                        ></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                        <lightning-input
+                            name="taxAssessmentRatioPct"
+                            type="number"
+                            step="0.01"
+                            label="Assessment Ratio (%)"
+                            value={taxAssessmentRatioPct}
+                            onchange={handleTaxFieldChange}
+                            field-level-help="Percent of market value used as assessed value (varies by state/county)."
+                        ></lightning-input>
+                    </div>
+                </div>
+
+                <div class="slds-grid slds-wrap slds-gutters slds-m-top_small">
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                        <lightning-input
+                            name="taxMills"
+                            type="number"
+                            step="0.01"
+                            label="Total Millage (mills)"
+                            value={taxMills}
+                            onchange={handleTaxFieldChange}
+                            field-level-help="Mills are per $1,000 of taxable assessed value."
+                        ></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                        <lightning-radio-group
+                            name="taxHomesteadType"
+                            label="Homestead Exemption"
+                            options={taxHomesteadOptions}
+                            value={taxHomesteadType}
+                            onchange={handleTaxHomesteadTypeChange}
+                        ></lightning-radio-group>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                        <lightning-input
+                            name="taxHomesteadAmount"
+                            type="currency"
+                            label="Homestead Amount"
+                            value={taxHomesteadAmount}
+                            onchange={handleTaxFieldChange}
+                            disabled={disableHomesteadAmount}
+                        ></lightning-input>
+                        <lightning-input
+                            class="slds-m-top_x-small"
+                            name="taxHomesteadPercent"
+                            type="number"
+                            step="0.01"
+                            label="Homestead %"
+                            value={taxHomesteadPercent}
+                            onchange={handleTaxFieldChange}
+                            disabled={disableHomesteadPercent}
+                        ></lightning-input>
+                    </div>
+                </div>
+
+                <div class="slds-grid slds-wrap slds-gutters slds-m-top_small">
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                        <lightning-input
+                            type="toggle"
+                            label="Primary Residence"
+                            message-toggle-active="Yes"
+                            message-toggle-inactive="No"
+                            checked={taxPrimaryResidence}
+                            onchange={handleTaxPrimaryToggle}
+                        ></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_2-of-3 slds-p-top_small">
+                        <template lwc:if={taxSummary}>
+                            <div class="slds-grid slds-wrap slds-gutters">
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                                    <p class="slds-text-title slds-m-bottom_xx-small">Assessed Value</p>
+                                    <p>{taxSummary.assessed}</p>
+                                </div>
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                                    <p class="slds-text-title slds-m-bottom_xx-small">Homestead Deduction</p>
+                                    <p>{taxSummary.deduction}</p>
+                                </div>
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                                    <p class="slds-text-title slds-m-bottom_xx-small">Taxable Assessed</p>
+                                    <p>{taxSummary.taxable}</p>
+                                </div>
+                            </div>
+                            <div class="slds-grid slds-wrap slds-gutters slds-m-top_small">
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                    <p class="slds-text-title slds-m-bottom_xx-small">Annual Tax</p>
+                                    <p class="slds-text-heading_small">{taxSummary.annual}</p>
+                                </div>
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                    <p class="slds-text-title slds-m-bottom_xx-small">Monthly Tax</p>
+                                    <p class="slds-text-heading_small">{taxSummary.monthly}</p>
+                                </div>
+                            </div>
+                        </template>
+                        <template lwc:else>
+                            <p class="slds-text-color_weak slds-m-top_small">Enter market value, assessment ratio, and millage to see results.</p>
+                        </template>
+                    </div>
+                </div>
+            </div>
             <!-- What‑If Scenario Planner -->
             <div class="slds-m-bottom_medium slds-box slds-theme_default" role="region" aria-label="What‑If Scenario Planner">
                 <h2 class="slds-text-title_caps slds-m-bottom_small" id="scenario-planner-heading">What‑If Scenario Planner</h2>
