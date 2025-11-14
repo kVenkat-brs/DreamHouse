@@ -1862,6 +1862,541 @@ export default class MortgageCalculator extends LightningElement {
     }
 
     // =========================
+    // Prepayment Penalty Analyzer
+    // =========================
+    @track ppAmount = null; // intended prepayment amount
+    @track ppPrepayMonth = 1; // months since loan start (1-based)
+    @track ppStartDate = null; // ISO, optional for date display
+    @track ppPenaltyType = 'percent'; // percent | monthsInterest | tiered
+    @track ppPercent = 2.0; // used when type=percent (e.g., 2%)
+    @track ppMonthsInterest = 6; // used when type=monthsInterest (e.g., 6 months)
+    @track ppPenaltyWindowMonths = 24; // months within which penalty applies (for percent/monthsInterest)
+    @track ppTierScheduleText = '12:2;24:1;36:0'; // months:percent;...
+    @track ppFreePctAnnual = 20; // % of outstanding allowed each year without penalty
+    @track ppWaiverOnSale = true; // waives penalty if sold (owner-occupied rule)
+    @track ppIsSale = false; // this prepayment due to sale
+    @track ppResults = null;
+    @track ppMessage = null;
+
+    handlePpFieldChange(event) {
+        const { name } = event.target;
+        const raw = event.detail?.value;
+        const num = parseFloat(raw);
+        const parsed = Number.isFinite(num) ? num : null;
+        switch (name) {
+            case 'ppAmount': this.ppAmount = parsed; break;
+            case 'ppPrepayMonth': this.ppPrepayMonth = Number.isFinite(num) ? Math.max(1, Math.floor(num)) : this.ppPrepayMonth; break;
+            case 'ppStartDate': this.ppStartDate = raw || null; break;
+            case 'ppPenaltyType': this.ppPenaltyType = raw || this.ppPenaltyType; break;
+            case 'ppPercent': this.ppPercent = parsed ?? this.ppPercent; break;
+            case 'ppMonthsInterest': this.ppMonthsInterest = Number.isFinite(num) ? Math.max(0, Math.floor(num)) : this.ppMonthsInterest; break;
+            case 'ppPenaltyWindowMonths': this.ppPenaltyWindowMonths = Number.isFinite(num) ? Math.max(0, Math.floor(num)) : this.ppPenaltyWindowMonths; break;
+            case 'ppTierScheduleText': this.ppTierScheduleText = String(raw ?? ''); break;
+            case 'ppFreePctAnnual': this.ppFreePctAnnual = parsed ?? this.ppFreePctAnnual; break;
+            default: break;
+        }
+        this.ppMessage = null;
+    }
+
+    handlePpToggleChange(event) {
+        const { name } = event.target;
+        const checked = !!event.detail.checked;
+        if (name === 'ppWaiverOnSale') this.ppWaiverOnSale = checked;
+        if (name === 'ppIsSale') this.ppIsSale = checked;
+    }
+
+    parseTierSchedule(text) {
+        // Format: "months:percent;months:percent;..." e.g., 12:2;24:1;36:0
+        const out = [];
+        const parts = String(text || '').split(';').map((s) => s.trim()).filter(Boolean);
+        for (const p of parts) {
+            const [mStr, pctStr] = p.split(':').map((s) => s.trim());
+            const m = parseInt(mStr, 10);
+            const pct = parseFloat(pctStr);
+            if (Number.isFinite(m) && Number.isFinite(pct)) out.push({ months: m, percent: pct });
+        }
+        // sort ascending by months
+        out.sort((a, b) => a.months - b.months);
+        return out;
+    }
+
+    getOutstandingAtMonth(principal, monthlyRate, totalMonths, monthlyPmt, monthIndex1) {
+        const start = new Date();
+        const sched = this.buildMonthlySchedule(principal, monthlyRate, totalMonths, monthlyPmt, start, { amount: 0, start: null, frequency: 'none', months: null });
+        const idx = Math.min(Math.max(1, monthIndex1), sched.schedule.length) - 1;
+        return Math.max(0, sched.schedule[idx]?.balance ?? principal);
+    }
+
+    computePrepayPenalty() {
+        // Validate base loan context
+        if (!Number.isFinite(this.ppAmount) || this.ppAmount <= 0) {
+            this.ppMessage = 'Enter a valid prepayment amount.';
+            this.ppResults = null;
+            return;
+        }
+        if (!Number.isFinite(this.price) || !Number.isFinite(this.tenure) || this.tenure <= 0) {
+            this.ppMessage = 'Enter price and term (tenure) to evaluate prepayment.';
+            this.ppResults = null;
+            return;
+        }
+
+        // Loan math
+        const down = Number.isFinite(this.affDownPayment) ? this.affDownPayment : 0;
+        const principal0 = Math.max(0, (this.price || 0) - down);
+        const totalMonths = this.tenure * MONTHS_IN_YEAR;
+        const annualRate = Number.isFinite(this.interestRate) ? this.interestRate : this.getDefaultRateForLoanType(this.loanType);
+        const r = (annualRate / 100) / MONTHS_IN_YEAR;
+        const emi = this.calculateEmi(principal0, r, totalMonths);
+
+        const m = Number.isFinite(this.ppPrepayMonth) ? Math.max(1, Math.floor(this.ppPrepayMonth)) : 1;
+        const outstanding = this.getOutstandingAtMonth(principal0, r, totalMonths, emi, m);
+
+        // Waiver on sale
+        if (this.ppWaiverOnSale && this.ppIsSale) {
+            const date = this.ppStartDate ? new Date(this.ppStartDate) : new Date();
+            const prepayDate = new Date(date.getFullYear(), date.getMonth() + (m - 1), date.getDate());
+            this.ppResults = { penalty: 0, waived: true, reason: 'Waived due to sale', prepayDate };
+            this.ppMessage = null;
+            return;
+        }
+
+        // Free allowance per year
+        const freePct = Number.isFinite(this.ppFreePctAnnual) ? (this.ppFreePctAnnual / 100) : 0;
+        const freeAllowance = outstanding * freePct;
+        const prepayEffective = Math.max(0, this.ppAmount - freeAllowance);
+
+        // Base penalty
+        let penalty = 0;
+        let tierPctUsed = null;
+        const withinWindow = !Number.isFinite(this.ppPenaltyWindowMonths) || this.ppPenaltyWindowMonths <= 0 ? true : (m <= this.ppPenaltyWindowMonths);
+
+        if (this.ppPenaltyType === 'percent') {
+            if (withinWindow) {
+                const pct = Number.isFinite(this.ppPercent) ? (this.ppPercent / 100) : 0;
+                penalty = prepayEffective * pct;
+            } else {
+                penalty = 0;
+            }
+        } else if (this.ppPenaltyType === 'monthsInterest') {
+            if (withinWindow) {
+                const months = Number.isFinite(this.ppMonthsInterest) ? this.ppMonthsInterest : 0;
+                penalty = prepayEffective * r * months;
+            } else {
+                penalty = 0;
+            }
+        } else if (this.ppPenaltyType === 'tiered') {
+            const tiers = this.parseTierSchedule(this.ppTierScheduleText);
+            let pct = 0;
+            for (const t of tiers) {
+                if (m <= t.months) { pct = t.percent; break; }
+                pct = t.percent; // last tier applies if greater than all
+            }
+            tierPctUsed = pct;
+            penalty = prepayEffective * (pct / 100);
+        }
+
+        // Optimal month search (next 36 months)
+        let optimalMonth = m;
+        let optimalPenalty = penalty;
+        for (let k = m; k <= m + 36; k++) {
+            let p = 0;
+            const withinWin = !Number.isFinite(this.ppPenaltyWindowMonths) || this.ppPenaltyWindowMonths <= 0 ? true : (k <= this.ppPenaltyWindowMonths);
+            const outstandingK = this.getOutstandingAtMonth(principal0, r, totalMonths, emi, k);
+            const freeK = outstandingK * freePct;
+            const eff = Math.max(0, this.ppAmount - freeK);
+            if (this.ppPenaltyType === 'percent') {
+                p = withinWin ? eff * ((Number.isFinite(this.ppPercent) ? this.ppPercent : 0) / 100) : 0;
+            } else if (this.ppPenaltyType === 'monthsInterest') {
+                const months = Number.isFinite(this.ppMonthsInterest) ? this.ppMonthsInterest : 0;
+                p = withinWin ? eff * r * months : 0;
+            } else {
+                const tiers = this.parseTierSchedule(this.ppTierScheduleText);
+                let pct = 0;
+                for (const t of tiers) { if (k <= t.months) { pct = t.percent; break; } pct = t.percent; }
+                p = eff * (pct / 100);
+            }
+            if (p < optimalPenalty) { optimalPenalty = p; optimalMonth = k; }
+            if (p === 0) { optimalPenalty = 0; optimalMonth = k; break; }
+        }
+
+        const baseDate = this.ppStartDate ? new Date(this.ppStartDate) : new Date();
+        const prepayDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + (m - 1), baseDate.getDate());
+        const optimalDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + (optimalMonth - 1), baseDate.getDate());
+
+        this.ppResults = {
+            penalty,
+            waived: false,
+            tierPctUsed,
+            prepayDate,
+            optimalMonth,
+            optimalDate,
+            optimalPenalty,
+            outstandingAtPrepay: outstanding,
+            freeAllowance,
+            prepayEffective
+        };
+        this.ppMessage = null;
+    }
+
+    // =========================
+    // CLTV / HLTV Calculator (multiple liens + lender profiles)
+    // =========================
+    @track cltvValue = null; // property value
+    @track cltvProfile = 'conv80'; // lender profile key
+    @track cltvMaxCustom = null; // optional custom max CLTV
+    // Lien 1
+    @track cltvLien1Position = '1st';
+    @track cltvLien1Type = 'closed'; // closed | heloc
+    @track cltvLien1Balance = null;
+    @track cltvLien1Limit = null; // for HELOC
+    @track cltvLien1UseLimit = true; // include limit in HLTV for HELOC
+    // Lien 2
+    @track cltvLien2Position = '2nd';
+    @track cltvLien2Type = 'heloc';
+    @track cltvLien2Balance = null;
+    @track cltvLien2Limit = null;
+    @track cltvLien2UseLimit = true;
+    // Lien 3
+    @track cltvLien3Position = '3rd';
+    @track cltvLien3Type = 'closed';
+    @track cltvLien3Balance = null;
+    @track cltvLien3Limit = null;
+    @track cltvLien3UseLimit = true;
+    @track cltvResults = null;
+    @track cltvMessage = null;
+
+    get cltvProfileOptions() {
+        return [
+            { label: 'Conventional (80% CLTV)', value: 'conv80' },
+            { label: 'Portfolio (85% CLTV)', value: 'port85' },
+            { label: 'HELOC Aggressive (90% HLTV)', value: 'heloc90' },
+            { label: 'Custom', value: 'custom' }
+        ];
+    }
+
+    cltvRequirements(key) {
+        switch (key) {
+            case 'conv80': return { maxCltv: 80, maxHltv: 80 };
+            case 'port85': return { maxCltv: 85, maxHltv: 85 };
+            case 'heloc90': return { maxCltv: 90, maxHltv: 90 };
+            case 'custom':
+            default:
+                return { maxCltv: Number.isFinite(this.cltvMaxCustom) ? this.cltvMaxCustom : null, maxHltv: Number.isFinite(this.cltvMaxCustom) ? this.cltvMaxCustom : null };
+        }
+    }
+
+    handleCltvFieldChange(event) {
+        const { name } = event.target;
+        const raw = event.detail?.value;
+        const num = parseFloat(raw);
+        const parsed = Number.isFinite(num) ? num : null;
+        switch (name) {
+            case 'cltvValue': this.cltvValue = parsed; break;
+            case 'cltvProfile': this.cltvProfile = raw || this.cltvProfile; break;
+            case 'cltvMaxCustom': this.cltvMaxCustom = parsed; break;
+            case 'cltvLien1Position': this.cltvLien1Position = raw || this.cltvLien1Position; break;
+            case 'cltvLien1Type': this.cltvLien1Type = raw || this.cltvLien1Type; break;
+            case 'cltvLien1Balance': this.cltvLien1Balance = parsed; break;
+            case 'cltvLien1Limit': this.cltvLien1Limit = parsed; break;
+            case 'cltvLien2Position': this.cltvLien2Position = raw || this.cltvLien2Position; break;
+            case 'cltvLien2Type': this.cltvLien2Type = raw || this.cltvLien2Type; break;
+            case 'cltvLien2Balance': this.cltvLien2Balance = parsed; break;
+            case 'cltvLien2Limit': this.cltvLien2Limit = parsed; break;
+            case 'cltvLien3Position': this.cltvLien3Position = raw || this.cltvLien3Position; break;
+            case 'cltvLien3Type': this.cltvLien3Type = raw || this.cltvLien3Type; break;
+            case 'cltvLien3Balance': this.cltvLien3Balance = parsed; break;
+            case 'cltvLien3Limit': this.cltvLien3Limit = parsed; break;
+            default: break;
+        }
+        this.cltvMessage = null;
+    }
+
+    handleCltvToggleChange(event) {
+        const { name } = event.target;
+        const checked = !!event.detail.checked;
+        if (name === 'cltvLien1UseLimit') this.cltvLien1UseLimit = checked;
+        if (name === 'cltvLien2UseLimit') this.cltvLien2UseLimit = checked;
+        if (name === 'cltvLien3UseLimit') this.cltvLien3UseLimit = checked;
+    }
+
+    computeCltv() {
+        if (!Number.isFinite(this.cltvValue) || this.cltvValue <= 0) {
+            this.cltvMessage = 'Enter a valid property value.';
+            this.cltvResults = null;
+            return;
+        }
+        const liens = [
+            { pos: this.cltvLien1Position, type: this.cltvLien1Type, bal: this.cltvLien1Balance, lim: this.cltvLien1Limit, useLimit: this.cltvLien1UseLimit },
+            { pos: this.cltvLien2Position, type: this.cltvLien2Type, bal: this.cltvLien2Balance, lim: this.cltvLien2Limit, useLimit: this.cltvLien2UseLimit },
+            { pos: this.cltvLien3Position, type: this.cltvLien3Type, bal: this.cltvLien3Balance, lim: this.cltvLien3Limit, useLimit: this.cltvLien3UseLimit }
+        ];
+        const value = this.cltvValue;
+        let totalBal = 0; // sum of principal balances
+        let totalHltvBase = 0; // balances plus HELOC limits when required
+        const rows = [];
+        liens.forEach((l, idx) => {
+            if (!Number.isFinite(l.bal) && !(l.type === 'heloc' && Number.isFinite(l.lim))) return;
+            const bal = Number.isFinite(l.bal) ? l.bal : 0;
+            const lim = Number.isFinite(l.lim) ? l.lim : 0;
+            totalBal += bal;
+            totalHltvBase += (l.type === 'heloc' && l.useLimit) ? Math.max(bal, lim) : bal;
+            rows.push({ id: `lien_${idx+1}`, position: l.pos, type: l.type, balance: bal, limit: l.type === 'heloc' ? lim : null });
+        });
+
+        const cltvPct = value > 0 ? (totalBal / value) * 100 : null;
+        const hltvPct = value > 0 ? (totalHltvBase / value) * 100 : null;
+        const req = this.cltvRequirements(this.cltvProfile);
+        const meetsCltv = req.maxCltv != null ? (cltvPct <= req.maxCltv + 1e-9) : null;
+        const meetsHltv = req.maxHltv != null ? (hltvPct <= req.maxHltv + 1e-9) : null;
+
+        this.cltvResults = {
+            value,
+            totalBalance: totalBal,
+            totalHltvBase,
+            cltvPct: cltvPct != null ? Math.round(cltvPct * 10) / 10 : null,
+            hltvPct: hltvPct != null ? Math.round(hltvPct * 10) / 10 : null,
+            meetsCltv,
+            meetsHltv,
+            requirement: req,
+            liens: rows
+        };
+        this.cltvMessage = null;
+    }
+
+    // =========================
+    // PMI/MIP Cancellation Tracker
+    // =========================
+    @track pmiStartDate = null; // ISO loan start date
+    @track pmiAsOfDate = null; // ISO today (optional)
+    @track pmiCurrentAppraisal = null; // current appraised value (optional)
+    @track pmiSeasoningMonths = 24; // months required before request with new appraisal
+    @track pmiResults = null;
+    @track pmiMessage = null;
+
+    handlePmiFieldChange(event) {
+        const { name } = event.target;
+        const raw = event.detail?.value;
+        const num = parseFloat(raw);
+        const parsed = Number.isFinite(num) ? num : null;
+        switch (name) {
+            case 'pmiStartDate': this.pmiStartDate = raw || null; break;
+            case 'pmiAsOfDate': this.pmiAsOfDate = raw || null; break;
+            case 'pmiCurrentAppraisal': this.pmiCurrentAppraisal = parsed; break;
+            case 'pmiSeasoningMonths': this.pmiSeasoningMonths = Number.isFinite(num) ? Math.max(0, Math.floor(num)) : this.pmiSeasoningMonths; break;
+            default: break;
+        }
+        this.pmiMessage = null;
+    }
+
+    monthsBetweenDates(d1, d2) {
+        const a = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate());
+        const b = new Date(d2.getFullYear(), d2.getMonth(), d2.getDate());
+        return (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
+    }
+
+    computePmiMipTracker() {
+        // Validate base inputs
+        if (!Number.isFinite(this.price) || !Number.isFinite(this.tenure) || this.tenure <= 0) {
+            this.pmiMessage = 'Enter price and term to evaluate PMI/MIP.';
+            this.pmiResults = null;
+            return;
+        }
+        const years = this.tenure;
+        const totalMonths = years * MONTHS_IN_YEAR;
+        const annualRate = Number.isFinite(this.interestRate) ? this.interestRate : this.getDefaultRateForLoanType(this.loanType);
+        const r = (annualRate / 100) / MONTHS_IN_YEAR;
+        const down = Number.isFinite(this.affDownPayment) ? this.affDownPayment : 0;
+        const origValue = this.price;
+        const principal0 = Math.max(0, origValue - down);
+        const emi = this.calculateEmi(principal0, r, totalMonths);
+        const start = this.pmiStartDate ? new Date(this.pmiStartDate) : new Date();
+        const asOf = this.pmiAsOfDate ? new Date(this.pmiAsOfDate) : new Date();
+
+        // Build amortization to read balances
+        const sched = this.buildMonthlySchedule(principal0, r, totalMonths, emi, start, { amount: 0, start: null, frequency: 'none', months: null });
+
+        // Find first month where balance/original value <= thresholds
+        const threshReq = 0.80 * origValue;
+        const threshAuto = 0.78 * origValue;
+        let monthReq = null;
+        let monthAuto = null;
+        for (let i = 0; i < sched.schedule.length; i++) {
+            const bal = sched.schedule[i].balance || 0;
+            if (monthReq == null && bal <= threshReq) monthReq = i + 1;
+            if (monthAuto == null && bal <= threshAuto) { monthAuto = i + 1; break; }
+        }
+
+        // Current status
+        const monthsElapsed = Math.max(0, Math.min(this.monthsBetweenDates(start, asOf), sched.schedule.length - 1));
+        const balNow = sched.schedule[monthsElapsed]?.balance ?? principal0;
+        const ltvOrigNow = Math.round(((balNow / origValue) * 1000)) / 10;
+
+        // Current appraisal path (optional): eligibility to request at <=80% of current value with seasoning
+        const appraisal = Number.isFinite(this.pmiCurrentAppraisal) ? this.pmiCurrentAppraisal : null;
+        const ltvCurrNow = appraisal ? (Math.round(((balNow / appraisal) * 1000)) / 10) : null;
+        const seasoningOk = monthsElapsed >= (Number.isFinite(this.pmiSeasoningMonths) ? this.pmiSeasoningMonths : 0);
+        const requestEligibleNow = appraisal ? (ltvCurrNow <= 80 && seasoningOk) : (ltvOrigNow <= 80);
+
+        // Dates
+        const dateReq = monthReq ? new Date(start.getFullYear(), start.getMonth() + monthReq - 1, start.getDate()) : null;
+        const dateAuto = monthAuto ? new Date(start.getFullYear(), start.getMonth() + monthAuto - 1, start.getDate()) : null;
+
+        // FHA MIP rules (simplified): down >= 10% -> cancel after 11 years, else life of loan
+        let mipCancels = null;
+        let mipCancelDate = null;
+        if (this.loanType === 'fha') {
+            const downPct = origValue > 0 ? (down / origValue) * 100 : 0;
+            if (downPct >= 10) {
+                mipCancels = 11 * 12; // months
+                mipCancelDate = new Date(start.getFullYear(), start.getMonth() + mipCancels - 1, start.getDate());
+            } else {
+                mipCancels = null; // life of loan
+            }
+        }
+
+        this.pmiResults = {
+            loanType: this.loanType,
+            originalValue: origValue,
+            originalBalance: principal0,
+            ltvOrigNow,
+            ltvCurrNow,
+            monthsElapsed,
+            requestAt80Month: monthReq,
+            autoAt78Month: monthAuto,
+            requestAt80Date: dateReq,
+            autoAt78Date: dateAuto,
+            requestEligibleNow,
+            seasoningOk,
+            mipCancelsAtMonth: mipCancels,
+            mipCancelDate
+        };
+        this.pmiMessage = null;
+    }
+
+    // =========================
+    // Loan Process Timeline (milestones + dependencies)
+    // =========================
+    @track timelineStartDate = null; // ISO date for app start
+    @track timelineTargetCloseDate = null; // optional target close
+    @track timelineRows = [];
+    @track timelineMessage = null;
+    // Adjustable durations (calendar days)
+    @track tlDurApplication = 1;
+    @track tlDurDisclosures = 1;
+    @track tlDurAppraisalOrder = 1;
+    @track tlDurAppraisal = 7;
+    @track tlDurInitialUW = 3;
+    @track tlDurConditionsIssue = 1;
+    @track tlDurConditionsSubmit = 5;
+    @track tlDurFinalUW = 2;
+    @track tlDurCD = 3; // 3-day CD waiting period
+    @track tlDurClosing = 1;
+    @track tlDurFunding = 1;
+
+    handleTimelineFieldChange(event) {
+        const { name } = event.target;
+        const raw = event.detail?.value;
+        const n = parseFloat(raw);
+        if (name === 'timelineStartDate') this.timelineStartDate = raw || null;
+        if (name === 'timelineTargetCloseDate') this.timelineTargetCloseDate = raw || null;
+        const assignInt = (key) => { this[key] = Number.isFinite(n) ? Math.max(0, Math.floor(n)) : this[key]; };
+        if (name === 'tlDurApplication') assignInt('tlDurApplication');
+        if (name === 'tlDurDisclosures') assignInt('tlDurDisclosures');
+        if (name === 'tlDurAppraisalOrder') assignInt('tlDurAppraisalOrder');
+        if (name === 'tlDurAppraisal') assignInt('tlDurAppraisal');
+        if (name === 'tlDurInitialUW') assignInt('tlDurInitialUW');
+        if (name === 'tlDurConditionsIssue') assignInt('tlDurConditionsIssue');
+        if (name === 'tlDurConditionsSubmit') assignInt('tlDurConditionsSubmit');
+        if (name === 'tlDurFinalUW') assignInt('tlDurFinalUW');
+        if (name === 'tlDurCD') assignInt('tlDurCD');
+        if (name === 'tlDurClosing') assignInt('tlDurClosing');
+        if (name === 'tlDurFunding') assignInt('tlDurFunding');
+        this.timelineMessage = null;
+    }
+
+    get timelineColumns() {
+        return [
+            { label: 'Milestone', fieldName: 'name' },
+            { label: 'Depends On', fieldName: 'dependsOn' },
+            { label: 'Start', fieldName: 'startDisplay' },
+            { label: 'End', fieldName: 'endDisplay' },
+            { label: 'Duration (days)', fieldName: 'duration', type: 'number' },
+            { label: 'Status', fieldName: 'status' }
+        ];
+    }
+
+    timelineDefinition() {
+        // Graph with dependencies; keys map to duration fields
+        return [
+            { key: 'application', name: 'Application', durKey: 'tlDurApplication', deps: [] },
+            { key: 'disclosures', name: 'Disclosures', durKey: 'tlDurDisclosures', deps: ['application'] },
+            { key: 'appr_order', name: 'Appraisal Ordered', durKey: 'tlDurAppraisalOrder', deps: ['application'] },
+            { key: 'appraisal', name: 'Appraisal Completed', durKey: 'tlDurAppraisal', deps: ['appr_order'] },
+            { key: 'initial_uw', name: 'Initial Underwriting', durKey: 'tlDurInitialUW', deps: ['disclosures'] },
+            { key: 'conds_issue', name: 'Conditions Issued', durKey: 'tlDurConditionsIssue', deps: ['initial_uw'] },
+            { key: 'conds_submit', name: 'Conditions Submitted', durKey: 'tlDurConditionsSubmit', deps: ['conds_issue'] },
+            { key: 'final_uw', name: 'Final UW / CTC', durKey: 'tlDurFinalUW', deps: ['conds_submit', 'appraisal'] },
+            { key: 'cd', name: 'Closing Disclosure (CD)', durKey: 'tlDurCD', deps: ['final_uw'] },
+            { key: 'closing', name: 'Closing', durKey: 'tlDurClosing', deps: ['cd'] },
+            { key: 'funding', name: 'Funding', durKey: 'tlDurFunding', deps: ['closing'] }
+        ];
+    }
+
+    addDays(date, days) {
+        const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        d.setDate(d.getDate() + days);
+        return d;
+    }
+
+    generateTimeline() {
+        const def = this.timelineDefinition();
+        const start = this.timelineStartDate ? new Date(this.timelineStartDate) : new Date();
+        // compute est dates
+        const dateMap = new Map();
+        const rows = [];
+        for (const node of def) {
+            let estStart = start;
+            if (node.deps && node.deps.length) {
+                for (const dep of node.deps) {
+                    const depEnd = dateMap.get(dep)?.end;
+                    if (depEnd && depEnd > estStart) estStart = depEnd;
+                }
+            }
+            const duration = Math.max(0, this[node.durKey] || 0);
+            const estEnd = this.addDays(estStart, duration);
+            dateMap.set(node.key, { start: estStart, end: estEnd });
+            rows.push({
+                id: node.key,
+                name: node.name,
+                dependsOn: (node.deps || []).map((k) => def.find((n) => n.key === k)?.name).filter(Boolean).join(', '),
+                startDisplay: estStart.toLocaleDateString(),
+                endDisplay: estEnd.toLocaleDateString(),
+                duration,
+                status: 'Not Started'
+            });
+        }
+        // Target close analysis
+        if (this.timelineTargetCloseDate) {
+            const target = new Date(this.timelineTargetCloseDate);
+            const funding = rows.find((r) => r.id === 'funding');
+            if (funding) {
+                const targetDiff = Math.ceil((target - dateMap.get('funding').end) / (1000*60*60*24));
+                // Append a summary row
+                rows.push({
+                    id: 'summary',
+                    name: 'Target Close Delta',
+                    dependsOn: '',
+                    startDisplay: '',
+                    endDisplay: target.toLocaleDateString(),
+                    duration: targetDiff,
+                    status: targetDiff >= 0 ? 'On Track / Ahead' : 'Behind'
+                });
+            }
+        }
+        this.timelineRows = rows;
+        this.timelineMessage = null;
+    }
+    // =========================
     // Construction Loan Calculator
     // =========================
     @track consBudget = null; // total project budget (max line)

@@ -685,6 +685,191 @@
         </div>
     </lightning-card>
 
+    <!-- PMI/MIP Cancellation Tracker -->
+    <lightning-card title="PMI/MIP Tracker" icon-name="utility:task">
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="pmiStartDate" type="date" label="Loan Start Date" value={pmiStartDate} onchange={handlePmiFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="pmiAsOfDate" type="date" label="As Of Date" value={pmiAsOfDate} onchange={handlePmiFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="pmiCurrentAppraisal" type="currency" label="Current Appraisal (optional)" value={pmiCurrentAppraisal} onchange={handlePmiFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="pmiSeasoningMonths" type="number" label="Seasoning (months)" value={pmiSeasoningMonths} onchange={handlePmiFieldChange}></lightning-input>
+                </div>
+            </div>
+            <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                <lightning-button variant="brand" label="Evaluate Cancellation" onclick={computePmiMipTracker}></lightning-button>
+            </div>
+            <template lwc:if={pmiMessage}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
+                    <span class="slds-assistive-text">Error</span>
+                    <h2>{pmiMessage}</h2>
+                </div>
+            </template>
+            <template lwc:if={pmiResults}>
+                <div class="slds-m-top_medium slds-box slds-theme_shade">
+                    <p class="slds-text-title_caps slds-m-bottom_x-small">Results</p>
+                    <p>LTV (Original Basis): <strong>{pmiResults.ltvOrigNow}%</strong> <template lwc:if={pmiResults.ltvCurrNow}>| LTV (Current Appraisal): <strong>{pmiResults.ltvCurrNow}%</strong></template></p>
+                    <p>80% Request Month/Date: <strong>{pmiResults.requestAt80Month}</strong> — <template lwc:if={pmiResults.requestAt80Date}><lightning-formatted-date-time value={pmiResults.requestAt80Date} year="numeric" month="short" day="2-digit"></lightning-formatted-date-time></template></p>
+                    <p>78% Auto Termination Month/Date: <strong>{pmiResults.autoAt78Month}</strong> — <template lwc:if={pmiResults.autoAt78Date}><lightning-formatted-date-time value={pmiResults.autoAt78Date} year="numeric" month="short" day="2-digit"></lightning-formatted-date-time></template></p>
+                    <p>Request Eligible Now? <strong>{pmiResults.requestEligibleNow}</strong> (Seasoning OK: <strong>{pmiResults.seasoningOk}</strong>)</p>
+                    <template lwc:if={pmiResults.mipCancelsAtMonth}>
+                        <p>FHA MIP cancels at <strong>{pmiResults.mipCancelsAtMonth}</strong> months — <lightning-formatted-date-time value={pmiResults.mipCancelDate} year="numeric" month="short" day="2-digit"></lightning-formatted-date-time></p>
+                    </template>
+                    <template lwc:else>
+                        <template lwc:if={pmiResults.loanType}>
+                            <p>FHA MIP: <strong>Life of loan</strong> (if down &lt; 10%)</p>
+                        </template>
+                    </template>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+    <!-- CLTV / HLTV Calculator -->
+    <lightning-card title="CLTV / HLTV" icon-name="utility:table">
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="cltvValue" type="currency" label="Property Value" value={cltvValue} onchange={handleCltvFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-combobox name="cltvProfile" label="Lender Profile" value={cltvProfile} options="[{label:'Conventional (80% CLTV)', value:'conv80'},{label:'Portfolio (85% CLTV)', value:'port85'},{label:'HELOC Aggressive (90% HLTV)', value:'heloc90'},{label:'Custom', value:'custom'}]" onchange={handleCltvFieldChange}></lightning-combobox>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="cltvMaxCustom" type="number" step="0.1" label="Custom Max (%)" value={cltvMaxCustom} onchange={handleCltvFieldChange} field-level-help="Used when profile=Custom."></lightning-input>
+                </div>
+            </div>
+            <div class="slds-grid slds-wrap slds-gutters slds-m-top_small">
+                <div class="slds-col slds-size_1-of-1">
+                    <p class="slds-text-title_caps slds-m-bottom_x-small">Liens</p>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                    <lightning-input name="cltvLien1Position" type="text" label="Lien 1 Position" value={cltvLien1Position} onchange={handleCltvFieldChange}></lightning-input>
+                    <lightning-combobox name="cltvLien1Type" label="Lien 1 Type" value={cltvLien1Type} options="[{label:'Closed-end', value:'closed'},{label:'HELOC', value:'heloc'}]" onchange={handleCltvFieldChange}></lightning-combobox>
+                    <lightning-input name="cltvLien1Balance" type="currency" label="Lien 1 Balance" value={cltvLien1Balance} onchange={handleCltvFieldChange}></lightning-input>
+                    <lightning-input name="cltvLien1Limit" type="currency" label="Lien 1 Limit (HELOC)" value={cltvLien1Limit} onchange={handleCltvFieldChange}></lightning-input>
+                    <lightning-input type="toggle" name="cltvLien1UseLimit" label="Use Limit for HLTV" message-toggle-active="Yes" message-toggle-inactive="No" onchange={handleCltvToggleChange} checked></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                    <lightning-input name="cltvLien2Position" type="text" label="Lien 2 Position" value={cltvLien2Position} onchange={handleCltvFieldChange}></lightning-input>
+                    <lightning-combobox name="cltvLien2Type" label="Lien 2 Type" value={cltvLien2Type} options="[{label:'Closed-end', value:'closed'},{label:'HELOC', value:'heloc'}]" onchange={handleCltvFieldChange}></lightning-combobox>
+                    <lightning-input name="cltvLien2Balance" type="currency" label="Lien 2 Balance" value={cltvLien2Balance} onchange={handleCltvFieldChange}></lightning-input>
+                    <lightning-input name="cltvLien2Limit" type="currency" label="Lien 2 Limit (HELOC)" value={cltvLien2Limit} onchange={handleCltvFieldChange}></lightning-input>
+                    <lightning-input type="toggle" name="cltvLien2UseLimit" label="Use Limit for HLTV" message-toggle-active="Yes" message-toggle-inactive="No" onchange={handleCltvToggleChange} checked></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                    <lightning-input name="cltvLien3Position" type="text" label="Lien 3 Position" value={cltvLien3Position} onchange={handleCltvFieldChange}></lightning-input>
+                    <lightning-combobox name="cltvLien3Type" label="Lien 3 Type" value={cltvLien3Type} options="[{label:'Closed-end', value:'closed'},{label:'HELOC', value:'heloc'}]" onchange={handleCltvFieldChange}></lightning-combobox>
+                    <lightning-input name="cltvLien3Balance" type="currency" label="Lien 3 Balance" value={cltvLien3Balance} onchange={handleCltvFieldChange}></lightning-input>
+                    <lightning-input name="cltvLien3Limit" type="currency" label="Lien 3 Limit (HELOC)" value={cltvLien3Limit} onchange={handleCltvFieldChange}></lightning-input>
+                    <lightning-input type="toggle" name="cltvLien3UseLimit" label="Use Limit for HLTV" message-toggle-active="Yes" message-toggle-inactive="No" onchange={handleCltvToggleChange} checked></lightning-input>
+                </div>
+            </div>
+            <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                <lightning-button variant="brand" label="Compute CLTV" onclick={computeCltv}></lightning-button>
+            </div>
+            <template lwc:if={cltvMessage}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
+                    <span class="slds-assistive-text">Error</span>
+                    <h2>{cltvMessage}</h2>
+                </div>
+            </template>
+            <template lwc:if={cltvResults}>
+                <div class="slds-m-top_medium slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                        <div class="slds-box slds-theme_shade">
+                            <p class="slds-text-title_caps slds-m-bottom_x-small">Summary</p>
+                            <p>Total Balances: <strong>{cltvResults.totalBalance}</strong> (HLTV Base: <strong>{cltvResults.totalHltvBase}</strong>)</p>
+                            <p>CLTV: <strong>{cltvResults.cltvPct}%</strong> | HLTV: <strong>{cltvResults.hltvPct}%</strong></p>
+                            <p>Requirement (Profile): <strong>{cltvResults.requirement.maxCltv}% CLTV / {cltvResults.requirement.maxHltv}% HLTV</strong></p>
+                            <p>Meets CLTV? <strong>{cltvResults.meetsCltv}</strong> | Meets HLTV? <strong>{cltvResults.meetsHltv}</strong></p>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                        <p class="slds-text-title_caps slds-m-bottom_x-small">Liens</p>
+                        <lightning-datatable key-field="id" data={cltvResults.liens} columns="[
+                            {label:'Position', fieldName:'position'},
+                            {label:'Type', fieldName:'type'},
+                            {label:'Balance', fieldName:'balance', type:'currency'},
+                            {label:'Limit', fieldName:'limit', type:'currency'}
+                        ]" hide-checkbox-column></lightning-datatable>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+    <!-- Prepayment Penalty Analyzer -->
+    <lightning-card title="Prepayment Penalty" icon-name="utility:ban">
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="ppAmount" type="currency" label="Prepayment Amount" value={ppAmount} onchange={handlePpFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="ppPrepayMonth" type="number" label="Prepay at Month #" value={ppPrepayMonth} onchange={handlePpFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="ppStartDate" type="date" label="Loan Start Date (optional)" value={ppStartDate} onchange={handlePpFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-combobox name="ppPenaltyType" label="Penalty Type" value={ppPenaltyType} options="[{label:'Percent of Prepay', value:'percent'},{label:'Months of Interest', value:'monthsInterest'},{label:'Tiered Percent', value:'tiered'}]" onchange={handlePpFieldChange}></lightning-combobox>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="ppPercent" type="number" step="0.01" label="Percent (%)" value={ppPercent} onchange={handlePpFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="ppMonthsInterest" type="number" label="Months of Interest" value={ppMonthsInterest} onchange={handlePpFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="ppPenaltyWindowMonths" type="number" label="Penalty Window (months)" value={ppPenaltyWindowMonths} onchange={handlePpFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="ppTierScheduleText" type="text" label="Tiers (months:pct;...)" value={ppTierScheduleText} onchange={handlePpFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input name="ppFreePctAnnual" type="number" step="0.1" label="Free Allowance (% outstanding/year)" value={ppFreePctAnnual} onchange={handlePpFieldChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input type="toggle" name="ppWaiverOnSale" label="Waiver on Sale" message-toggle-active="Yes" message-toggle-inactive="No" onchange={handlePpToggleChange} checked></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_small">
+                    <lightning-input type="toggle" name="ppIsSale" label="This Prepay is a Sale" message-toggle-active="Yes" message-toggle-inactive="No" onchange={handlePpToggleChange}></lightning-input>
+                </div>
+            </div>
+            <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                <lightning-button label="Analyze Prepayment" variant="brand" onclick={computePrepayPenalty}></lightning-button>
+            </div>
+            <template lwc:if={ppMessage}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
+                    <span class="slds-assistive-text">Error</span>
+                    <h2>{ppMessage}</h2>
+                </div>
+            </template>
+            <template lwc:if={ppResults}>
+                <div class="slds-m-top_medium slds-box slds-theme_shade">
+                    <p class="slds-text-title_caps slds-m-bottom_x-small">Results</p>
+                    <template lwc:if={ppResults.waived}>
+                        <p>Penalty: <strong>Waived</strong> — {ppResults.reason}</p>
+                    </template>
+                    <template lwc:else>
+                        <p>Penalty: <strong>{ppResults.penalty}</strong></p>
+                        <template lwc:if={ppResults.tierPctUsed}>
+                            <p>Tier Applied: <strong>{ppResults.tierPctUsed}%</strong></p>
+                        </template>
+                        <p>Outstanding at Prepay: <strong>{ppResults.outstandingAtPrepay}</strong></p>
+                        <p>Free Allowance: <strong>{ppResults.freeAllowance}</strong> → Effective Prepay: <strong>{ppResults.prepayEffective}</strong></p>
+                        <p>Prepay Date: <strong><lightning-formatted-date-time value={ppResults.prepayDate} year="numeric" month="short" day="2-digit"></lightning-formatted-date-time></strong></p>
+                        <p>Optimal Timing: <strong><lightning-formatted-date-time value={ppResults.optimalDate} year="numeric" month="short" day="2-digit"></lightning-formatted-date-time></strong> with Penalty <strong>{ppResults.optimalPenalty}</strong></p>
+                    </template>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
     <!-- Payment Calendar -->
     <lightning-card title="Payment Calendar" icon-name="utility:date_time">
         <div class="slds-p-around_medium">
