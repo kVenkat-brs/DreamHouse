@@ -1,0 +1,97 @@
+<template>
+    <section class="slds-card" aria-label="Property Filters and Sorting">
+        <div class="slds-card__header slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                <div class="slds-media__figure">
+                    <span class="slds-icon_container slds-icon-utility-filter" title="Filters">
+                        <svg class="slds-icon slds-icon_small" aria-hidden="true">
+                            <use xlink:href="/assets/icons/utility-sprite/svg/symbols.svg#filter"></use>
+                        </svg>
+                    </span>
+                </div>
+                <div class="slds-media__body">
+                    <h2 class="slds-card__header-title slds-truncate" title="Filters & Sorting">Filters & Sorting</h2>
+                    <p class="slds-text-color_weak slds-m-top_xx-small">Multi-criteria filtering with instant resorting.</p>
+                </div>
+            </header>
+            <div class="slds-button-group" role="group">
+                <lightning-button label="Reset" onclick={resetFilters}></lightning-button>
+                <lightning-button label="Apply" variant="brand" onclick={applyFilters}></lightning-button>
+            </div>
+        </div>
+        <div class="slds-card__body slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters">
+                <!-- Price range -->
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                    <h3 class="slds-text-title_bold slds-m-bottom_x-small">Price</h3>
+                    <lightning-slider label="Min" name="priceMin" min="0" max="2000000" step="10000" value={priceMin} onchange={handleFilterInput}></lightning-slider>
+                    <lightning-slider class="slds-m-top_x-small" label="Max" name="priceMax" min="0" max="2000000" step="10000" value={priceMax} onchange={handleFilterInput}></lightning-slider>
+                    <p class="slds-text-color_weak slds-text-body_small slds-m-top_x-small">{priceMinDisplay} – {priceMaxDisplay}</p>
+                </div>
+                <!-- Square footage range -->
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                    <h3 class="slds-text-title_bold slds-m-bottom_x-small">Square Feet</h3>
+                    <lightning-slider label="Min" name="sqftMin" min="0" max="10000" step="50" value={sqftMin} onchange={handleFilterInput}></lightning-slider>
+                    <lightning-slider class="slds-m-top_x-small" label="Max" name="sqftMax" min="0" max="10000" step="50" value={sqftMax} onchange={handleFilterInput}></lightning-slider>
+                    <p class="slds-text-color_weak slds-text-body_small slds-m-top_x-small">{sqftMinDisplay} – {sqftMaxDisplay} sqft</p>
+                </div>
+                <!-- Year built range -->
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                    <h3 class="slds-text-title_bold slds-m-bottom_x-small">Year Built</h3>
+                    <lightning-slider label="Min" name="yearMin" min="1900" max="2050" step="1" value={yearMin} onchange={handleFilterInput}></lightning-slider>
+                    <lightning-slider class="slds-m-top_x-small" label="Max" name="yearMax" min="1900" max="2050" step="1" value={yearMax} onchange={handleFilterInput}></lightning-slider>
+                    <p class="slds-text-color_weak slds-text-body_small slds-m-top_x-small">{yearMin} – {yearMax}</p>
+                </div>
+            </div>
+
+            <!-- Sorting -->
+            <div class="slds-m-top_medium">
+                <h3 class="slds-text-title_bold slds-m-bottom_x-small">Sort By</h3>
+                <div class="slds-grid slds-wrap slds-gutters_small">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <lightning-combobox label="Primary" value={sortPrimary} options={sortOptions} onchange={handleSortChange} data-key="primary"></lightning-combobox>
+                        <lightning-combobox class="slds-m-top_x-small" label="Direction" value={sortDirPrimary} options={directionOptions} onchange={handleSortChange} data-key="dirPrimary"></lightning-combobox>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <lightning-combobox label="Secondary" value={sortSecondary} options={sortOptions} onchange={handleSortChange} data-key="secondary"></lightning-combobox>
+                        <lightning-combobox class="slds-m-top_x-small" label="Direction" value={sortDirSecondary} options={directionOptions} onchange={handleSortChange} data-key="dirSecondary"></lightning-combobox>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <lightning-combobox label="Tertiary" value={sortTertiary} options={sortOptions} onchange={handleSortChange} data-key="tertiary"></lightning-combobox>
+                        <lightning-combobox class="slds-m-top_x-small" label="Direction" value={sortDirTertiary} options={directionOptions} onchange={handleSortChange} data-key="dirTertiary"></lightning-combobox>
+                    </div>
+                </div>
+            </div>
+
+            <template lwc:if={preview.length}>
+                <div class="slds-m-top_large">
+                    <h3 class="slds-text-title_caps slds-m-bottom_small">Preview ({preview.length})</h3>
+                    <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_col-bordered">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th class="slds-text-align_right">Price</th>
+                                <th class="slds-text-align_right">Beds</th>
+                                <th class="slds-text-align_right">Baths</th>
+                                <th class="slds-text-align_right">Sqft</th>
+                                <th class="slds-text-align_right">Year</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template for:each={preview} for:item="p">
+                                <tr key={p._key}>
+                                    <td>{p.name}</td>
+                                    <td class="slds-text-align_right">{p._priceDisplay}</td>
+                                    <td class="slds-text-align_right">{p.beds}</td>
+                                    <td class="slds-text-align_right">{p.baths}</td>
+                                    <td class="slds-text-align_right">{p.sqft}</td>
+                                    <td class="slds-text-align_right">{p.yearBuilt}</td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </template>
+        </div>
+    </section>
+</template>

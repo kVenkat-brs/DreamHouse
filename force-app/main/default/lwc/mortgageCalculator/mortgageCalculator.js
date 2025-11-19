@@ -270,6 +270,571 @@ export default class MortgageCalculator extends LightningElement {
         return this.taxHomesteadType !== 'percent';
     }
 
+    // =========================
+    // HOA Fee Calculator (monthly fees + special assessments)
+    // =========================
+    @track hoaCalcMonthly = null; // base HOA monthly dues
+    @track hoaCalcAssessment = null; // special assessment total amount
+    @track hoaCalcAssessmentMonths = null; // months to spread special assessment
+    @track hoaCalcInclude = true; // include assessment amortization in affordability
+    @track hoaCalcResults = null; // computed results object
+    @track hoaCalcMessage = null; // validation/info message
+
+    handleHoaCalcFieldChange(event) {
+        const { name } = event.target;
+        const v = event.detail?.value;
+        const num = parseFloat(v);
+        const parsed = Number.isFinite(num) ? num : null;
+        switch (name) {
+            case 'hoaCalcMonthly': this.hoaCalcMonthly = parsed; break;
+            case 'hoaCalcAssessment': this.hoaCalcAssessment = parsed; break;
+            case 'hoaCalcAssessmentMonths':
+                this.hoaCalcAssessmentMonths = Number.isFinite(num) ? Math.max(1, Math.floor(num)) : null;
+                break;
+            default: break;
+        }
+        this.hoaCalcMessage = null;
+    }
+
+    handleHoaCalcToggle(event) {
+        this.hoaCalcInclude = !!event.detail.checked;
+    }
+
+    calculateHoaImpact() {
+        const monthlyDues = Number.isFinite(this.hoaCalcMonthly) ? this.hoaCalcMonthly : 0;
+        const asmtTotal = Number.isFinite(this.hoaCalcAssessment) ? this.hoaCalcAssessment : 0;
+        const asmtMonths = Number.isFinite(this.hoaCalcAssessmentMonths) ? this.hoaCalcAssessmentMonths : 0;
+        const asmtMonthly = asmtTotal > 0 && asmtMonths > 0 ? (asmtTotal / asmtMonths) : 0;
+
+        const monthlyHoaCost = monthlyDues + (this.hoaCalcInclude ? asmtMonthly : 0);
+        const baseMonthly = Number.isFinite(this.monthlyPayment) ? this.monthlyPayment : null;
+        const taxesMonthly = Number.isFinite(this.taxMonthly) ? this.taxMonthly : 0;
+        const totalHousing = (baseMonthly || 0) + taxesMonthly + monthlyHoaCost;
+
+        // Affordability indicators (front-end 28%, back-end 36% using existing monthlyDebt if provided)
+        const requiredIncomeFront = totalHousing > 0 ? (totalHousing / 0.28) : null;
+        const monthlyDebt = Number.isFinite(this.monthlyDebt) ? this.monthlyDebt : 0;
+        const requiredIncomeBack = (totalHousing + monthlyDebt) > 0 ? ((totalHousing + monthlyDebt) / 0.36) : null;
+
+        this.hoaCalcResults = {
+            monthlyDues,
+            asmtMonthly,
+            monthlyHoaCost,
+            baseMonthly,
+            taxesMonthly,
+            totalHousing,
+            requiredIncomeFront,
+            requiredIncomeBack,
+            formatted: {
+                monthlyDues: this.formatCurrency(monthlyDues),
+                asmtMonthly: this.formatCurrency(asmtMonthly),
+                monthlyHoaCost: this.formatCurrency(monthlyHoaCost),
+                baseMonthly: baseMonthly != null ? this.formatCurrency(baseMonthly) : '—',
+                taxesMonthly: this.formatCurrency(taxesMonthly),
+                totalHousing: this.formatCurrency(totalHousing),
+                requiredIncomeFront: requiredIncomeFront != null ? this.formatCurrency(requiredIncomeFront) : '—',
+                requiredIncomeBack: requiredIncomeBack != null ? this.formatCurrency(requiredIncomeBack) : '—'
+            }
+        };
+
+        this.hoaCalcMessage = baseMonthly == null
+            ? 'Tip: Enter Price, Rate and Tenure to include P&I in affordability.'
+            : null;
+    }
+
+    // =========================
+    // Moving Cost Estimator (movers, truck, supplies, storage)
+    // =========================
+    @track moversCount = null; // number of movers
+    @track moverHourlyRate = null; // per mover hourly rate
+    @track moverHours = null; // total hours billed
+    @track moverTravelFee = null; // fixed travel/service fee
+    @track moverFlatQuote = null; // optional flat quote (overrides hourly calc if provided)
+
+    @track truckDailyRate = null; // rental truck per-day cost
+    @track truckDays = null; // number of rental days
+    @track truckMileageRate = null; // per-mile rate
+    @track truckMiles = null; // estimated total miles
+    @track truckInsurance = null; // optional insurance add-on
+
+    @track suppliesBoxesCost = null; // boxes total cost
+    @track suppliesMaterialsCost = null; // tape, bubble wrap, pads total cost
+
+    @track storageMonthly = null; // storage monthly fee
+    @track storageMonths = null; // months of storage
+    @track storageMoveInFee = null; // move-in/admin fee
+    @track storageMoveOutFee = null; // move-out/cleaning fee
+
+    @track miscMoveCost = null; // misc tips/permits/elevator fees, etc.
+
+    @track movingResults = null;
+    @track movingMessage = null;
+
+    handleMoveFieldChange(event) {
+        const { name } = event.target;
+        const v = event.detail?.value;
+        const num = parseFloat(v);
+        const intLike = Number.isFinite(num) ? Math.max(0, num) : null;
+        switch (name) {
+            case 'moversCount': this.moversCount = Number.isFinite(num) ? Math.max(0, Math.floor(num)) : null; break;
+            case 'moverHourlyRate': this.moverHourlyRate = intLike; break;
+            case 'moverHours': this.moverHours = intLike; break;
+            case 'moverTravelFee': this.moverTravelFee = intLike; break;
+            case 'moverFlatQuote': this.moverFlatQuote = intLike; break;
+            case 'truckDailyRate': this.truckDailyRate = intLike; break;
+            case 'truckDays': this.truckDays = Number.isFinite(num) ? Math.max(0, Math.floor(num)) : null; break;
+            case 'truckMileageRate': this.truckMileageRate = intLike; break;
+            case 'truckMiles': this.truckMiles = intLike; break;
+            case 'truckInsurance': this.truckInsurance = intLike; break;
+            case 'suppliesBoxesCost': this.suppliesBoxesCost = intLike; break;
+            case 'suppliesMaterialsCost': this.suppliesMaterialsCost = intLike; break;
+            case 'storageMonthly': this.storageMonthly = intLike; break;
+            case 'storageMonths': this.storageMonths = Number.isFinite(num) ? Math.max(0, Math.floor(num)) : null; break;
+            case 'storageMoveInFee': this.storageMoveInFee = intLike; break;
+            case 'storageMoveOutFee': this.storageMoveOutFee = intLike; break;
+            case 'miscMoveCost': this.miscMoveCost = intLike; break;
+            default: break;
+        }
+        this.movingMessage = null;
+    }
+
+    get moversSubtotal() {
+        const flat = Number.isFinite(this.moverFlatQuote) ? this.moverFlatQuote : null;
+        if (Number.isFinite(flat) && flat > 0) return flat;
+        const cnt = Number.isFinite(this.moversCount) ? this.moversCount : 0;
+        const rate = Number.isFinite(this.moverHourlyRate) ? this.moverHourlyRate : 0;
+        const hours = Number.isFinite(this.moverHours) ? this.moverHours : 0;
+        const travel = Number.isFinite(this.moverTravelFee) ? this.moverTravelFee : 0;
+        return (cnt * rate * hours) + travel;
+    }
+
+    get truckSubtotal() {
+        const daily = Number.isFinite(this.truckDailyRate) ? this.truckDailyRate : 0;
+        const days = Number.isFinite(this.truckDays) ? this.truckDays : 0;
+        const mileRate = Number.isFinite(this.truckMileageRate) ? this.truckMileageRate : 0;
+        const miles = Number.isFinite(this.truckMiles) ? this.truckMiles : 0;
+        const ins = Number.isFinite(this.truckInsurance) ? this.truckInsurance : 0;
+        return (daily * days) + (mileRate * miles) + ins;
+    }
+
+    get suppliesSubtotal() {
+        const boxes = Number.isFinite(this.suppliesBoxesCost) ? this.suppliesBoxesCost : 0;
+        const mats = Number.isFinite(this.suppliesMaterialsCost) ? this.suppliesMaterialsCost : 0;
+        return boxes + mats;
+    }
+
+    get storageSubtotal() {
+        const monthly = Number.isFinite(this.storageMonthly) ? this.storageMonthly : 0;
+        const months = Number.isFinite(this.storageMonths) ? this.storageMonths : 0;
+        const inFee = Number.isFinite(this.storageMoveInFee) ? this.storageMoveInFee : 0;
+        const outFee = Number.isFinite(this.storageMoveOutFee) ? this.storageMoveOutFee : 0;
+        return (monthly * months) + inFee + outFee;
+    }
+
+    get miscSubtotal() {
+        return Number.isFinite(this.miscMoveCost) ? this.miscMoveCost : 0;
+    }
+
+    get movingTotal() {
+        return this.moversSubtotal + this.truckSubtotal + this.suppliesSubtotal + this.storageSubtotal + this.miscSubtotal;
+    }
+
+    calculateMoving() {
+        const results = {
+            movers: this.moversSubtotal,
+            truck: this.truckSubtotal,
+            supplies: this.suppliesSubtotal,
+            storage: this.storageSubtotal,
+            misc: this.miscSubtotal,
+            total: this.movingTotal
+        };
+        this.movingResults = {
+            ...results,
+            formatted: {
+                movers: this.formatCurrency(results.movers),
+                truck: this.formatCurrency(results.truck),
+                supplies: this.formatCurrency(results.supplies),
+                storage: this.formatCurrency(results.storage),
+                misc: this.formatCurrency(results.misc),
+                total: this.formatCurrency(results.total)
+            }
+        };
+        this.movingMessage = null;
+    }
+
+    // =========================
+    // Maintenance Cost Estimator (1% rule + location factor + age)
+    // =========================
+    maintenanceLocationCatalog = [
+        { key: 'atl_fulton_ga', label: 'Atlanta, GA — example', factor: 1.00 },
+        { key: 'austin_travis_tx', label: 'Austin, TX — example', factor: 1.10 },
+        { key: 'charleston_sc', label: 'Charleston, SC — example', factor: 1.15 },
+        { key: 'custom', label: 'Custom', factor: null }
+    ];
+
+    @track maintLocationKey = 'custom';
+    @track maintHomeValue = null; // defaults to price if not specified
+    @track maintRulePct = 1.0; // 1% rule default
+    @track maintAgeYears = null; // home age in years (optional)
+    @track maintLocationFactor = null; // override factor when using custom
+    @track maintResults = null;
+    @track maintMessage = null;
+
+    get maintLocationOptions() {
+        return this.maintenanceLocationCatalog.map((x) => ({ label: x.label, value: x.key }));
+    }
+
+    handleMaintLocationChange(event) {
+        const key = event.detail.value;
+        this.maintLocationKey = key;
+        const preset = this.maintenanceLocationCatalog.find((x) => x.key === key);
+        if (preset && Number.isFinite(preset.factor)) {
+            this.maintLocationFactor = preset.factor;
+        }
+        if (!Number.isFinite(this.maintHomeValue) && Number.isFinite(this.price)) {
+            this.maintHomeValue = this.price;
+        }
+        this.maintMessage = null;
+    }
+
+    handleMaintFieldChange(event) {
+        const { name } = event.target;
+        const v = event.detail?.value;
+        const num = parseFloat(v);
+        switch (name) {
+            case 'maintHomeValue':
+                this.maintHomeValue = Number.isFinite(num) && num >= 0 ? num : null;
+                break;
+            case 'maintRulePct':
+                this.maintRulePct = Number.isFinite(num) && num >= 0 ? num : this.maintRulePct;
+                break;
+            case 'maintAgeYears':
+                this.maintAgeYears = Number.isFinite(num) && num >= 0 ? Math.floor(num) : null;
+                break;
+            case 'maintLocationFactor':
+                this.maintLocationFactor = Number.isFinite(num) && num > 0 ? num : this.maintLocationFactor;
+                break;
+            default:
+                break;
+        }
+        this.maintMessage = null;
+    }
+
+    get maintEffectiveValue() {
+        const v = Number.isFinite(this.maintHomeValue) ? this.maintHomeValue : (Number.isFinite(this.price) ? this.price : null);
+        return Number.isFinite(v) ? v : null;
+    }
+
+    get maintComputedLocationFactor() {
+        const preset = this.maintenanceLocationCatalog.find((x) => x.key === this.maintLocationKey);
+        if (preset && Number.isFinite(preset.factor)) return preset.factor;
+        return Number.isFinite(this.maintLocationFactor) ? this.maintLocationFactor : 1.0;
+    }
+
+    get maintAgeMultiplier() {
+        const yrs = Number.isFinite(this.maintAgeYears) ? this.maintAgeYears : 0;
+        // 0.5% increase per year capped at +50% overall (factor 1.5)
+        const bump = Math.min(0.5, yrs * 0.005);
+        return 1 + bump;
+    }
+
+    get maintAnnual() {
+        const value = this.maintEffectiveValue;
+        const pct = Number.isFinite(this.maintRulePct) ? this.maintRulePct : 1.0;
+        const loc = this.maintComputedLocationFactor;
+        if (!Number.isFinite(value) || !Number.isFinite(pct) || !Number.isFinite(loc)) return null;
+        return value * (pct / 100) * loc * this.maintAgeMultiplier;
+    }
+
+    get maintMonthly() {
+        const a = this.maintAnnual;
+        return Number.isFinite(a) ? (a / 12) : null;
+    }
+
+    calculateMaintenance() {
+        const annual = this.maintAnnual;
+        if (!Number.isFinite(annual)) {
+            this.maintResults = null;
+            this.maintMessage = 'Enter market value (or set Price), rule %, and location factor.';
+            return;
+        }
+        const monthly = this.maintMonthly;
+        this.maintResults = {
+            annual,
+            monthly,
+            formatted: {
+                annual: this.formatCurrency(annual),
+                monthly: this.formatCurrency(monthly)
+            }
+        };
+        this.maintMessage = null;
+    }
+
+    // =========================
+    // Utilities Estimator (electric, gas, water, internet)
+    // =========================
+    utilitiesLocationCatalog = [
+        {
+            key: 'atl_ga', label: 'Atlanta, GA — example',
+            electricRate: 0.13, gasRate: 1.20, waterRatePerKgal: 4.0, internetBase: 70,
+            electricFactor: 1.10, gasFactor: 0.90, waterFactor: 1.00
+        },
+        {
+            key: 'mpls_mn', label: 'Minneapolis, MN — example',
+            electricRate: 0.14, gasRate: 1.30, waterRatePerKgal: 5.0, internetBase: 65,
+            electricFactor: 0.90, gasFactor: 1.30, waterFactor: 1.00
+        },
+        {
+            key: 'phx_az', label: 'Phoenix, AZ — example',
+            electricRate: 0.12, gasRate: 1.10, waterRatePerKgal: 6.5, internetBase: 70,
+            electricFactor: 1.30, gasFactor: 0.70, waterFactor: 1.20
+        },
+        {
+            key: 'sea_wa', label: 'Seattle, WA — example',
+            electricRate: 0.11, gasRate: 1.20, waterRatePerKgal: 7.0, internetBase: 65,
+            electricFactor: 1.00, gasFactor: 1.00, waterFactor: 1.10
+        },
+        { key: 'custom', label: 'Custom', electricRate: null, gasRate: null, waterRatePerKgal: null, internetBase: null, electricFactor: 1.0, gasFactor: 1.0, waterFactor: 1.0 }
+    ];
+
+    @track utilLocationKey = 'custom';
+    @track utilSqft = null;
+    @track utilOccupants = 2;
+    @track utilEfficient = false;
+    @track utilElectricRate = null; // per kWh
+    @track utilGasRate = null; // per therm
+    @track utilWaterRatePerKgal = null; // per 1,000 gallons
+    @track utilInternetBase = null; // monthly
+    @track utilResults = null;
+    @track utilMessage = null;
+
+    get utilLocationOptions() {
+        return this.utilitiesLocationCatalog.map((x) => ({ label: x.label, value: x.key }));
+    }
+
+    handleUtilLocationChange(event) {
+        const key = event.detail.value;
+        this.utilLocationKey = key;
+        const preset = this.utilitiesLocationCatalog.find((x) => x.key === key);
+        if (preset) {
+            if (Number.isFinite(preset.electricRate)) this.utilElectricRate = preset.electricRate;
+            if (Number.isFinite(preset.gasRate)) this.utilGasRate = preset.gasRate;
+            if (Number.isFinite(preset.waterRatePerKgal)) this.utilWaterRatePerKgal = preset.waterRatePerKgal;
+            if (Number.isFinite(preset.internetBase)) this.utilInternetBase = preset.internetBase;
+        }
+        if (!Number.isFinite(this.utilSqft) && Number.isFinite(this.price)) {
+            // Rough proxy: estimate sqft if not given (e.g., price / 300)
+            const guess = Math.floor(this.price / 300);
+            this.utilSqft = guess > 0 ? guess : null;
+        }
+        this.utilMessage = null;
+    }
+
+    handleUtilFieldChange(event) {
+        const { name } = event.target;
+        const v = event.detail?.value;
+        const num = parseFloat(v);
+        switch (name) {
+            case 'utilSqft':
+                this.utilSqft = Number.isFinite(num) && num >= 0 ? Math.floor(num) : null;
+                break;
+            case 'utilOccupants':
+                this.utilOccupants = Number.isFinite(num) && num >= 0 ? Math.floor(num) : this.utilOccupants;
+                break;
+            case 'utilElectricRate': this.utilElectricRate = Number.isFinite(num) && num >= 0 ? num : this.utilElectricRate; break;
+            case 'utilGasRate': this.utilGasRate = Number.isFinite(num) && num >= 0 ? num : this.utilGasRate; break;
+            case 'utilWaterRatePerKgal': this.utilWaterRatePerKgal = Number.isFinite(num) && num >= 0 ? num : this.utilWaterRatePerKgal; break;
+            case 'utilInternetBase': this.utilInternetBase = Number.isFinite(num) && num >= 0 ? num : this.utilInternetBase; break;
+            default: break;
+        }
+        this.utilMessage = null;
+    }
+
+    handleUtilEfficientToggle(event) {
+        this.utilEfficient = !!event.detail.checked;
+    }
+
+    get utilPreset() {
+        return this.utilitiesLocationCatalog.find((x) => x.key === this.utilLocationKey) || null;
+    }
+
+    get utilUsage() {
+        const sqft = Number.isFinite(this.utilSqft) ? this.utilSqft : null;
+        const occ = Number.isFinite(this.utilOccupants) ? this.utilOccupants : 0;
+        const preset = this.utilPreset;
+        if (!Number.isFinite(sqft) || !preset) return null;
+        const eff = this.utilEfficient ? 0.85 : 1.0; // 15% savings for efficient homes
+
+        // Baseline usage heuristics (monthly):
+        // - Electricity: ~0.4 kWh per sqft, adjusted by climate
+        // - Gas: ~0.008 therms per sqft, adjusted by climate
+        // - Water: occupant usage ~ 2500 gal/mo + irrigation ~ 0.25 gal per sqft
+        const kwhBasePerSqft = 0.4;
+        const thermsBasePerSqft = 0.008;
+        const waterOccPerMonth = oc => oc * 2500;
+        const waterIrrPerSqft = 0.25;
+
+        const kwh = sqft * kwhBasePerSqft * (preset.electricFactor || 1.0) * eff;
+        const therms = sqft * thermsBasePerSqft * (preset.gasFactor || 1.0) * eff;
+        const gallons = (waterOccPerMonth(occ) + sqft * waterIrrPerSqft) * (preset.waterFactor || 1.0) * (this.utilEfficient ? 0.9 : 1.0);
+
+        return { kwh, therms, gallons };
+    }
+
+    calculateUtilities() {
+        const usage = this.utilUsage;
+        const er = Number.isFinite(this.utilElectricRate) ? this.utilElectricRate : null;
+        const gr = Number.isFinite(this.utilGasRate) ? this.utilGasRate : null;
+        const wr = Number.isFinite(this.utilWaterRatePerKgal) ? this.utilWaterRatePerKgal : null;
+        const net = Number.isFinite(this.utilInternetBase) ? this.utilInternetBase : null;
+        if (!usage || er == null || gr == null || wr == null || net == null) {
+            this.utilResults = null;
+            this.utilMessage = 'Enter square footage, occupants, location preset, and all rates to estimate.';
+            return;
+        }
+
+        const electricity = usage.kwh * er;
+        const gas = usage.therms * gr;
+        const water = (usage.gallons / 1000) * wr;
+        const internet = net;
+        const total = electricity + gas + water + internet;
+
+        this.utilResults = {
+            usage,
+            electricity,
+            gas,
+            water,
+            internet,
+            total,
+            formatted: {
+                electricity: this.formatCurrency(electricity),
+                gas: this.formatCurrency(gas),
+                water: this.formatCurrency(water),
+                internet: this.formatCurrency(internet),
+                total: this.formatCurrency(total)
+            }
+        };
+        this.utilMessage = null;
+    }
+
+    // =========================
+    // Rate Lock Recommendation Engine
+    // =========================
+    @track rateLockDaysToClose = null;
+    @track rateLockRisk = 'neutral'; // conservative | neutral | aggressive
+    @track rateLockResults = null;
+    @track rateLockMessage = null;
+
+    get rateLockRiskOptions() {
+        return [
+            { label: 'Conservative (risk‑averse)', value: 'conservative' },
+            { label: 'Neutral', value: 'neutral' },
+            { label: 'Aggressive (rate‑optimistic)', value: 'aggressive' }
+        ];
+    }
+
+    handleRateLockFieldChange(event) {
+        const { name } = event.target;
+        const v = event.detail?.value;
+        const num = parseFloat(v);
+        if (name === 'rateLockDaysToClose') {
+            this.rateLockDaysToClose = Number.isFinite(num) && num >= 0 ? Math.floor(num) : null;
+        }
+        this.rateLockMessage = null;
+    }
+
+    handleRateLockRiskChange(event) {
+        this.rateLockRisk = event.detail.value || 'neutral';
+        this.rateLockMessage = null;
+    }
+
+    // Simple linear regression slope for ratesHistory (year vs rate)
+    computeRateSlopeAndVolatility() {
+        const hist = (this.ratesHistory || []).slice(-7); // last 7 points (years)
+        if (!hist.length) return { slope: 0, stdev: 0 };
+        // Map x as index to keep spacing uniform (1,2,3...)
+        const n = hist.length;
+        const xs = hist.map((_, i) => i + 1);
+        const ys = hist.map(p => p.rate);
+        const sumX = xs.reduce((a, b) => a + b, 0);
+        const sumY = ys.reduce((a, b) => a + b, 0);
+        const sumXY = xs.reduce((a, x, i) => a + x * ys[i], 0);
+        const sumX2 = xs.reduce((a, x) => a + x * x, 0);
+        const denom = (n * sumX2 - sumX * sumX) || 1;
+        const slope = (n * sumXY - sumX * sumY) / denom; // rate change per index (~year)
+        // Volatility: std dev of year‑over‑year changes
+        const changes = [];
+        for (let i = 1; i < n; i++) changes.push(ys[i] - ys[i - 1]);
+        const mean = changes.length ? (changes.reduce((a, b) => a + b, 0) / changes.length) : 0;
+        const variance = changes.length ? (changes.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / changes.length) : 0;
+        const stdev = Math.sqrt(variance);
+        return { slope, stdev };
+    }
+
+    calculateRateLock() {
+        const days = this.rateLockDaysToClose;
+        if (!Number.isFinite(days) || days < 0) {
+            this.rateLockResults = null;
+            this.rateLockMessage = 'Enter the number of days until closing.';
+            return;
+        }
+
+        const { slope, stdev } = this.computeRateSlopeAndVolatility();
+        // Normalize slope into qualitative trend
+        let trend;
+        if (slope > 0.2) trend = 'rising';
+        else if (slope < -0.2) trend = 'falling';
+        else trend = 'flat';
+
+        // Score intent: higher → lock now bias; lower → wait bias
+        let score = 0;
+        if (trend === 'rising') score += 2; else if (trend === 'falling') score -= 2;
+        // Volatility threshold
+        const volHigh = stdev >= 0.75; // approx threshold
+        if (volHigh) score += 1; // volatile → lock bias
+
+        // Time to close pressure
+        if (days <= 15) score += 2;
+        else if (days <= 30) score += 1;
+        else if (days >= 60) score -= 1; // time to watch market
+
+        // Risk tolerance
+        if (this.rateLockRisk === 'conservative') score += 1;
+        else if (this.rateLockRisk === 'aggressive') score -= 1;
+
+        // Decision thresholds
+        let recommendation;
+        if (score >= 2) recommendation = 'Lock now';
+        else if (score <= -2) recommendation = 'Consider waiting';
+        else recommendation = 'Monitor closely / partial lock';
+
+        // Recommend lock duration with buffer
+        const buffer = days <= 30 ? 7 : 10;
+        const needed = Math.max(0, days + buffer);
+        let duration;
+        if (needed <= 30) duration = 30;
+        else if (needed <= 45) duration = 45;
+        else if (needed <= 60) duration = 60;
+        else duration = 90;
+
+        const rationale = [];
+        rationale.push(`Trend: ${trend} (slope ${slope.toFixed(2)}%/yr approx)`);
+        rationale.push(`Volatility: ${volHigh ? 'high' : 'moderate/low'} (stdev ${stdev.toFixed(2)})`);
+        rationale.push(`Days to close: ${days}`);
+        rationale.push(`Risk profile: ${this.rateLockRisk}`);
+
+        this.rateLockResults = {
+            recommendation,
+            durationDays: duration,
+            trend,
+            slope,
+            volatilityStdev: stdev,
+            score,
+            rationale
+        };
+        this.rateLockMessage = null;
+    }
+
     get hostClass() {
         switch (this.theme) {
             case 'dark':

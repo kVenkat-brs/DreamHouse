@@ -1,0 +1,374 @@
+<template>
+    <section class="slds-card property-comparison" aria-label="Property Comparison Matrix">
+        <div class="slds-card__header slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                <div class="slds-media__figure">
+                    <span class="slds-icon_container slds-icon-utility-table" title="Comparison">
+                        <svg class="slds-icon slds-icon_small" aria-hidden="true">
+                            <use xlink:href="/assets/icons/utility-sprite/svg/symbols.svg#table"></use>
+                        </svg>
+                    </span>
+                </div>
+                <div class="slds-media__body">
+                    <h2 class="slds-card__header-title slds-truncate" title="Property Comparison">
+                        Property Comparison
+                    </h2>
+                    <p class="slds-text-color_weak slds-m-top_xx-small">Compare key attributes side-by-side. Highlights show best and worst values.</p>
+                </div>
+            </header>
+        </div>
+
+        <div class="slds-card__body slds-p-around_medium">
+            <template lwc:if={hasEnoughProperties}>
+                <div class="slds-scrollable_x">
+                    <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_col-bordered" role="grid">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="slds-text-title_caps slds-text-align_left attr-col">Attribute</th>
+                                <template for:each={displayProperties} for:item="prop">
+                                    <th key={prop._key} scope="col" class="slds-text-title_caps slds-text-align_center prop-col">
+                                        <div class="slds-grid slds-grid_vertical-align-center slds-grid_align-space">
+                                            <div class="slds-truncate" title={prop.name}>{prop.name}</div>
+                                            <lightning-button variant="neutral" icon-name="utility:forecast" icon-position="left" label="Insights" data-property-id={prop.id} onclick={handleViewInsights} title="View market insights"></lightning-button>
+                                        </div>
+                                        <template lwc:if={prop.subtitle}>
+                                            <div class="slds-text-color_weak slds-text-body_small slds-truncate" title={prop.subtitle}>{prop.subtitle}</div>
+                                        </template>
+                                        <template lwc:if={prop._scoreDisplay}>
+                                            <div class="slds-badge slds-theme_info slds-m-top_xx-small" title="Weighted Score (0–100)">
+                                                Score: {prop._scoreDisplay}
+                                            </div>
+                                        </template>
+                                    </th>
+                                </template>
+                            </tr>
+                            <!-- Weights row -->
+                            <tr>
+                                <th scope="col" class="slds-text-title_caps slds-text-align_left attr-col">
+                                    <div class="slds-truncate" title="Weights">Weights</div>
+                                    <div class="slds-text-color_weak slds-text-body_small">Total: {weightTotal}%</div>
+                                </th>
+                                <template for:each={displayProperties} for:item="prop">
+                                    <th key={prop._key} scope="col" class="prop-col"></th>
+                                </template>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Weight input controls (one per attribute row, in a synthetic row block) -->
+                            <tr>
+                                <th scope="row" class="attr-col">
+                                    <div class="slds-truncate" title="Adjust Weights">Adjust Weights</div>
+                                </th>
+                                <td colspan={displayProperties.length}>
+                                    <div class="slds-grid slds-wrap slds-gutters">
+                                        <template for:each={attributes} for:item="a">
+                                            <template lwc:if={a.type}>
+                                                <div key={a.key} class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-bottom_x-small">
+                                                    <lightning-input type="number" step="1" label={a.label} data-key={a.key} value={weights[a.key]} onchange={handleWeightChange} field-level-help="Enter importance as a percentage. Totals normalize automatically."></lightning-input>
+                                                </div>
+                                            </template>
+                                        </template>
+                                    </div>
+                                </td>
+                            </tr>
+                            <template for:each={matrixRows} for:item="row">
+                                <tr key={row.key}>
+                                    <th scope="row" class="attr-col">
+                                        <div class="slds-truncate" title={row.label}>{row.label}</div>
+                                    </th>
+                                    <template for:each={row.values} for:item="cell">
+                                        <td key={cell.key} class="prop-col slds-text-align_center">
+                                            <span class={cell.classList} title={cell.title}>{cell.display}</span>
+                                        </td>
+                                    </template>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </template>
+            <template lwc:else>
+                <div class="slds-illustration slds-p-around_large slds-align_absolute-center slds-grid slds-wrap slds-grid_vertical-align-center">
+                    <svg class="slds-illustration__svg" viewBox="0 0 200 200" aria-hidden="true">
+                        <use xlink:href="/assets/icons/utility-sprite/svg/symbols.svg#warning"></use>
+                    </svg>
+                    <div class="slds-illustration__text slds-m-left_medium">
+                        <h3 class="slds-text-heading_small">Add more properties to compare</h3>
+                        <p class="slds-text-longform">Provide 3–5 properties to see the comparison matrix.</p>
+                    </div>
+                </div>
+            </template>
+        </div>
+        <template lwc:if={insightsPanelVisible}>
+            <div class="slds-card__footer slds-p-around_medium property-comparison__insights">
+                <div class="slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1">
+                        <h3 class="slds-text-title_bold">Real Estate Market Insights</h3>
+                        <template lwc:if={activePropertyName}>
+                            <p class="slds-text-body_small slds-text-color_weak">For {activePropertyName}</p>
+                        </template>
+                    </div>
+
+                    <template lwc:if={insightsLoading}>
+                        <div class="slds-col slds-size_1-of-1 slds-m-vertical_medium">
+                            <lightning-spinner size="small" alternative-text="Loading market data"></lightning-spinner>
+                        </div>
+                    </template>
+
+                    <template lwc:if={insightsError}>
+                        <div class="slds-col slds-size_1-of-1">
+                            <div class="slds-notify slds-notify_alert slds-theme_error" role="status">
+                                <span class="slds-assistive-text">Error</span>
+                                <span class="slds-icon_container slds-icon-utility-error" title="Error">
+                                    <svg class="slds-icon slds-icon_x-small" aria-hidden="true">
+                                        <use xlink:href="/assets/icons/utility-sprite/svg/symbols.svg#error"></use>
+                                    </svg>
+                                </span>
+                                <h4 class="slds-text-heading_x-small">{insightsError}</h4>
+                            </div>
+                        </div>
+                    </template>
+
+                    <template lwc:if={insights.snapshot}>
+                        <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                            <div class="slds-box slds-theme_default property-comparison__panel">
+                                <h4 class="slds-text-title_caps slds-m-bottom_small">Market Snapshot</h4>
+                                <p class="slds-text-body_small">Status: {insights.snapshot.status}</p>
+                                <p class="slds-text-body_small">List Price: {insights.snapshot.listPrice}</p>
+                                <p class="slds-text-body_small">Estimated Value: {insights.snapshot.estimatedValue}</p>
+                                <p class="slds-text-body_small">30d Change: {insights.snapshot.valueChange30d}%</p>
+                                <p class="slds-text-body_small">12m Change: {insights.snapshot.valueChange12m}%</p>
+                                <p class="slds-text-body_small">Rent Estimate: {insights.snapshot.rentEstimate}</p>
+                                <p class="slds-text-body_small">Cap Rate: {insights.snapshot.capRateEstimate}</p>
+                                <p class="slds-text-body_small slds-text-color_weak">Last Updated: {insights.snapshot.lastUpdated}</p>
+                            </div>
+                        </div>
+                    </template>
+
+                    <template lwc:if={hasPriceAnalysis}>
+                        <div class="slds-col slds-size_1-of-1">
+                            <div class="slds-box slds-theme_default property-comparison__panel property-comparison__panel-highlights">
+                                <div class="slds-grid slds-wrap slds-grid_align-spread slds-grid_vertical-align-center">
+                                    <div>
+                                        <h4 class="slds-text-title_caps slds-m-bottom_xx-small">Advanced Price Analysis</h4>
+                                        <p class="slds-text-body_small slds-text-color_weak">Cost-per-foot benchmarks and value signals.</p>
+                                    </div>
+                                    <template lwc:if={priceAnalysis.pricingFlag}>
+                                        <span class="slds-badge slds-theme_warning slds-m-left_small">{priceAnalysis.pricingFlag}</span>
+                                    </template>
+                                </div>
+                                <div class="slds-grid slds-wrap slds-gutters slds-m-top_small">
+                                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                                        <p class="slds-text-title_bold">Subject $/SqFt</p>
+                                        <p class="slds-text-heading_small">{priceAnalysis.subjectPpsfDisplay}</p>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                                        <p class="slds-text-title_bold">Comp Avg $/SqFt</p>
+                                        <p class="slds-text-heading_small">{priceAnalysis.averagePpsfDisplay}</p>
+                                        <p class="slds-text-body_small slds-text-color_weak">Median: {priceAnalysis.medianPpsfDisplay}</p>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                                        <p class="slds-text-title_bold">Value Score</p>
+                                        <p class="slds-text-heading_small">{priceAnalysis.valueScoreDisplay}</p>
+                                        <p class="slds-text-body_small slds-text-color_inverse-weak">Δ Avg: {priceAnalysis.deltaPctDisplay}</p>
+                                    </div>
+                                </div>
+                                <div class="slds-grid slds-wrap slds-gutters slds-m-top_small">
+                                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                        <p class="slds-text-body_small">Std Dev: {priceAnalysis.stddevPpsfDisplay}</p>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                        <p class="slds-text-body_small">Z-Score: {priceAnalysis.zScoreDisplay}</p>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1">
+                                        <p class="slds-text-body_small slds-m-top_x-small">{priceAnalysis.narrative}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <template lwc:if={hasRoiAnalysis}>
+                        <div class="slds-col slds-size_1-of-1">
+                            <div class="slds-box slds-theme_default property-comparison__panel">
+                                <h4 class="slds-text-title_caps slds-m-bottom_small">ROI Outlook</h4>
+                                <div class="slds-grid slds-wrap slds-gutters">
+                                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-4">
+                                        <p class="slds-text-title_bold">Est. Monthly Rent</p>
+                                        <p class="slds-text-heading_small">{roiAnalysis.subjectRentDisplay}</p>
+                                        <p class="slds-text-body_small slds-text-color_weak">Peers: {roiAnalysis.compsRentDisplay}</p>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-4">
+                                        <p class="slds-text-title_bold">Rental Yield</p>
+                                        <p class="slds-text-heading_small">{roiAnalysis.subjectYieldDisplay}</p>
+                                        <p class="slds-text-body_small slds-text-color_weak">Peers: {roiAnalysis.compsYieldDisplay}</p>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-4">
+                                        <p class="slds-text-title_bold">Annual Appreciation</p>
+                                        <p class="slds-text-heading_small">{roiAnalysis.subjectAppreciationDisplay}</p>
+                                        <p class="slds-text-body_small slds-text-color_weak">Peers: {roiAnalysis.compsAppreciationDisplay}</p>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-4">
+                                        <p class="slds-text-title_bold">5-Year Total Return</p>
+                                        <p class="slds-text-heading_small">{roiAnalysis.subjectTotalReturnDisplay}</p>
+                                        <p class="slds-text-body_small slds-text-color_weak">Peers: {roiAnalysis.compsTotalReturnDisplay}</p>
+                                    </div>
+                                </div>
+                                <div class="slds-m-top_small">
+                                    <p class="slds-text-body_small">{roiAnalysis.narrative}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <template lwc:if={hasDepreciationAnalysis}>
+                        <div class="slds-col slds-size_1-of-1">
+                            <div class="slds-box slds-theme_default property-comparison__panel">
+                                <h4 class="slds-text-title_caps slds-m-bottom_small">Depreciation Profile</h4>
+                                <div class="slds-grid slds-wrap slds-gutters">
+                                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-4">
+                                        <p class="slds-text-title_bold">Effective Year</p>
+                                        <p class="slds-text-heading_small">{depreciationAnalysis.effectiveYearDisplay}</p>
+                                        <p class="slds-text-body_small slds-text-color_weak">Years since renovation: {depreciationAnalysis.yearsSinceRenovationDisplay}</p>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-4">
+                                        <p class="slds-text-title_bold">Adjusted Age</p>
+                                        <p class="slds-text-heading_small">{depreciationAnalysis.adjustedAgeDisplay}</p>
+                                        <p class="slds-text-body_small slds-text-color_weak">Observed age: {depreciationAnalysis.observedAgeDisplay}</p>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-4">
+                                        <p class="slds-text-title_bold">Remaining Useful Life</p>
+                                        <p class="slds-text-heading_small">{depreciationAnalysis.remainingUsefulLifeDisplay}</p>
+                                        <p class="slds-text-body_small slds-text-color_weak">Market peers: {depreciationAnalysis.marketRemainingUsefulLifeDisplay}</p>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-4">
+                                        <p class="slds-text-title_bold">Depreciated Value</p>
+                                        <p class="slds-text-heading_small">{depreciationAnalysis.depreciatedValueDisplay}</p>
+                                        <p class="slds-text-body_small slds-text-color_weak">Depreciation: {depreciationAnalysis.depreciationPercentDisplay}</p>
+                                    </div>
+                                </div>
+                                <p class="slds-text-body_small slds-m-top_small">{depreciationAnalysis.narrative}</p>
+                            </div>
+                        </div>
+                    </template>
+
+                    <template lwc:if={hasTaxAnalysis}>
+                        <div class="slds-col slds-size_1-of-1">
+                            <div class="slds-box slds-theme_default property-comparison__panel">
+                                <h4 class="slds-text-title_caps slds-m-bottom_small">Tax & Carrying Cost Comparison</h4>
+                                <div class="slds-grid slds-wrap slds-gutters">
+                                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                                        <p class="slds-text-title_bold">Assessed Value</p>
+                                        <p class="slds-text-heading_small">{taxAnalysis.assessedValueDisplay}</p>
+                                        <p class="slds-text-body_small slds-text-color_weak">Municipal rate: {taxAnalysis.municipalRateDisplay}</p>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                                        <p class="slds-text-title_bold">Property Tax (Annual)</p>
+                                        <p class="slds-text-heading_small">{taxAnalysis.propertyTaxAnnualDisplay}</p>
+                                        <p class="slds-text-body_small slds-text-color_weak">Education levy: {taxAnalysis.educationRateDisplay}</p>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                                        <p class="slds-text-title_bold">Insurance + HOA</p>
+                                        <p class="slds-text-heading_small">{taxAnalysis.insuranceEstimateDisplay}</p>
+                                        <p class="slds-text-body_small slds-text-color_weak">HOA: {taxAnalysis.hoaAnnualDisplay}</p>
+                                    </div>
+                                </div>
+                                <div class="slds-grid slds-wrap slds-gutters slds-m-top_small">
+                                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+                                        <p class="slds-text-title_bold">Total Annual Carrying</p>
+                                        <p class="slds-text-heading_small">{taxAnalysis.totalCarryingAnnualDisplay}</p>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+                                        <p class="slds-text-title_bold">Monthly Carrying</p>
+                                        <p class="slds-text-heading_small">{taxAnalysis.totalCarryingMonthlyDisplay}</p>
+                                    </div>
+                                </div>
+                                <p class="slds-text-body_small slds-m-top_small">{taxAnalysis.narrative}</p>
+                            </div>
+                        </div>
+                    </template>
+
+                    <template lwc:if={hasComparables}>
+                        <div class="slds-col slds-size_1-of-1 slds-large-size_2-of-3">
+                            <div class="slds-box slds-theme_default property-comparison__panel">
+                                <h4 class="slds-text-title_caps slds-m-bottom_small">Recent Comparable Sales</h4>
+                                <div class="slds-scrollable_x">
+                                    <table class="slds-table slds-table_cell-buffer slds-table_bordered">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">Address</th>
+                                                <th scope="col">Close Date</th>
+                                                <th scope="col" class="slds-text-align_right">Sale Price</th>
+                                                <th scope="col" class="slds-text-align_right">Beds</th>
+                                                <th scope="col" class="slds-text-align_right">Baths</th>
+                                                <th scope="col" class="slds-text-align_right">Sqft</th>
+                                                <th scope="col" class="slds-text-align_right">$/Sqft</th>
+                                                <th scope="col" class="slds-text-align_right">Distance (mi)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <template for:each={insights.comparables} for:item="comp">
+                                                <tr key={comp._key}>
+                                                    <td>{comp.address}</td>
+                                                    <td>{comp.closeDate}</td>
+                                                    <td class="slds-text-align_right">{comp.salePrice}</td>
+                                                    <td class="slds-text-align_right">{comp.beds}</td>
+                                                    <td class="slds-text-align_right">{comp.baths}</td>
+                                                    <td class="slds-text-align_right">{comp.sqft}</td>
+                                                    <td class="slds-text-align_right">{comp.pricePerSqft}</td>
+                                                    <td class="slds-text-align_right">{comp.distanceMiles}</td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <template lwc:if={hasTrends}>
+                        <div class="slds-col slds-size_1-of-1">
+                            <div class="slds-box slds-theme_default property-comparison__panel">
+                                <h4 class="slds-text-title_caps slds-m-bottom_small">Neighborhood Trends</h4>
+                                <div class="slds-scrollable_x">
+                                    <table class="slds-table slds-table_cell-buffer slds-table_bordered">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">Period</th>
+                                                <th scope="col" class="slds-text-align_right">Median Price</th>
+                                                <th scope="col" class="slds-text-align_right">Price Change %</th>
+                                                <th scope="col" class="slds-text-align_right">Inventory Change %</th>
+                                                <th scope="col" class="slds-text-align_right">Days on Market</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <template for:each={insights.trends} for:item="trend">
+                                                <tr key={trend._key}>
+                                                    <td>{trend.periodStart} – {trend.periodEnd}</td>
+                                                    <td class="slds-text-align_right">{trend.medianPrice}</td>
+                                                    <td class="slds-text-align_right">{trend.priceChangePct}%</td>
+                                                    <td class="slds-text-align_right">{trend.inventoryChangePct}%</td>
+                                                    <td class="slds-text-align_right">{trend.daysOnMarket}</td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <template lwc:if={insightsMessages.length}>
+                        <div class="slds-col slds-size_1-of-1 property-comparison__messages">
+                            <ul class="slds-list_dotted">
+                                <template for:each={insightsMessages} for:item="msg">
+                                    <li key={msg}>{msg}</li>
+                                </template>
+                            </ul>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+    </section>
+</template>

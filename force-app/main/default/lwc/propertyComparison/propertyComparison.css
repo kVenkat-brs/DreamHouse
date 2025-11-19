@@ -1,0 +1,41 @@
+.property-comparison .attr-col {
+    min-width: 160px;
+}
+.property-comparison .prop-col {
+    min-width: 180px;
+}
+.property-comparison .pcell.is-best {
+    background: rgba(1, 118, 211, 0.12);
+    border-radius: 4px;
+    padding: 0.125rem 0.25rem;
+    font-weight: 600;
+}
+.property-comparison .pcell.is-worst {
+    background: rgba(234, 0, 30, 0.10);
+    border-radius: 4px;
+    padding: 0.125rem 0.25rem;
+}
+
+.property-comparison__insights {
+    background-color: var(--lwc-colorBackgroundAlt, #f3f6fb);
+    border-top: 1px solid var(--lwc-colorBorderSeparatorAlt, #d8dde6);
+}
+
+.property-comparison__panel {
+    min-height: 100%;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.property-comparison__panel-highlights {
+    border-left: 4px solid #0176d3;
+    background: linear-gradient(135deg, rgba(1, 118, 211, 0.06), rgba(1, 118, 211, 0));
+}
+
+.property-comparison__messages {
+    color: var(--lwc-colorTextTertiary, #706e6b);
+}
+
+.property-comparison__panel table {
+    font-size: 0.8125rem;
+}

@@ -1,0 +1,66 @@
+<template>
+    <section class="slds-card" aria-label="Property Recommender">
+        <div class="slds-card__header slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                <div class="slds-media__figure">
+                    <span class="slds-icon_container slds-icon-utility-favorite" title="Recommendations">
+                        <svg class="slds-icon slds-icon_small" aria-hidden="true">
+                            <use xlink:href="/assets/icons/utility-sprite/svg/symbols.svg#favorite"></use>
+                        </svg>
+                    </span>
+                </div>
+                <div class="slds-media__body">
+                    <h2 class="slds-card__header-title slds-truncate" title="Recommendations">Recommendations</h2>
+                    <p class="slds-text-color_weak slds-m-top_xx-small">Personalized picks based on your preferences and buyer trends.</p>
+                </div>
+            </header>
+            <lightning-button label="Refresh" onclick={refresh}></lightning-button>
+        </div>
+        <div class="slds-card__body slds-p-around_medium">
+            <div class="slds-grid slds-wrap slds-gutters slds-m-bottom_small">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                    <lightning-input name="maxPrice" type="currency" label="Max Price" value={prefs.maxPrice} onchange={handlePrefChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-6">
+                    <lightning-input name="minBeds" type="number" label="Min Beds" value={prefs.minBeds} onchange={handlePrefChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-6">
+                    <lightning-input name="minBaths" type="number" label="Min Baths" value={prefs.minBaths} onchange={handlePrefChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                    <lightning-input name="city" type="text" label="City" value={prefs.city} onchange={handlePrefChange}></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1">
+                    <lightning-input name="tags" type="text" label="Tags (comma separated)" value={prefs.tags} onchange={handlePrefChange}></lightning-input>
+                </div>
+            </div>
+
+            <template lwc:if={isLoading}>
+                <lightning-spinner size="small" alternative-text="Loading recommendations"></lightning-spinner>
+            </template>
+
+            <template lwc:if={items.length}>
+                <div class="slds-grid slds-wrap slds-gutters">
+                    <template for:each={items} for:item="i">
+                        <div key={i.id} class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                            <article class="slds-box slds-theme_default slds-m-bottom_small">
+                                <h3 class="slds-text-title_bold slds-truncate" title={i.name}>{i.name}</h3>
+                                <p class="slds-text-body_regular slds-m-top_xx-small">{i.city}</p>
+                                <p class="slds-text-body_small slds-text-color_weak">Score: {i.scoreDisplay}</p>
+                                <p class="slds-text-body_small slds-m-top_x-small">Price: {i.priceDisplay}</p>
+                                <p class="slds-text-body_small">Beds: {i.beds} · Baths: {i.baths}</p>
+                                <template lwc:if={i.tags}>
+                                    <p class="slds-text-body_small slds-text-color_weak">{i.tags}</p>
+                                </template>
+                            </article>
+                        </div>
+                    </template>
+                </div>
+            </template>
+            <template lwc:else>
+                <p class="slds-text-color_weak">No recommendations yet. Adjust preferences and refresh.</p>
+            </template>
+        </div>
+    </section>
+</template>
+

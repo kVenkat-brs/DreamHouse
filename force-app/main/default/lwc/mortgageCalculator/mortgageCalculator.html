@@ -181,6 +181,354 @@
                     </div>
                 </div>
             </div>
+
+            <!-- HOA Fee Calculator -->
+            <div class="slds-m-bottom_medium slds-box slds-theme_default" role="region" aria-label="HOA Fee Calculator">
+                <h2 class="slds-text-title_caps slds-m-bottom_small">HOA Fee Calculator</h2>
+                <p class="slds-text-body_small slds-m-bottom_small">Estimate how HOA dues and special assessments affect total monthly housing cost and income needed.</p>
+                <div class="slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                        <lightning-input
+                            name="hoaCalcMonthly"
+                            type="currency"
+                            label="HOA Dues (Monthly)"
+                            value={hoaCalcMonthly}
+                            onchange={handleHoaCalcFieldChange}
+                            placeholder="e.g., 125"
+                        ></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                        <lightning-input
+                            name="hoaCalcAssessment"
+                            type="currency"
+                            label="Special Assessment (Total)"
+                            value={hoaCalcAssessment}
+                            onchange={handleHoaCalcFieldChange}
+                            placeholder="e.g., 2400"
+                        ></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                        <lightning-input
+                            name="hoaCalcAssessmentMonths"
+                            type="number"
+                            label="Spread Assessment Over (Months)"
+                            value={hoaCalcAssessmentMonths}
+                            onchange={handleHoaCalcFieldChange}
+                            placeholder="e.g., 24"
+                        ></lightning-input>
+                    </div>
+                </div>
+                <div class="slds-grid slds-wrap slds-gutters slds-m-top_small">
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                        <lightning-input
+                            type="toggle"
+                            label="Include Assessment In Monthly"
+                            message-toggle-active="Yes"
+                            message-toggle-inactive="No"
+                            checked={hoaCalcInclude}
+                            onchange={handleHoaCalcToggle}
+                        ></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_2-of-3 slds-align_absolute-center">
+                        <lightning-button label="Calculate HOA Impact" variant="brand" onclick={calculateHoaImpact}></lightning-button>
+                    </div>
+                </div>
+                <template lwc:if={hoaCalcMessage}>
+                    <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_info slds-m-top_small">
+                        <span class="slds-assistive-text">Info</span>
+                        <h2>{hoaCalcMessage}</h2>
+                    </div>
+                </template>
+                <template lwc:if={hoaCalcResults}>
+                    <div class="slds-grid slds-wrap slds-gutters slds-m-top_medium">
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                            <p class="slds-text-title slds-m-bottom_xx-small">HOA Dues</p>
+                            <p>{hoaCalcResults.formatted.monthlyDues}</p>
+                            <p class="slds-text-title slds-m-top_small slds-m-bottom_xx-small">Assessment (Monthly)</p>
+                            <p>{hoaCalcResults.formatted.asmtMonthly}</p>
+                            <p class="slds-text-title slds-m-top_small slds-m-bottom_xx-small">HOA Total Monthly</p>
+                            <p class="slds-text-heading_small">{hoaCalcResults.formatted.monthlyHoaCost}</p>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                            <p class="slds-text-title slds-m-bottom_xx-small">Mortgage P&I (Monthly)</p>
+                            <p>{hoaCalcResults.formatted.baseMonthly}</p>
+                            <p class="slds-text-title slds-m-top_small slds-m-bottom_xx-small">Property Tax (Monthly)</p>
+                            <p>{hoaCalcResults.formatted.taxesMonthly}</p>
+                            <p class="slds-text-title slds-m-top_small slds-m-bottom_xx-small">Total Housing Monthly</p>
+                            <p class="slds-text-heading_small">{hoaCalcResults.formatted.totalHousing}</p>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                            <p class="slds-text-title slds-m-bottom_xx-small">Required Income (28% Front)</p>
+                            <p>{hoaCalcResults.formatted.requiredIncomeFront}</p>
+                            <p class="slds-text-title slds-m-top_small slds-m-bottom_xx-small">Required Income (36% Back)</p>
+                            <p>{hoaCalcResults.formatted.requiredIncomeBack}</p>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Moving Cost Estimator -->
+            <div class="slds-m-bottom_medium slds-box slds-theme_default" role="region" aria-label="Moving Cost Estimator">
+                <h2 class="slds-text-title_caps slds-m-bottom_small">Moving Cost Estimator</h2>
+                <p class="slds-text-body_small slds-m-bottom_small">Estimate professional movers, truck rentals, packing supplies, and temporary storage costs.</p>
+                <div class="slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-p-bottom_small">
+                        <div class="slds-box slds-theme_shade">
+                            <h3 class="slds-text-title_bold slds-m-bottom_small">Professional Movers</h3>
+                            <lightning-input name="moversCount" type="number" label="# of Movers" onchange={handleMoveFieldChange} placeholder="e.g., 3"></lightning-input>
+                            <lightning-input class="slds-m-top_x-small" name="moverHourlyRate" type="number" step="0.01" label="Hourly Rate per Mover" onchange={handleMoveFieldChange} placeholder="e.g., 60"></lightning-input>
+                            <lightning-input class="slds-m-top_x-small" name="moverHours" type="number" label="Total Hours" onchange={handleMoveFieldChange} placeholder="e.g., 6"></lightning-input>
+                            <lightning-input class="slds-m-top_x-small" name="moverTravelFee" type="currency" label="Travel/Service Fee" onchange={handleMoveFieldChange} placeholder="e.g., 100"></lightning-input>
+                            <lightning-input class="slds-m-top_x-small" name="moverFlatQuote" type="currency" label="Flat Quote (optional)" onchange={handleMoveFieldChange} placeholder="Overrides hourly calc"></lightning-input>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-p-bottom_small">
+                        <div class="slds-box slds-theme_shade">
+                            <h3 class="slds-text-title_bold slds-m-bottom_small">Truck Rental</h3>
+                            <lightning-input name="truckDailyRate" type="currency" label="Daily Rate" onchange={handleMoveFieldChange} placeholder="e.g., 39.99"></lightning-input>
+                            <lightning-input class="slds-m-top_x-small" name="truckDays" type="number" label="# of Days" onchange={handleMoveFieldChange} placeholder="e.g., 2"></lightning-input>
+                            <lightning-input class="slds-m-top_x-small" name="truckMileageRate" type="number" step="0.01" label="Per-Mile Rate" onchange={handleMoveFieldChange} placeholder="e.g., 0.89"></lightning-input>
+                            <lightning-input class="slds-m-top_x-small" name="truckMiles" type="number" label="Miles" onchange={handleMoveFieldChange} placeholder="e.g., 60"></lightning-input>
+                            <lightning-input class="slds-m-top_x-small" name="truckInsurance" type="currency" label="Insurance Add-on" onchange={handleMoveFieldChange} placeholder="optional"></lightning-input>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-p-bottom_small">
+                        <div class="slds-box slds-theme_shade">
+                            <h3 class="slds-text-title_bold slds-m-bottom_small">Packing Supplies</h3>
+                            <lightning-input name="suppliesBoxesCost" type="currency" label="Boxes" onchange={handleMoveFieldChange} placeholder="e.g., 120"></lightning-input>
+                            <lightning-input class="slds-m-top_x-small" name="suppliesMaterialsCost" type="currency" label="Tape/Bubble/Blankets" onchange={handleMoveFieldChange} placeholder="e.g., 60"></lightning-input>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-p-bottom_small">
+                        <div class="slds-box slds-theme_shade">
+                            <h3 class="slds-text-title_bold slds-m-bottom_small">Temporary Storage</h3>
+                            <lightning-input name="storageMonthly" type="currency" label="Monthly Fee" onchange={handleMoveFieldChange} placeholder="e.g., 95"></lightning-input>
+                            <lightning-input class="slds-m-top_x-small" name="storageMonths" type="number" label="# of Months" onchange={handleMoveFieldChange} placeholder="e.g., 2"></lightning-input>
+                            <lightning-input class="slds-m-top_x-small" name="storageMoveInFee" type="currency" label="Move-In Fee" onchange={handleMoveFieldChange}></lightning-input>
+                            <lightning-input class="slds-m-top_x-small" name="storageMoveOutFee" type="currency" label="Move-Out Fee" onchange={handleMoveFieldChange}></lightning-input>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1">
+                        <div class="slds-box slds-theme_shade">
+                            <h3 class="slds-text-title_bold slds-m-bottom_small">Miscellaneous</h3>
+                            <lightning-input name="miscMoveCost" type="currency" label="Tips/Permits/Elevator" onchange={handleMoveFieldChange} placeholder="optional"></lightning-input>
+                        </div>
+                    </div>
+                </div>
+                <div class="slds-m-top_small slds-grid slds-grid_align-spread">
+                    <lightning-button label="Calculate Moving Costs" variant="brand" onclick={calculateMoving}></lightning-button>
+                </div>
+                <template lwc:if={movingResults}>
+                    <div class="slds-grid slds-wrap slds-gutters slds-m-top_medium">
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                            <p class="slds-text-title slds-m-bottom_xx-small">Movers</p>
+                            <p>{movingResults.formatted.movers}</p>
+                            <p class="slds-text-title slds-m-top_small slds-m-bottom_xx-small">Truck</p>
+                            <p>{movingResults.formatted.truck}</p>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                            <p class="slds-text-title slds-m-bottom_xx-small">Supplies</p>
+                            <p>{movingResults.formatted.supplies}</p>
+                            <p class="slds-text-title slds-m-top_small slds-m-bottom_xx-small">Storage</p>
+                            <p>{movingResults.formatted.storage}</p>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                            <p class="slds-text-title slds-m-bottom_xx-small">Misc</p>
+                            <p>{movingResults.formatted.misc}</p>
+                            <p class="slds-text-title slds-m-top_small slds-m-bottom_xx-small">Total</p>
+                            <p class="slds-text-heading_small">{movingResults.formatted.total}</p>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Maintenance Cost Estimator -->
+            <div class="slds-m-bottom_medium slds-box slds-theme_default" role="region" aria-label="Maintenance Cost Estimator">
+                <h2 class="slds-text-title_caps slds-m-bottom_small">Maintenance Cost Estimator</h2>
+                <p class="slds-text-body_small slds-m-bottom_small">Estimate ongoing maintenance using the 1% rule adjusted for location and home age.</p>
+                <div class="slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                        <lightning-combobox
+                            label="Location Preset"
+                            value={maintLocationKey}
+                            options={maintLocationOptions}
+                            onchange={handleMaintLocationChange}
+                        ></lightning-combobox>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                        <lightning-input
+                            name="maintHomeValue"
+                            type="currency"
+                            label="Home Value"
+                            value={maintHomeValue}
+                            onchange={handleMaintFieldChange}
+                            placeholder="Defaults to main Price if blank"
+                        ></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                        <lightning-input
+                            name="maintRulePct"
+                            type="number"
+                            step="0.01"
+                            label="Rule (%)"
+                            value={maintRulePct}
+                            onchange={handleMaintFieldChange}
+                            field-level-help="Typical heuristic is 1% of home value annually."
+                        ></lightning-input>
+                    </div>
+                </div>
+                <div class="slds-grid slds-wrap slds-gutters slds-m-top_small">
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                        <lightning-input
+                            name="maintAgeYears"
+                            type="number"
+                            label="Home Age (Years)"
+                            value={maintAgeYears}
+                            onchange={handleMaintFieldChange}
+                            placeholder="optional"
+                        ></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                        <lightning-input
+                            name="maintLocationFactor"
+                            type="number"
+                            step="0.01"
+                            label="Location Factor"
+                            value={maintLocationFactor}
+                            onchange={handleMaintFieldChange}
+                            field-level-help=">1.0 increases costs; <1.0 decreases. Preset applies if selected."
+                        ></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3 slds-align_absolute-center">
+                        <lightning-button label="Calculate Maintenance" variant="brand" onclick={calculateMaintenance}></lightning-button>
+                    </div>
+                </div>
+                <template lwc:if={maintMessage}>
+                    <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_info slds-m-top_small">
+                        <span class="slds-assistive-text">Info</span>
+                        <h2>{maintMessage}</h2>
+                    </div>
+                </template>
+                <template lwc:if={maintResults}>
+                    <div class="slds-grid slds-wrap slds-gutters slds-m-top_medium">
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                            <p class="slds-text-title slds-m-bottom_xx-small">Annual Maintenance</p>
+                            <p class="slds-text-heading_small">{maintResults.formatted.annual}</p>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                            <p class="slds-text-title slds-m-bottom_xx-small">Monthly Maintenance</p>
+                            <p class="slds-text-heading_small">{maintResults.formatted.monthly}</p>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Utilities Estimator -->
+            <div class="slds-m-bottom_medium slds-box slds-theme_default" role="region" aria-label="Utilities Estimator">
+                <h2 class="slds-text-title_caps slds-m-bottom_small">Utilities Estimator</h2>
+                <p class="slds-text-body_small slds-m-bottom_small">Estimate monthly costs for electricity, gas, water, and internet based on home size and location.</p>
+                <div class="slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                        <lightning-combobox label="Location Preset" value={utilLocationKey} options={utilLocationOptions} onchange={handleUtilLocationChange}></lightning-combobox>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                        <lightning-input name="utilSqft" type="number" label="Home Size (sqft)" value={utilSqft} onchange={handleUtilFieldChange} placeholder="e.g., 1800"></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                        <lightning-input name="utilOccupants" type="number" label="Occupants" value={utilOccupants} onchange={handleUtilFieldChange} placeholder="e.g., 3"></lightning-input>
+                    </div>
+                </div>
+                <div class="slds-grid slds-wrap slds-gutters slds-m-top_small">
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-4">
+                        <lightning-input name="utilElectricRate" type="number" step="0.001" label="Electric Rate (per kWh)" value={utilElectricRate} onchange={handleUtilFieldChange}></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-4">
+                        <lightning-input name="utilGasRate" type="number" step="0.001" label="Gas Rate (per therm)" value={utilGasRate} onchange={handleUtilFieldChange}></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-4">
+                        <lightning-input name="utilWaterRatePerKgal" type="number" step="0.01" label="Water Rate (per 1,000 gal)" value={utilWaterRatePerKgal} onchange={handleUtilFieldChange}></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-4">
+                        <lightning-input name="utilInternetBase" type="currency" label="Internet (Monthly)" value={utilInternetBase} onchange={handleUtilFieldChange}></lightning-input>
+                    </div>
+                </div>
+                <div class="slds-grid slds-wrap slds-gutters slds-m-top_small">
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+                        <lightning-input type="toggle" label="Energy Efficient Home" message-toggle-active="Yes" message-toggle-inactive="No" checked={utilEfficient} onchange={handleUtilEfficientToggle}></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2 slds-align_absolute-center">
+                        <lightning-button label="Estimate Utilities" variant="brand" onclick={calculateUtilities}></lightning-button>
+                    </div>
+                </div>
+                <template lwc:if={utilMessage}>
+                    <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_info slds-m-top_small">
+                        <span class="slds-assistive-text">Info</span>
+                        <h2>{utilMessage}</h2>
+                    </div>
+                </template>
+                <template lwc:if={utilResults}>
+                    <div class="slds-grid slds-wrap slds-gutters slds-m-top_medium">
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                            <p class="slds-text-title slds-m-bottom_xx-small">Electricity</p>
+                            <p>{utilResults.formatted.electricity}</p>
+                            <p class="slds-text-title slds-m-top_small slds-m-bottom_xx-small">Gas</p>
+                            <p>{utilResults.formatted.gas}</p>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                            <p class="slds-text-title slds-m-bottom_xx-small">Water</p>
+                            <p>{utilResults.formatted.water}</p>
+                            <p class="slds-text-title slds-m-top_small slds-m-bottom_xx-small">Internet</p>
+                            <p>{utilResults.formatted.internet}</p>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-m-top_small">
+                            <p class="slds-text-title slds-m-bottom_xx-small">Total</p>
+                            <p class="slds-text-heading_small">{utilResults.formatted.total}</p>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Rate Lock Recommendation Engine -->
+            <div class="slds-m-bottom_medium slds-box slds-theme_default" role="region" aria-label="Rate Lock Recommendation">
+                <h2 class="slds-text-title_caps slds-m-bottom_small">Rate Lock Recommendation</h2>
+                <p class="slds-text-body_small slds-m-bottom_small">Analyze recent rate trends and your timeline to recommend optimal lock timing and duration.</p>
+                <div class="slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                        <lightning-input name="rateLockDaysToClose" type="number" label="Days to Close" value={rateLockDaysToClose} onchange={handleRateLockFieldChange} placeholder="e.g., 28"></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                        <lightning-combobox label="Risk Preference" value={rateLockRisk} options={rateLockRiskOptions} onchange={handleRateLockRiskChange}></lightning-combobox>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3 slds-align_absolute-center">
+                        <lightning-button label="Analyze Lock Strategy" variant="brand" onclick={calculateRateLock}></lightning-button>
+                    </div>
+                </div>
+                <template lwc:if={rateLockMessage}>
+                    <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_info slds-m-top_small">
+                        <span class="slds-assistive-text">Info</span>
+                        <h2>{rateLockMessage}</h2>
+                    </div>
+                </template>
+                <template lwc:if={rateLockResults}>
+                    <div class="slds-m-top_medium">
+                        <div class="slds-grid slds-wrap slds-gutters">
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                <p class="slds-text-title slds-m-bottom_xx-small">Recommendation</p>
+                                <p class="slds-text-heading_small">{rateLockResults.recommendation} ({rateLockResults.durationDays}-day lock)</p>
+                                <p class="slds-text-color_weak slds-m-top_x-small">Trend: {rateLockResults.trend}</p>
+                            </div>
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                <p class="slds-text-title slds-m-bottom_xx-small">Rationale</p>
+                                <ul class="slds-list_dotted">
+                                    <template for:each={rateLockResults.rationale} for:item="r" for:index="i">
+                                        <li key={i}>{r}</li>
+                                    </template>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
             <!-- What‑If Scenario Planner -->
             <div class="slds-m-bottom_medium slds-box slds-theme_default" role="region" aria-label="What‑If Scenario Planner">
                 <h2 class="slds-text-title_caps slds-m-bottom_small" id="scenario-planner-heading">What‑If Scenario Planner</h2>
