@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Vote__c</fullName>
+    <label>Vote</label>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>LoveIt</fullName>
+                <default>false</default>
+                <label>Love it</label>
+            </value>
+            <value>
+                <fullName>LikeIt</fullName>
+                <default>true</default>
+                <label>Like it</label>
+            </value>
+            <value>
+                <fullName>NotSure</FullName>
+                <default>false</default>
+                <label>Not sure yet</label>
+            </value>
+            <value>
+                <fullName>Pass</fullName>
+                <default>false</default>
+                <label>Pass</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

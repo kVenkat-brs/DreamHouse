@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Invite_Token__c</fullName>
+    <label>Invite Token</label>
+    <type>EncryptedText</type>
+    <length>100</length>
+    <maskChar>*</maskChar>
+    <maskType>all</maskType>
+</CustomField>

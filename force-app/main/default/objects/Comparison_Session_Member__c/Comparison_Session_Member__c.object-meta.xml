@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <label>Comparison Session Member</label>
+    <pluralLabel>Comparison Session Members</pluralLabel>
+    <nameField>
+        <label>Comparison Session Member Name</label>
+        <type>AutoNumber</type>
+        <displayFormat>CSM-{0000}</displayFormat>
+    </nameField>
+    <sharingModel>ControlledByParent</sharingModel>
+    <enableReports>true</enableReports>
+    <enableActivities>false</enableActivities>
+    <allowInChatterGroups>false</allowInChatterGroups>
+</CustomObject>

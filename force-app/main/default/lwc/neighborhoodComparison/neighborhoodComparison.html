@@ -1,0 +1,37 @@
+<template>
+    <section class="nbhd" aria-label="Neighborhood Comparison">
+        <div class="nbhd__header slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+            <h2 class="slds-text-heading_small">Neighborhood Insights</h2>
+            <div class="nbhd__filters slds-button-group" role="group">
+                <template for:each={profiles} for:item="profile">
+                    <lightning-button key={profile.key} label={profile.label} data-key={profile.key} variant={profile.variant} onclick={handleSelect}></lightning-button>
+                </template>
+            </div>
+        </div>
+        <template if:true={activeProfile}>
+            <article class="nbhd__card slds-card">
+                <header class="slds-card__header">
+                    <div class="slds-media">
+                        <div class="slds-media__body">
+                            <h3 class="slds-text-title_caps">{activeProfile.label}</h3>
+                            <p class="slds-text-body_small slds-text-color_weak">{activeProfile.summary}</p>
+                        </div>
+                    </div>
+                </header>
+                <div class="slds-card__body">
+                    <div class="slds-grid slds-wrap slds-gutters">
+                        <template for:each={activeProfile.metrics} for:item="metric">
+                            <div key={metric.label} class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                                <div class="nbhd__metric slds-box slds-theme_default">
+                                    <div class="slds-text-title_caps slds-m-bottom_x-small">{metric.label}</div>
+                                    <div class="slds-text-heading_small">{metric.value}</div>
+                                    <p class="slds-text-body_small slds-text-color_weak">{metric.trend}</p>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </article>
+        </template>
+    </section>
+</template>

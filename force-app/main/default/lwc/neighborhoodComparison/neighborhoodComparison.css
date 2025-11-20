@@ -1,0 +1,12 @@
+.nbhd__card {
+    margin-top: 1rem;
+}
+
+.nbhd__metric {
+    border-radius: 0.5rem;
+    min-height: 120px;
+}
+
+.nbhd__filters lightning-button + lightning-button {
+    margin-left: 0.25rem;
+}
