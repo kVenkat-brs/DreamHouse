@@ -1,0 +1,13 @@
+<template>
+    <section class="pcm">
+        <div class="pcm__header slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+            <h2 class="slds-text-heading_small">Interactive Map</h2>
+            <div class="pcm__layer-toggle slds-button-group" role="group">
+                <template for:each={layerButtons} for:item="btn">
+                    <lightning-button key={btn.value} label={btn.label} variant={btn.variant} data-layer={btn.value} onclick={handleToggle}></lightning-button>
+                </template>
+            </div>
+        </div>
+        <div class="pcm__map" lwc:dom="manual"></div>
+    </section>
+</template>

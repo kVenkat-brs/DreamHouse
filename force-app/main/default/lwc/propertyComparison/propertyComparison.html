@@ -374,6 +374,11 @@
                     <c-property-image-comparison media={mediaSources}></c-property-image-comparison>
                 </div>
             </template>
+            <template lwc:if={hasMapLayers}>
+                <div class="slds-m-top_large">
+                    <c-property-comparison-map layers={mapLayers}></c-property-comparison-map>
+                </div>
+            </template>
         </template>
     </section>
 </template>

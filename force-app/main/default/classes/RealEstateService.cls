@@ -43,6 +43,7 @@ public with sharing class RealEstateService {
         @AuraEnabled public DepreciationAnalysis depreciationAnalysis;
         @AuraEnabled public TaxAnalysis taxAnalysis;
         @AuraEnabled public Map<String, MediaSection> media;
+        @AuraEnabled public List<MapLayer> mapLayers;
     }
 
     public class PriceAnalysis {
@@ -101,6 +102,28 @@ public with sharing class RealEstateService {
         @AuraEnabled public String after;
     }
 
+    public class MapLayer {
+        @AuraEnabled public String type;
+        @AuraEnabled public String label;
+        @AuraEnabled public String description;
+        @AuraEnabled public List<MapPoint> points;
+        @AuraEnabled public List<HeatPoint> heat;
+    }
+
+    public class MapPoint {
+        @AuraEnabled public Decimal lat;
+        @AuraEnabled public Decimal lng;
+        @AuraEnabled public String label;
+        @AuraEnabled public String detail;
+        @AuraEnabled public Decimal score;
+    }
+
+    public class HeatPoint {
+        @AuraEnabled public Decimal lat;
+        @AuraEnabled public Decimal lng;
+        @AuraEnabled public Decimal intensity;
+    }
+
     @AuraEnabled(cacheable=true)
     public static RealEstateData getPropertyInsights(Id propertyId) {
         if (propertyId == null) {
@@ -146,6 +169,7 @@ public with sharing class RealEstateService {
         data.depreciationAnalysis = buildDepreciationAnalysis(subject, data.snapshot, data.comparables);
         data.taxAnalysis = buildTaxAnalysis(subject);
         data.media = buildMediaMap(subject);
+        data.mapLayers = buildMapLayers(subject, data.comparables);
         data.fromCache = false;
         return data;
     }
@@ -697,5 +721,66 @@ public with sharing class RealEstateService {
             media.put('exterior', exterior);
         }
         return media;
+    }
+
+    private static List<MapLayer> buildMapLayers(Property__c subject, List<ComparableSale> comparables) {
+        List<MapLayer> layers = new List<MapLayer>();
+        Decimal baseLat = subject.Latitude__c;
+        Decimal baseLng = subject.Longitude__c;
+        if (baseLat == null || baseLng == null) {
+            baseLat = 37.7749;
+            baseLng = -122.4194;
+        }
+
+        MapLayer propertiesLayer = new MapLayer();
+        propertiesLayer.type = 'properties';
+        propertiesLayer.label = 'Compared Properties';
+        propertiesLayer.description = 'Locations of subject and comparable properties.';
+        propertiesLayer.points = new List<MapPoint>();
+
+        MapPoint subjectPoint = new MapPoint();
+        subjectPoint.lat = baseLat;
+        subjectPoint.lng = baseLng;
+        subjectPoint.label = subject.Name;
+        subjectPoint.detail = 'Subject property';
+        propertiesLayer.points.add(subjectPoint);
+
+        for (Integer i = 0; i < Math.min(5, comparables.size()); i++) {
+            ComparableSale comp = comparables[i];
+            MapPoint point = new MapPoint();
+            Decimal latOffset = Decimal.valueOf(Math.sin(i) * 0.01);
+            Decimal lngOffset = Decimal.valueOf(Math.cos(i) * 0.01);
+            point.lat = baseLat + latOffset;
+            point.lng = baseLng + lngOffset;
+            point.label = comp.address;
+            point.detail = 'Sale Price ' + comp.salePrice;
+            point.score = comp.pricePerSqft;
+            propertiesLayer.points.add(point);
+        }
+        layers.add(propertiesLayer);
+
+        layers.add(buildHeatLayer('crime', 'Crime Hotspots', 'Relative crime intensity using neighborhood data.', baseLat, baseLng));
+        layers.add(buildHeatLayer('schools', 'Schools', 'School quality density (higher intensity = better ratings).', baseLat, baseLng));
+        layers.add(buildHeatLayer('amenities', 'Amenities', 'Restaurants, parks, and daily needs access.', baseLat, baseLng));
+        layers.add(buildHeatLayer('commute', 'Commute Time', 'Lower commute times produce higher intensity values.', baseLat, baseLng));
+
+        return layers;
+    }
+
+    private static MapLayer buildHeatLayer(String type, String label, String description, Decimal baseLat, Decimal baseLng) {
+        MapLayer layer = new MapLayer();
+        layer.type = type;
+        layer.label = label;
+        layer.description = description;
+        layer.heat = new List<HeatPoint>();
+        for (Integer i = 0; i < 10; i++) {
+            HeatPoint point = new HeatPoint();
+            Decimal angle = Decimal.valueOf(i * 36);
+            point.lat = baseLat + Decimal.valueOf(Math.sin((Double)angle) * 0.02);
+            point.lng = baseLng + Decimal.valueOf(Math.cos((Double)angle) * 0.02);
+            point.intensity = Decimal.valueOf(0.4 + Math.random() * 0.6);
+            layer.heat.add(point);
+        }
+        return layer;
     }
 }

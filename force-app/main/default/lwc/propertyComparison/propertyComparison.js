@@ -141,6 +141,14 @@ export default class PropertyComparison extends LightningElement {
         );
     }
 
+    get mapLayers() {
+        return this.insights?.mapLayersDecorated;
+    }
+
+    get hasMapLayers() {
+        return Array.isArray(this.mapLayers) && this.mapLayers.length > 0;
+    }
+
     buildRows(properties, attributes) {
         if (!properties.length) return [];
         const rows = [];
@@ -356,6 +364,9 @@ export default class PropertyComparison extends LightningElement {
         if (result.taxAnalysis) {
             out.taxAnalysisDecorated = this.decorateTaxAnalysis(result.taxAnalysis);
         }
+        if (result.mapLayers) {
+            out.mapLayersDecorated = this.decorateMapLayers(result.mapLayers);
+        }
         return out;
     }
 
@@ -501,6 +512,17 @@ export default class PropertyComparison extends LightningElement {
             totalCarryingAnnualDisplay: formatCurrency(analysis.totalCarryingCostAnnual),
             totalCarryingMonthlyDisplay: formatCurrency(analysis.totalCarryingCostMonthly)
         };
+    }
+
+    decorateMapLayers(layers) {
+        if (!Array.isArray(layers)) {
+            return [];
+        }
+        return layers.map((layer) => ({
+            ...layer,
+            description: layer.description || '',
+            label: layer.label || layer.type
+        }));
     }
 
     parseError(error) {
