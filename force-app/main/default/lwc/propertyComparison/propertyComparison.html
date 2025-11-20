@@ -379,6 +379,11 @@
                     <c-property-comparison-map layers={mapLayers}></c-property-comparison-map>
                 </div>
             </template>
+            <template lwc:if={hasTours}>
+                <div class="slds-m-top_large">
+                    <c-property-tour-comparison tour-map={tourSources}></c-property-tour-comparison>
+                </div>
+            </template>
         </template>
     </section>
 </template>

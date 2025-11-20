@@ -1,0 +1,49 @@
+<template>
+    <section class="tour" aria-label="3D Tour Comparison">
+        <div class="tour__header slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+            <h2 class="slds-text-heading_small">3D Tours & Walkthroughs</h2>
+            <div class="tour__controls">
+                <lightning-button-icon icon-name="utility:chevronleft" alternative-text="Previous" onclick={handlePrev} variant="bare" disabled={isPrevDisabled}></lightning-button-icon>
+                <lightning-button-icon icon-name="utility:chevronright" alternative-text="Next" onclick={handleNext} variant="bare" disabled={isNextDisabled}></lightning-button-icon>
+            </div>
+        </div>
+        <div class="tour__body slds-grid slds-wrap slds-gutters">
+            <template for:each={visibleTours} for:item="tour">
+                <div key={tour.key} class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                    <article class="tour__card slds-card">
+                        <header class="slds-card__header slds-grid slds-grid_vertical-align-center">
+                            <div class="slds-media">
+                                <div class="slds-media__figure">
+                                    <span class="slds-avatar slds-avatar_small">
+                                        <img src={tour.thumbnail} alt={tour.label}>
+                                    </span>
+                                </div>
+                                <div class="slds-media__body">
+                                    <h3 class="slds-text-title_caps">{tour.label}</h3>
+                                    <p class="slds-text-body_small slds-text-color_weak">{tour.provider}</p>
+                                </div>
+                            </div>
+                        </header>
+                        <div class="slds-card__body">
+                            <iframe class="tour__frame" src={tour.url} title={tour.label} loading="lazy"></iframe>
+                        </div>
+                        <template if:true={tour.measurements}>
+                            <footer class="slds-card__footer">
+                                <h4 class="slds-text-title_caps">Measurements</h4>
+                                <ul class="slds-list_dotted">
+                                    <template for:each={tour.measurements} for:item="measure">
+                                        <li key={measure.name}>{measure.name}: {measure.value} {measure.unit}
+                                            <template if:true={measure.notes}>
+                                                <span class="slds-text-color_weak"> ({measure.notes})</span>
+                                            </template>
+                                        </li>
+                                    </template>
+                                </ul>
+                            </footer>
+                        </template>
+                    </article>
+                </div>
+            </template>
+        </div>
+    </section>
+</template>

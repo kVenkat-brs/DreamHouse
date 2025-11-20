@@ -44,6 +44,7 @@ public with sharing class RealEstateService {
         @AuraEnabled public TaxAnalysis taxAnalysis;
         @AuraEnabled public Map<String, MediaSection> media;
         @AuraEnabled public List<MapLayer> mapLayers;
+        @AuraEnabled public Map<String, TourInfo> tours;
     }
 
     public class PriceAnalysis {
@@ -124,6 +125,21 @@ public with sharing class RealEstateService {
         @AuraEnabled public Decimal intensity;
     }
 
+    public class TourInfo {
+        @AuraEnabled public String label;
+        @AuraEnabled public String url;
+        @AuraEnabled public String thumbnail;
+        @AuraEnabled public String provider;
+        @AuraEnabled public List<TourMeasurement> measurements;
+    }
+
+    public class TourMeasurement {
+        @AuraEnabled public String name;
+        @AuraEnabled public Decimal value;
+        @AuraEnabled public String unit;
+        @AuraEnabled public String notes;
+    }
+
     @AuraEnabled(cacheable=true)
     public static RealEstateData getPropertyInsights(Id propertyId) {
         if (propertyId == null) {
@@ -170,6 +186,7 @@ public with sharing class RealEstateService {
         data.taxAnalysis = buildTaxAnalysis(subject);
         data.media = buildMediaMap(subject);
         data.mapLayers = buildMapLayers(subject, data.comparables);
+        data.tours = buildTourMap(subject);
         data.fromCache = false;
         return data;
     }
@@ -721,6 +738,43 @@ public with sharing class RealEstateService {
             media.put('exterior', exterior);
         }
         return media;
+    }
+
+    private static Map<String, TourInfo> buildTourMap(Property__c subject) {
+        Map<String, TourInfo> tours = new Map<String, TourInfo>();
+        if (subject.Record_Link__c != null) {
+            TourInfo tourA = new TourInfo();
+            tourA.label = 'Matterport Tour';
+            tourA.provider = 'Matterport';
+            tourA.url = subject.Record_Link__c + '/tour-matterport';
+            tourA.thumbnail = subject.Record_Link__c + '/tour-matterport-thumb.jpg';
+            tourA.measurements = new List<TourMeasurement>{
+                measurement('Living Room Width', 18, 'ft', 'Measured along main wall'),
+                measurement('Ceiling Height', 9, 'ft', null)
+            };
+            tours.put('primary', tourA);
+
+            TourInfo tourB = new TourInfo();
+            tourB.label = 'Exterior Walkthrough';
+            tourB.provider = '360Cam';
+            tourB.url = subject.Record_Link__c + '/tour-exterior';
+            tourB.thumbnail = subject.Record_Link__c + '/tour-exterior-thumb.jpg';
+            tourB.measurements = new List<TourMeasurement>{
+                measurement('Lot Depth', 120, 'ft', 'Front fence to back alley'),
+                measurement('Driveway Width', 12, 'ft', null)
+            };
+            tours.put('secondary', tourB);
+        }
+        return tours;
+    }
+
+    private static TourMeasurement measurement(String name, Decimal value, String unit, String notes) {
+        TourMeasurement tm = new TourMeasurement();
+        tm.name = name;
+        tm.value = value;
+        tm.unit = unit;
+        tm.notes = notes;
+        return tm;
     }
 
     private static List<MapLayer> buildMapLayers(Property__c subject, List<ComparableSale> comparables) {

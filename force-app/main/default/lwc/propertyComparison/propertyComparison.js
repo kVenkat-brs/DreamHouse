@@ -149,6 +149,14 @@ export default class PropertyComparison extends LightningElement {
         return Array.isArray(this.mapLayers) && this.mapLayers.length > 0;
     }
 
+    get tourSources() {
+        return this.insights?.tours;
+    }
+
+    get hasTours() {
+        return this.tourSources && Object.keys(this.tourSources).length > 0;
+    }
+
     buildRows(properties, attributes) {
         if (!properties.length) return [];
         const rows = [];
