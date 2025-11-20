@@ -42,6 +42,7 @@ public with sharing class RealEstateService {
         @AuraEnabled public RoiAnalysis roiAnalysis;
         @AuraEnabled public DepreciationAnalysis depreciationAnalysis;
         @AuraEnabled public TaxAnalysis taxAnalysis;
+        @AuraEnabled public Map<String, MediaSection> media;
     }
 
     public class PriceAnalysis {
@@ -95,6 +96,11 @@ public with sharing class RealEstateService {
         @AuraEnabled public String narrative;
     }
 
+    public class MediaSection {
+        @AuraEnabled public String before;
+        @AuraEnabled public String after;
+    }
+
     @AuraEnabled(cacheable=true)
     public static RealEstateData getPropertyInsights(Id propertyId) {
         if (propertyId == null) {
@@ -139,6 +145,7 @@ public with sharing class RealEstateService {
         data.roiAnalysis = buildRoiAnalysis(subject, data.snapshot, data.trends, data.comparables);
         data.depreciationAnalysis = buildDepreciationAnalysis(subject, data.snapshot, data.comparables);
         data.taxAnalysis = buildTaxAnalysis(subject);
+        data.media = buildMediaMap(subject);
         data.fromCache = false;
         return data;
     }
@@ -669,5 +676,26 @@ public with sharing class RealEstateService {
             return 'Insufficient financial data to estimate carrying costs.';
         }
         return String.join(parts, ' | ');
+    }
+
+    private static Map<String, MediaSection> buildMediaMap(Property__c subject) {
+        Map<String, MediaSection> media = new Map<String, MediaSection>();
+        if (subject.Record_Link__c != null) {
+            MediaSection photos = new MediaSection();
+            photos.before = subject.Record_Link__c + '/photos-before.jpg';
+            photos.after = subject.Record_Link__c + '/photos-after.jpg';
+            media.put('photos', photos);
+
+            MediaSection floor = new MediaSection();
+            floor.before = subject.Record_Link__c + '/floor-before.jpg';
+            floor.after = subject.Record_Link__c + '/floor-after.jpg';
+            media.put('floorPlans', floor);
+
+            MediaSection exterior = new MediaSection();
+            exterior.before = subject.Record_Link__c + '/exterior-before.jpg';
+            exterior.after = subject.Record_Link__c + '/exterior-after.jpg';
+            media.put('exterior', exterior);
+        }
+        return media;
     }
 }

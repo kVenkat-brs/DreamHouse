@@ -1,0 +1,11 @@
+.image-compare {
+    width: 100%;
+}
+
+.image-compare__card {
+    height: 100%;
+}
+
+.image-compare__card .slds-card__body {
+    padding: 0;
+}

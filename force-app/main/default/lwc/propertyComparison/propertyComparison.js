@@ -127,6 +127,20 @@ export default class PropertyComparison extends LightningElement {
         return !!this.taxAnalysis;
     }
 
+    get mediaSources() {
+        return this.insights?.media;
+    }
+
+    get mediaAvailable() {
+        const media = this.mediaSources;
+        if (!media) return false;
+        return Boolean(
+            (media.photos?.before && media.photos?.after) ||
+            (media.floorPlans?.before && media.floorPlans?.after) ||
+            (media.exterior?.before && media.exterior?.after)
+        );
+    }
+
     buildRows(properties, attributes) {
         if (!properties.length) return [];
         const rows = [];

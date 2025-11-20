@@ -39,3 +39,7 @@
 .property-comparison__panel table {
     font-size: 0.8125rem;
 }
+
+.property-comparison__gallery {
+    margin-top: 1.5rem;
+}

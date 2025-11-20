@@ -369,6 +369,11 @@
                     </template>
                 </div>
             </div>
+            <template lwc:if={mediaAvailable}>
+                <div class="slds-m-top_large">
+                    <c-property-image-comparison media={mediaSources}></c-property-image-comparison>
+                </div>
+            </template>
         </template>
     </section>
 </template>

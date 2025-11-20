@@ -1,0 +1,8 @@
+<template>
+    <div class="compare" aria-live="polite">
+        <div class="compare__stage" lwc:dom="manual"></div>
+        <div class="compare__slider" role="presentation">
+            <div class="compare__handle" tabindex="0" onmousedown={handleDragStart} ontouchstart={handleTouchStart} onkeydown={handleKeyDown} style={handleStyle} aria-label={ariaLabel}></div>
+        </div>
+    </div>
+</template>
