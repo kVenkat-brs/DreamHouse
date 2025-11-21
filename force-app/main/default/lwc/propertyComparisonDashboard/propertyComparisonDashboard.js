@@ -126,6 +126,49 @@ export default class PropertyComparisonDashboard extends LightningElement {
         return this.insights?.descriptionInsights || {};
     }
 
+    get environmentalImpact() {
+        return this.insights?.environmentalImpact || {};
+    }
+
+    get hasEnvironmentalImpact() {
+        const impact = this.environmentalImpact;
+        return impact && (impact.features?.length || impact.recommendations?.length);
+    }
+
+    get energyScoreDisplay() {
+        const score = this.environmentalImpact?.energyStarScore;
+        return score != null ? `${Number(score).toFixed(0)}` : '—';
+    }
+
+    get hersIndexDisplay() {
+        const index = this.environmentalImpact?.hersIndex;
+        return index != null ? `${index}` : '—';
+    }
+
+    get annualEnergyCostDisplay() {
+        return this.formatCurrency(this.environmentalImpact?.estimatedAnnualEnergyCost);
+    }
+
+    get carbonFootprintDisplay() {
+        const tons = this.environmentalImpact?.carbonFootprintTons;
+        return tons != null ? `${Number(tons).toFixed(1)} t CO₂e` : '—';
+    }
+
+    get carbonBenchmarkDelta() {
+        const subject = this.environmentalImpact?.carbonFootprintTons;
+        const city = this.environmentalImpact?.cityAverageCarbon;
+        if (subject == null || city == null) {
+            return '—';
+        }
+        const delta = Number(city) - Number(subject);
+        return `${delta >= 0 ? '+' : ''}${delta.toFixed(1)} vs city avg`;
+    }
+
+    get reductionPotentialDisplay() {
+        const potential = this.environmentalImpact?.reductionPotentialPct;
+        return potential != null ? `${potential}%` : '—';
+    }
+
     handleReset() {
         const radar = this.template.querySelector('c-property-radar-chart');
         if (radar) {

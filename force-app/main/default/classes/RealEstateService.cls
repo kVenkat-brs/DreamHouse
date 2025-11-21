@@ -51,6 +51,7 @@ public with sharing class RealEstateService {
         @AuraEnabled public SchoolComparison schools;
         @AuraEnabled public CrimeComparison crime;
         @AuraEnabled public EnvironmentalRisk environmental;
+        @AuraEnabled public EnvironmentalImpact environmentalImpact;
         @AuraEnabled public DevelopmentOutlook development;
         @AuraEnabled public List<MortgageScenario> mortgageComparisons;
         @AuraEnabled public TotalCostOwnership totalCost;
@@ -240,6 +241,32 @@ public with sharing class RealEstateService {
         @AuraEnabled public String impact;
         @AuraEnabled public String mitigation;
         @AuraEnabled public String outlook;
+    }
+
+    public class EnvironmentalImpact {
+        @AuraEnabled public Decimal energyStarScore;
+        @AuraEnabled public Integer hersIndex;
+        @AuraEnabled public Decimal estimatedAnnualEnergyCost;
+        @AuraEnabled public Decimal carbonFootprintTons;
+        @AuraEnabled public Decimal cityAverageCarbon;
+        @AuraEnabled public Decimal reductionPotentialPct;
+        @AuraEnabled public List<GreenFeature> features;
+        @AuraEnabled public List<EfficiencyRecommendation> recommendations;
+        @AuraEnabled public String narrative;
+    }
+
+    public class GreenFeature {
+        @AuraEnabled public String label;
+        @AuraEnabled public Boolean present;
+        @AuraEnabled public String benefit;
+    }
+
+    public class EfficiencyRecommendation {
+        @AuraEnabled public String action;
+        @AuraEnabled public Decimal annualSavings;
+        @AuraEnabled public Decimal cost;
+        @AuraEnabled public Integer paybackYears;
+        @AuraEnabled public String rationale;
     }
 
     public class DevelopmentOutlook {
@@ -567,6 +594,7 @@ public with sharing class RealEstateService {
         data.descriptionInsights = analyzePropertyDescription(subject);
         data.dataQuality = buildDataQualityScore(subject);
         data.timeline = buildPropertyTimeline(subject);
+        data.environmentalImpact = buildEnvironmentalImpact(subject);
         data.fromCache = false;
         return data;
     }
@@ -1484,6 +1512,49 @@ public with sharing class RealEstateService {
         factor.mitigation = mitigation;
         factor.outlook = outlook;
         return factor;
+    }
+
+    private static EnvironmentalImpact buildEnvironmentalImpact(Property__c subject) {
+        EnvironmentalImpact impact = new EnvironmentalImpact();
+
+        impact.energyStarScore = Decimal.valueOf(82);
+        impact.hersIndex = 58;
+        impact.estimatedAnnualEnergyCost = Decimal.valueOf(2150);
+        impact.carbonFootprintTons = Decimal.valueOf(4.6);
+        impact.cityAverageCarbon = Decimal.valueOf(6.9);
+        impact.reductionPotentialPct = Decimal.valueOf(18);
+
+        impact.features = new List<GreenFeature>();
+        impact.features.add(greenFeature('Solar PV (6.2 kW)', true, 'Offsets ~72% of annual electric load and earns net metering credits.'));
+        impact.features.add(greenFeature('High-efficiency heat pump HVAC', true, 'Delivers SEER 20 cooling and HSPF 10 heating performance.'));
+        impact.features.add(greenFeature('Spray-foam attic insulation (R-38)', true, 'Reduces thermal loss and enhances comfort.'));
+        impact.features.add(greenFeature('Greywater recycling system', false, 'Opportunity to reduce outdoor water usage by ~25%.'));
+
+        impact.recommendations = new List<EfficiencyRecommendation>();
+        impact.recommendations.add(efficiencyRecommendation('Upgrade to ENERGY STAR triple-pane windows', Decimal.valueOf(320), Decimal.valueOf(9500), 8, 'Cuts heating/cooling load and improves comfort.'));
+        impact.recommendations.add(efficiencyRecommendation('Install smart ventilation with ERV', Decimal.valueOf(210), Decimal.valueOf(4200), 6, 'Improves indoor air quality while minimizing energy penalty.'));
+        impact.recommendations.add(efficiencyRecommendation('Add Level 2 EV charger using solar surplus', Decimal.valueOf(180), Decimal.valueOf(1600), 5, 'Supports electrified transportation with renewable energy.'));
+
+        impact.narrative = 'Property outperforms city average on carbon footprint thanks to solar and high-efficiency systems. Targeted upgrades could yield a further 18% reduction in annual emissions.';
+        return impact;
+    }
+
+    private static GreenFeature greenFeature(String label, Boolean present, String benefit) {
+        GreenFeature feature = new GreenFeature();
+        feature.label = label;
+        feature.present = present;
+        feature.benefit = benefit;
+        return feature;
+    }
+
+    private static EfficiencyRecommendation efficiencyRecommendation(String action, Decimal annualSavings, Decimal cost, Integer paybackYears, String rationale) {
+        EfficiencyRecommendation rec = new EfficiencyRecommendation();
+        rec.action = action;
+        rec.annualSavings = annualSavings;
+        rec.cost = cost;
+        rec.paybackYears = paybackYears;
+        rec.rationale = rationale;
+        return rec;
     }
 
     private static DevelopmentOutlook buildDevelopmentOutlook(Property__c subject) {

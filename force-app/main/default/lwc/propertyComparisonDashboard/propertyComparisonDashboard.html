@@ -202,6 +202,88 @@
             </div>
 
             <div class="slds-grid slds-wrap slds-gutters dashboard__section">
+                <div class="slds-col slds-size_1-of-1">
+                    <article class="slds-card dashboard__card">
+                        <div class="slds-card__header slds-grid slds-grid_vertical-align-center">
+                            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                                <div class="slds-media__figure">
+                                    <lightning-icon icon-name="utility:leaf" size="small"></lightning-icon>
+                                </div>
+                                <div class="slds-media__body">
+                                    <h2 class="slds-text-heading_small">Environmental Impact</h2>
+                                    <p class="slds-text-body_small slds-text-color_weak">Comparing energy efficiency, carbon footprint, and green upgrades</p>
+                                </div>
+                            </header>
+                        </div>
+                        <div class="slds-card__body">
+                            <template if:true={hasEnvironmentalImpact}>
+                                <div class="slds-grid slds-wrap slds-gutters">
+                                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                                        <dl class="dashboard__kv">
+                                            <div>
+                                                <dt>ENERGY STAR® Score</dt>
+                                                <dd>{energyScoreDisplay}</dd>
+                                            </div>
+                                            <div>
+                                                <dt>HERS Index</dt>
+                                                <dd>{hersIndexDisplay}</dd>
+                                            </div>
+                                            <div>
+                                                <dt>Annual Energy Cost</dt>
+                                                <dd>{annualEnergyCostDisplay}</dd>
+                                            </div>
+                                            <div>
+                                                <dt>Carbon Footprint</dt>
+                                                <dd>{carbonFootprintDisplay}</dd>
+                                            </div>
+                                            <div>
+                                                <dt>City Benchmark Delta</dt>
+                                                <dd>{carbonBenchmarkDelta}</dd>
+                                            </div>
+                                            <div>
+                                                <dt>Reduction Potential</dt>
+                                                <dd>{reductionPotentialDisplay}</dd>
+                                            </div>
+                                        </dl>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                                        <h3 class="slds-text-title_caps slds-m-bottom_x-small">Green Features</h3>
+                                        <ul class="dashboard__list">
+                                            <template for:each={environmentalImpact.features} for:item="feature">
+                                                <li key={feature.label} class="dashboard__feature">
+                                                    <lightning-icon icon-name={feature.present ? 'utility:success' : 'utility:dash'} size="x-small" class="dashboard__feature-icon"></lightning-icon>
+                                                    <div>
+                                                        <p class="slds-text-heading_small">{feature.label}</p>
+                                                        <p class="slds-text-body_small slds-text-color_weak">{feature.benefit}</p>
+                                                    </div>
+                                                </li>
+                                            </template>
+                                        </ul>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                                        <h3 class="slds-text-title_caps slds-m-bottom_x-small">Efficiency Recommendations</h3>
+                                        <ul class="dashboard__list">
+                                            <template for:each={environmentalImpact.recommendations} for:item="rec">
+                                                <li key={rec.action} class="dashboard__recommendation">
+                                                    <p class="slds-text-heading_small">{rec.action}</p>
+                                                    <p class="slds-text-body_small">Savings: {formatCurrency(rec.annualSavings)} · Cost: {formatCurrency(rec.cost)} · Payback: {rec.paybackYears} yrs</p>
+                                                    <p class="slds-text-body_small slds-text-color_weak">{rec.rationale}</p>
+                                                </li>
+                                            </template>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <p class="slds-text-body_small slds-m-top_medium">{environmentalImpact.narrative}</p>
+                            </template>
+                            <template if:false={hasEnvironmentalImpact}>
+                                <p class="slds-text-color_weak">Environmental impact insights are unavailable for this property.</p>
+                            </template>
+                        </div>
+                    </article>
+                </div>
+            </div>
+
+            <div class="slds-grid slds-wrap slds-gutters dashboard__section">
                 <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
                     <article class="slds-card dashboard__card">
                         <div class="slds-card__header slds-grid slds-grid_vertical-align-center">

@@ -6,6 +6,8 @@
 
 .dashboard__card {
     height: 100%;
+    border: 1px solid #d8dde6;
+    border-radius: 0.5rem;
 }
 
 .dashboard__kv {
@@ -31,4 +33,27 @@
 
 .dashboard__insights h3 {
     margin-top: 1rem;
+}
+
+.dashboard__feature {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+}
+
+.dashboard__feature-icon {
+    margin-top: 0.25rem;
+}
+
+.dashboard__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 1rem;
+}
+
+.dashboard__recommendation {
+    border-left: 3px solid #0176d3;
+    padding-left: 0.75rem;
 }
