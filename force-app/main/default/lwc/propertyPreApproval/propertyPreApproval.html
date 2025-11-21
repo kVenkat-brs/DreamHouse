@@ -1,0 +1,71 @@
+<template>
+    <section class="preapproval" aria-label="Pre-Approval Options">
+        <div class="slds-card">
+            <div class="slds-card__header slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                    <div class="slds-media__body">
+                        <h2 class="slds-text-heading_small">Pre-Approval Options</h2>
+                        <p class="slds-text-body_small slds-text-color_weak">Personalize offers with buyer profile</p>
+                    </div>
+                </header>
+                <lightning-button label="Refresh" onclick={handleRefresh}></lightning-button>
+            </div>
+            <div class="slds-card__body">
+                <div class="slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-4">
+                        <lightning-input type="number" label="Credit Score" value={creditScore} min="500" max="850" onchange={handleProfileChange} data-field="creditScore"></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-4">
+                        <lightning-input type="number" label="Annual Income" value={annualIncome} step="1000" onchange={handleProfileChange} data-field="annualIncome"></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-4">
+                        <lightning-input type="number" label="Down Payment %" value={downPaymentPercent} min="0" max="100" onchange={handleProfileChange} data-field="downPaymentPercent"></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-4">
+                        <lightning-input type="number" label="Debt-to-Income %" value={debtToIncome} min="0" max="60" onchange={handleProfileChange} data-field="debtToIncome"></lightning-input>
+                    </div>
+                </div>
+
+                <template if:true={loading}>
+                    <div class="preapproval__loading">
+                        <lightning-spinner alternative-text="Loading pre-approval offers"></lightning-spinner>
+                    </div>
+                </template>
+
+                <template if:true={options}>
+                    <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-m-top_medium">
+                        <thead>
+                            <tr>
+                                <th>Lender</th>
+                                <th>Program</th>
+                                <th class="slds-text-align_right">Rate</th>
+                                <th class="slds-text-align_right">APR</th>
+                                <th class="slds-text-align_right">Monthly P&amp;I</th>
+                                <th class="slds-text-align_right">Closing Costs</th>
+                                <th class="slds-text-align_right">Approved Amount</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template for:each={options} for:item="opt">
+                                <tr key={opt.lenderName + opt.program}>
+                                    <td>{opt.lenderName}</td>
+                                    <td>{opt.program}</td>
+                                    <td class="slds-text-align_right">{opt.interestRate}%</td>
+                                    <td class="slds-text-align_right">{opt.apr}%</td>
+                                    <td class="slds-text-align_right">{opt.estimatedMonthlyPayment}</td>
+                                    <td class="slds-text-align_right">{opt.closingCosts}</td>
+                                    <td class="slds-text-align_right">{opt.approvedAmount}</td>
+                                    <td>{opt.notes}</td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </template>
+                <template if:true={error}>
+                    <c-error-panel friendly-message="Unable to load pre-approval offers" detail={error}></c-error-panel>
+                </template>
+            </div>
+        </div>
+    </section>
+</template>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Services__c</fullName>
+    <label>Services Requested</label>
+    <type>MultiselectPicklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Packing</fullName>
+                <default>false</default>
+                <label>Packing</label>
+            </value>
+            <value>
+                <fullName>Unpacking</fullName>
+                <default>false</default>
+                <label>Unpacking</label>
+            </value>
+            <value>
+                <fullName>Storage</fullName>
+                <default>false</default>
+                <label>Storage</label>
+            </value>
+            <value>
+                <fullName>PianoHandling</fullName>
+                <default>false</default>
+                <label>Piano Handling</label>
+            </value>
+            <value>
+                <fullName>Cleaning</fullName>
+                <default>false</default>
+                <label>Cleaning</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

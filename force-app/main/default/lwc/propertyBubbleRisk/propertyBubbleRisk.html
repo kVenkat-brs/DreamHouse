@@ -1,0 +1,49 @@
+<template>
+    <section class="risk" aria-label="Market Risk Indicators">
+        <div class="slds-card">
+            <div class="slds-card__header slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                    <div class="slds-media__body">
+                        <h2 class="slds-text-heading_small">Market Risk & Sustainability</h2>
+                        <p class="slds-text-body_small slds-text-color_weak">Bubble indicators and resilience metrics</p>
+                    </div>
+                </header>
+            </div>
+            <div class="slds-card__body">
+                <template if:true={riskPanel}>
+                    <dl class="risk__scores">
+                        <div>
+                            <dt>Bubble Risk Score</dt>
+                            <dd>{riskPanel.bubbleRisk}%</dd>
+                        </div>
+                        <div>
+                            <dt>Price-to-Income Ratio</dt>
+                            <dd>{riskPanel.priceToIncome}</dd>
+                        </div>
+                        <div>
+                            <dt>Inventory Pressure</dt>
+                            <dd>{riskPanel.inventoryPressure}%</dd>
+                        </div>
+                        <div>
+                            <dt>Sustainability Score</dt>
+                            <dd>{riskPanel.sustainabilityScore}%</dd>
+                        </div>
+                    </dl>
+                    <template if:true={riskPanel.indicators}>
+                        <ul class="slds-list_dotted slds-m-top_small">
+                            <template for:each={riskPanel.indicators} for:item="indicator">
+                                <li key={indicator.label}><strong>{indicator.label}</strong>: {indicator.value} — {indicator.comment}</li>
+                            </template>
+                        </ul>
+                    </template>
+                    <template if:true={riskPanel.notes}>
+                        <p class="slds-text-body_small slds-text-color_weak slds-m-top_small">{riskPanel.notes}</p>
+                    </template>
+                </template>
+                <template if:true={error}>
+                    <c-error-panel friendly-message="Unable to load risk indicators" detail={error}></c-error-panel>
+                </template>
+            </div>
+        </div>
+    </section>
+</template>

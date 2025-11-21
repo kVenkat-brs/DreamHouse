@@ -1,0 +1,311 @@
+<template>
+    <section class="dashboard" aria-label="Property Analytics Dashboard">
+        <template if:true={loading}>
+            <div class="dashboard__loading">
+                <lightning-spinner alternative-text="Loading analytics" size="medium"></lightning-spinner>
+            </div>
+        </template>
+        <template if:true={hasInsights}>
+            <div class="slds-grid slds-wrap slds-gutters dashboard__summary">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                    <article class="slds-card dashboard__card">
+                        <div class="slds-card__header slds-grid slds-grid_vertical-align-center">
+                            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                                <div class="slds-media__body">
+                                    <h2 class="slds-text-heading_small">Market Snapshot</h2>
+                                    <p class="slds-text-body_small slds-text-color_weak">Listing status: {snapshotStatus}</p>
+                                </div>
+                            </header>
+                        </div>
+                        <div class="slds-card__body">
+                            <dl class="dashboard__kv">
+                                <div>
+                                    <dt>List Price</dt>
+                                    <dd>{listPrice}</dd>
+                                </div>
+                                <div>
+                                    <dt>Estimated Value</dt>
+                                    <dd>{estimatedValue}</dd>
+                                </div>
+                                <div>
+                                    <dt>30d Change</dt>
+                                    <dd>{change30d}%</dd>
+                                </div>
+                                <div>
+                                    <dt>12m Change</dt>
+                                    <dd>{change12m}%</dd>
+                                </div>
+                            </dl>
+                        </div>
+                    </article>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                    <article class="slds-card dashboard__card">
+                        <div class="slds-card__header slds-grid slds-grid_vertical-align-center">
+                            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                                <div class="slds-media__body">
+                                    <h2 class="slds-text-heading_small">Valuation Comparison</h2>
+                                    <p class="slds-text-body_small slds-text-color_weak">Multiple AVM sources</p>
+                                </div>
+                            </header>
+                        </div>
+                        <div class="slds-card__body">
+                            <dl class="dashboard__kv">
+                                <template for:each={valuationSummary} for:item="val">
+                                    <div key={val.label}>
+                                        <dt>{val.label}</dt>
+                                        <dd>{val.value}</dd>
+                                    </div>
+                                </template>
+                            </dl>
+                            <template if:true={valuations.details}>
+                                <ul class="slds-list_dotted slds-m-top_small">
+                                    <template for:each={valuations.details} for:item="detail">
+                                        <li key={detail.source}><strong>{detail.source}</strong> · {detail.methodology} ({detail.confidence})</li>
+                                    </template>
+                                </ul>
+                            </template>
+                        </div>
+                    </article>
+                </div>
+            </div>
+
+            <div class="slds-grid slds-wrap slds-gutters dashboard__section">
+                <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+                    <article class="slds-card dashboard__card">
+                        <div class="slds-card__header slds-grid slds-grid_vertical-align-center">
+                            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                                <div class="slds-media__body">
+                                    <h2 class="slds-text-heading_small">Lifestyle Radar</h2>
+                                </div>
+                            </header>
+                        </div>
+                        <div class="slds-card__body">
+                            <template if:true={hasRadarData}>
+                                <c-property-radar-chart attributes={radarAttributes} datasets={radarDatasets}></c-property-radar-chart>
+                            </template>
+                            <template if:false={hasRadarData}>
+                                <p class="slds-text-color_weak">Lifestyle scores unavailable.</p>
+                            </template>
+                        </div>
+                    </article>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+                    <article class="slds-card dashboard__card">
+                        <div class="slds-card__header slds-grid slds-grid_vertical-align-center">
+                            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                                <div class="slds-media__body">
+                                    <h2 class="slds-text-heading_small">Interactive Map</h2>
+                                </div>
+                            </header>
+                        </div>
+                        <div class="slds-card__body">
+                            <template if:true={mapLayers}>
+                                <c-property-comparison-map layers={mapLayers}></c-property-comparison-map>
+                            </template>
+                            <template if:false={mapLayers}>
+                                <p class="slds-text-color_weak">Map data unavailable.</p>
+                            </template>
+                        </div>
+                    </article>
+                </div>
+            </div>
+
+            <template if:true={mediaAvailable}>
+                <div class="slds-m-top_large">
+                    <c-property-image-comparison media={media}></c-property-image-comparison>
+                </div>
+            </template>
+            <template if:true={toursAvailable}>
+                <div class="slds-m-top_large">
+                    <c-property-tour-comparison tour-map={tours}></c-property-tour-comparison>
+                </div>
+            </template>
+
+            <div class="slds-grid slds-wrap slds-gutters dashboard__section">
+                <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+                    <article class="slds-card dashboard__card">
+                        <div class="slds-card__header slds-grid slds-grid_vertical-align-center">
+                            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                                <div class="slds-media__body">
+                                    <h2 class="slds-text-heading_small">Timeline</h2>
+                                </div>
+                            </header>
+                        </div>
+                        <div class="slds-card__body">
+                            <template if:true={timeline}>
+                                <ul class="slds-timeline">
+                                    <template for:each={timeline} for:item="event">
+                                        <li key={event.eventDate} class="slds-timeline__item">
+                                            <div class="slds-media">
+                                                <div class="slds-media__figure">
+                                                    <lightning-icon icon-name="utility:date_time" size="small"></lightning-icon>
+                                                </div>
+                                                <div class="slds-media__body">
+                                                    <p class="slds-text-title_caps">{event.label}</p>
+                                                    <p class="slds-text-body_small">{event.eventDate}</p>
+                                                    <p class="slds-text-body_regular">{event.detail}</p>
+                                                    <p class="slds-text-body_small slds-text-color_weak">{event.marketContext}</p>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    </template>
+                                </ul>
+                            </template>
+                            <template if:false={timeline}>
+                                <p class="slds-text-color_weak">No timeline events available.</p>
+                            </template>
+                        </div>
+                    </article>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+                    <article class="slds-card dashboard__card">
+                        <div class="slds-card__header slds-grid slds-grid_vertical-align-center">
+                            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                                <div class="slds-media__body">
+                                    <h2 class="slds-text-heading_small">Seasonal Timing</h2>
+                                </div>
+                            </header>
+                        </div>
+                        <div class="slds-card__body">
+                            <template if:true={seasonalMetrics}>
+                                <table class="slds-table slds-table_cell-buffer slds-table_bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Season</th>
+                                            <th class="slds-text-align_right">Price Change</th>
+                                            <th class="slds-text-align_right">Days on Market</th>
+                                            <th class="slds-text-align_right">Inventory</th>
+                                            <th>Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template for:each={seasonalMetrics} for:item="row">
+                                            <tr key={row.season}>
+                                                <td>{row.season}</td>
+                                                <td class="slds-text-align_right">{row.averagePriceChange}%</td>
+                                                <td class="slds-text-align_right">{row.averageDaysOnMarket}</td>
+                                                <td class="slds-text-align_right">{row.inventoryChange}%</td>
+                                                <td>{row.notes}</td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                                <p class="slds-text-body_small slds-text-color_weak slds-m-top_small">{seasonalRecommendation}</p>
+                            </template>
+                            <template if:false={seasonalMetrics}>
+                                <p class="slds-text-color_weak">Seasonal insights unavailable.</p>
+                            </template>
+                        </div>
+                    </article>
+                </div>
+            </div>
+
+            <div class="slds-grid slds-wrap slds-gutters dashboard__section">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                    <article class="slds-card dashboard__card">
+                        <div class="slds-card__header slds-grid slds-grid_vertical-align-center">
+                            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                                <div class="slds-media__body">
+                                    <h2 class="slds-text-heading_small">Mortgage Scenarios</h2>
+                                </div>
+                            </header>
+                        </div>
+                        <div class="slds-card__body">
+                            <table class="slds-table slds-table_cell-buffer slds-table_bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Loan Type</th>
+                                        <th class="slds-text-align_right">Rate</th>
+                                        <th class="slds-text-align_right">Down %</th>
+                                        <th class="slds-text-align_right">Monthly P&amp;I</th>
+                                        <th class="slds-text-align_right">APR</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template for:each={mortgageScenarios} for:item="scenario">
+                                        <tr key={scenario.loanType}>
+                                            <td>{scenario.loanType}</td>
+                                            <td class="slds-text-align_right">{scenario.interestRate}%</td>
+                                            <td class="slds-text-align_right">{scenario.downPaymentPercent}%</td>
+                                            <td class="slds-text-align_right">{scenario.monthlyPrincipalInterest}</td>
+                                            <td class="slds-text-align_right">{scenario.apr}%</td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                    <article class="slds-card dashboard__card">
+                        <div class="slds-card__header slds-grid slds-grid_vertical-align-center">
+                            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                                <div class="slds-media__body">
+                                    <h2 class="slds-text-heading_small">Total Cost of Ownership</h2>
+                                </div>
+                            </header>
+                        </div>
+                        <div class="slds-card__body">
+                            <template if:true={tco}>
+                                <dl class="dashboard__kv">
+                                    <div>
+                                        <dt>Year One</dt>
+                                        <dd>{tco.totalYearOne}</dd>
+                                    </div>
+                                    <div>
+                                        <dt>Five Years</dt>
+                                        <dd>{tco.totalFiveYear}</dd>
+                                    </div>
+                                    <div>
+                                        <dt>Ten Years</dt>
+                                        <dd>{tco.totalTenYear}</dd>
+                                    </div>
+                                </dl>
+                                <ul class="slds-list_dotted slds-m-top_small">
+                                    <template for:each={tco.lineItems} for:item="line">
+                                        <li key={line.label}><strong>{line.label}</strong>: {line.annualCost} ({line.assumption})</li>
+                                    </template>
+                                </ul>
+                            </template>
+                            <template if:false={tco}>
+                                <p class="slds-text-color_weak">Cost breakdown unavailable.</p>
+                            </template>
+                        </div>
+                    </article>
+                </div>
+            </div>
+
+            <article class="slds-card dashboard__card slds-m-top_large">
+                <div class="slds-card__header slds-grid slds-grid_vertical-align-center">
+                    <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                        <div class="slds-media__body">
+                            <h2 class="slds-text-heading_small">Narratives & Insights</h2>
+                        </div>
+                    </header>
+                </div>
+                <div class="slds-card__body dashboard__insights">
+                    <template if:true={descriptionInsights.highlights}>
+                        <h3 class="slds-text-title_caps">Description Highlights</h3>
+                        <ul class="slds-list_dotted">
+                            <template for:each={descriptionInsights.highlights} for:item="highlight">
+                                <li key={highlight.phrase}><strong>{highlight.category}</strong>: {highlight.phrase} — {highlight.rationale}</li>
+                            </template>
+                        </ul>
+                    </template>
+                    <template if:true={gentrification.narrative}>
+                        <h3 class="slds-text-title_caps slds-m-top_medium">Neighborhood Dynamics</h3>
+                        <p>{gentrification.narrative}</p>
+                    </template>
+                    <template if:true={seasonalRecommendation}>
+                        <h3 class="slds-text-title_caps slds-m-top_medium">Timing Recommendation</h3>
+                        <p>{seasonalRecommendation}</p>
+                    </template>
+                </div>
+            </article>
+        </template>
+        <template if:true={error}>
+            <c-error-panel friendly-message="Unable to load dashboard" detail={error}></c-error-panel>
+        </template>
+    </section>
+</template>

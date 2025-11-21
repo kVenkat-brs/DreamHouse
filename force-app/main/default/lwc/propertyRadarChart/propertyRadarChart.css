@@ -1,0 +1,8 @@
+.radar {
+    width: 100%;
+}
+
+.radar__canvas {
+    width: 100% !important;
+    height: 420px !important;
+}

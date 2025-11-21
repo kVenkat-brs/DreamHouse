@@ -1,0 +1,11 @@
+<template>
+    <section class="radar" aria-label="Property Attribute Radar Chart">
+        <div class="radar__header slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+            <h2 class="slds-text-heading_small">Attribute Radar</h2>
+            <lightning-button-group>
+                <lightning-button label="Reset" onclick={handleReset}></lightning-button>
+            </lightning-button-group>
+        </div>
+        <canvas class="radar__canvas"></canvas>
+    </section>
+</template>
