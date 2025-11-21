@@ -58,6 +58,11 @@ public with sharing class RealEstateService {
         @AuraEnabled public AppreciationOutlook appreciation;
         @AuraEnabled public RenovationComparison renovation;
         @AuraEnabled public CustomScoreTemplate scoreTemplate;
+        @AuraEnabled public LifestyleCompatibility lifestyle;
+        @AuraEnabled public List<DestinationCommute> destinationCommutes;
+        @AuraEnabled public GentrificationProfile gentrification;
+        @AuraEnabled public SeasonalTiming seasonal;
+        @AuraEnabled public ValuationComparison valuations;
     }
 
     public class PriceAnalysis {
@@ -368,6 +373,76 @@ public with sharing class RealEstateService {
         @AuraEnabled public String inputType;
     }
 
+    public class LifestyleCompatibility {
+        @AuraEnabled public List<LifestyleCategory> categories;
+        @AuraEnabled public Decimal overallScore;
+        @AuraEnabled public String narrative;
+    }
+
+    public class LifestyleCategory {
+        @AuraEnabled public String label;
+        @AuraEnabled public Decimal score;
+        @AuraEnabled public List<String> highlights;
+        @AuraEnabled public String commuteTime;
+    }
+
+    public class DestinationCommute {
+        @AuraEnabled public String destination;
+        @AuraEnabled public String address;
+        @AuraEnabled public List<CommuteOption> options;
+    }
+
+    public class GentrificationProfile {
+        @AuraEnabled public Decimal displacementRisk;
+        @AuraEnabled public Decimal affordabilityTrend;
+        @AuraEnabled public Decimal smallBusinessChurn;
+        @AuraEnabled public String narrative;
+        @AuraEnabled public List<GentrificationIndicator> indicators;
+        @AuraEnabled public List<PipelineSignal> pipelineSignals;
+    }
+
+    public class GentrificationIndicator {
+        @AuraEnabled public String label;
+        @AuraEnabled public String trend;
+        @AuraEnabled public String dataPoint;
+        @AuraEnabled public String notes;
+    }
+
+    public class PipelineSignal {
+        @AuraEnabled public String name;
+        @AuraEnabled public String status;
+        @AuraEnabled public String expectedImpact;
+        @AuraEnabled public Integer completionYear;
+    }
+
+    public class SeasonalTiming {
+        @AuraEnabled public List<SeasonalMetric> seasonalMetrics;
+        @AuraEnabled public String recommendation;
+    }
+
+    public class SeasonalMetric {
+        @AuraEnabled public String season;
+        @AuraEnabled public Decimal averagePriceChange;
+        @AuraEnabled public Integer averageDaysOnMarket;
+        @AuraEnabled public Decimal inventoryChange;
+        @AuraEnabled public String notes;
+    }
+
+    public class ValuationComparison {
+        @AuraEnabled public Decimal zestimate;
+        @AuraEnabled public Decimal redfinEstimate;
+        @AuraEnabled public Decimal customValue;
+        @AuraEnabled public List<ValuationDetail> details;
+        @AuraEnabled public String narrative;
+    }
+
+    public class ValuationDetail {
+        @AuraEnabled public String source;
+        @AuraEnabled public Decimal amount;
+        @AuraEnabled public String methodology;
+        @AuraEnabled public String confidence;
+    }
+
     public class TourInfo {
         @AuraEnabled public String label;
         @AuraEnabled public String url;
@@ -443,6 +518,11 @@ public with sharing class RealEstateService {
         data.appreciation = buildAppreciationOutlook(subject, data.trends);
         data.renovation = buildRenovationComparison(subject);
         data.scoreTemplate = buildCustomScoreTemplate();
+        data.lifestyle = buildLifestyleCompatibility(subject);
+        data.destinationCommutes = buildDestinationCommutes(subject);
+        data.gentrification = buildGentrificationProfile(subject);
+        data.seasonal = buildSeasonalTiming(subject, data.trends);
+        data.valuations = buildValuationComparison(subject);
         data.fromCache = false;
         return data;
     }
@@ -1608,5 +1688,173 @@ public with sharing class RealEstateService {
         criterion.description = description;
         criterion.inputType = inputType;
         return criterion;
+    }
+
+    private static LifestyleCompatibility buildLifestyleCompatibility(Property__c subject) {
+        LifestyleCompatibility lifestyle = new LifestyleCompatibility();
+        lifestyle.categories = new List<LifestyleCategory>();
+        lifestyle.categories.add(lifestyleCategory('Parks & Recreation', 82, new List<String>{
+            'River Greenway trail entrance 0.2 mi',
+            'Two playgrounds and dog park within 0.5 mi',
+            'Community pool with swim lessons (seasonal)'
+        }, '12 min walk to Riverfront Park'));
+        lifestyle.categories.add(lifestyleCategory('Dining & Nightlife', 76, new List<String>{
+            '5 independent restaurants on Maple Ave',
+            'Art-house cinema + brewpub 0.7 mi',
+            'Food truck Fridays at Market Plaza'
+        }, '6 min drive / 15 min bike to downtown dining core'));
+        lifestyle.categories.add(lifestyleCategory('Shopping & Essentials', 88, new List<String>{
+            'Whole Foods + Target 0.9 mi',
+            'Farmer’s market every Saturday',
+            'Pharmacy and urgent care 0.4 mi'
+        }, '4 min drive / 18 min walk to Maple Commons'));
+        lifestyle.categories.add(lifestyleCategory('Personal Interests', 72, new List<String>{
+            'Yoga studio and maker space 0.3 mi',
+            'Co-working loft with community events',
+            'Local library makers lab + book clubs'
+        }, '8 min walk to Maple Creative Hub'));
+
+        Decimal total = 0;
+        for (LifestyleCategory category : lifestyle.categories) {
+            total += category.score;
+        }
+        lifestyle.overallScore = (total / lifestyle.categories.size()).setScale(1);
+        lifestyle.narrative = 'Neighborhood balances recreation, dining, and daily essentials with strong walkability and community programming. Personal interest amenities trending upward with new makers hub activation.';
+        return lifestyle;
+    }
+
+    private static LifestyleCategory lifestyleCategory(String label, Integer score, List<String> highlights, String commute) {
+        LifestyleCategory category = new LifestyleCategory();
+        category.label = label;
+        category.score = Decimal.valueOf(score);
+        category.highlights = highlights;
+        category.commuteTime = commute;
+        return category;
+    }
+
+    private static List<DestinationCommute> buildDestinationCommutes(Property__c subject) {
+        List<DestinationCommute> destinations = new List<DestinationCommute>();
+
+        destinations.add(destination('Downtown Office', '500 Market St', new List<CommuteOption>{
+            commuteOption('Driving', 'Via US-101', 28, 12, new List<CommuteStep>{ step('Merge onto US-101 S', 12, 6) }),
+            commuteOption('Transit', 'Light-rail to Market', 42, 11, new List<CommuteStep>{ step('Board Green Line', 18, 9) })
+        }));
+
+        destinations.add(destination('Elementary School', 'Maple Grove ES', new List<CommuteOption>{
+            commuteOption('Walking', 'Safe routes program', 6, 0, new List<CommuteStep>{ step('Walk along Maple Ave', 6, 0) }),
+            commuteOption('Driving', 'Drop-off loop', 3, 1, new List<CommuteStep>{ step('Drive to Maple & 2nd', 3, 1) })
+        }));
+
+        destinations.add(destination('Grocery & Essentials', 'Maple Commons', new List<CommuteOption>{
+            commuteOption('Driving', 'Surface streets', 4, 1, new List<CommuteStep>{ step('Take Maple Ave north', 4, 1) }),
+            commuteOption('Biking', 'Protected bike lane', 8, 1, new List<CommuteStep>{ step('Follow bike lane on Elm', 8, 1) })
+        }));
+
+        destinations.add(destination('Weekend Activity', 'Riverfront Park', new List<CommuteOption>{
+            commuteOption('Walking', 'Direct trail access', 12, 0, new List<CommuteStep>{ step('Enter river trail', 12, 0) }),
+            commuteOption('Driving', 'Parking near boathouse', 5, 2, new List<CommuteStep>{ step('Drive to Riverfront entrance', 5, 2) })
+        }));
+
+        return destinations;
+    }
+
+    private static DestinationCommute destination(String name, String address, List<CommuteOption> options) {
+        DestinationCommute dest = new DestinationCommute();
+        dest.destination = name;
+        dest.address = address;
+        dest.options = options;
+        return dest;
+    }
+
+    private static GentrificationProfile buildGentrificationProfile(Property__c subject) {
+        GentrificationProfile profile = new GentrificationProfile();
+        profile.displacementRisk = Decimal.valueOf(0.35);
+        profile.affordabilityTrend = Decimal.valueOf(-4.2);
+        profile.smallBusinessChurn = Decimal.valueOf(0.18);
+        profile.narrative = 'Neighborhood shows signs of reinvestment with moderate displacement risk. Watch rising rents near the transit corridor while leveraging affordability programs and small business protections.';
+
+        profile.indicators = new List<GentrificationIndicator>();
+        profile.indicators.add(gentrificationIndicator('Rent growth (5yr)', '+28%', 'Higher than citywide +18%', 'Driven by tech employment influx.')); 
+        profile.indicators.add(gentrificationIndicator('Renter vs owner mix', '58% renter households', 'Shifted +6 pts since 2018', 'Monitor affordable housing inventory.'));
+        profile.indicators.add(gentrificationIndicator('Median income change', '+12% YoY', 'City avg +7%', 'Signals higher-earning households moving in.'));
+        profile.indicators.add(gentrificationIndicator('Eviction filings', 'Down 9% YoY', 'Below county average', 'Supported by local tenant relief fund.'));
+
+        profile.pipelineSignals = new List<PipelineSignal>();
+        profile.pipelineSignals.add(pipeline('Small Business Preservation Fund', 'Active', 'Grants for legacy businesses along Maple Ave', Date.today().year() + 1));
+        profile.pipelineSignals.add(pipeline('Affordable Loft Conversion (Phase II)', 'Permitting', 'Adds 42 mixed-income units with artist studios', Date.today().year() + 2));
+        profile.pipelineSignals.add(pipeline('Transit-Oriented Development Guidelines', 'Draft', 'Requires inclusionary zoning + anti-displacement plan', Date.today().year() + 1));
+        return profile;
+    }
+
+    private static GentrificationIndicator gentrificationIndicator(String label, String trend, String dataPoint, String notes) {
+        GentrificationIndicator indicator = new GentrificationIndicator();
+        indicator.label = label;
+        indicator.trend = trend;
+        indicator.dataPoint = dataPoint;
+        indicator.notes = notes;
+        return indicator;
+    }
+
+    private static PipelineSignal pipeline(String name, String status, String impact, Integer year) {
+        PipelineSignal signal = new PipelineSignal();
+        signal.name = name;
+        signal.status = status;
+        signal.expectedImpact = impact;
+        signal.completionYear = year;
+        return signal;
+    }
+
+    private static SeasonalTiming buildSeasonalTiming(Property__c subject, List<NeighborhoodTrend> trends) {
+        SeasonalTiming timing = new SeasonalTiming();
+        timing.seasonalMetrics = new List<SeasonalMetric>();
+        timing.seasonalMetrics.add(seasonalMetric('Spring', Decimal.valueOf(3.2), 18, Decimal.valueOf(-12), 'Peak buyer demand; multiple offers common in April/May.'));
+        timing.seasonalMetrics.add(seasonalMetric('Summer', Decimal.valueOf(1.4), 24, Decimal.valueOf(5), 'Slight softening as vacation schedules slow activity.'));
+        timing.seasonalMetrics.add(seasonalMetric('Fall', Decimal.valueOf(2.1), 21, Decimal.valueOf(-8), 'Solid market with motivated buyers and less competition.'));
+        timing.seasonalMetrics.add(seasonalMetric('Winter', Decimal.valueOf(-0.6), 32, Decimal.valueOf(12), 'Best season for value buyers; sellers may negotiate more.'));
+
+        if (trends != null && !trends.isEmpty()) {
+            Decimal latestChange = trends[trends.size() - 1].priceChangePct;
+            timing.recommendation = latestChange > 0
+                ? 'List in late spring to capture appreciation momentum. Buyers seeking value should target early winter when inventory builds.'
+                : 'With appreciation slowing, sellers may still benefit from spring demand while buyers can negotiate more aggressively mid-winter.';
+        } else {
+            timing.recommendation = 'Spring historically yields top prices; winter offers the most bargaining power. Align strategy with personal timing and financing readiness.';
+        }
+        return timing;
+    }
+
+    private static SeasonalMetric seasonalMetric(String season, Decimal priceChange, Integer dom, Decimal inventoryChange, String notes) {
+        SeasonalMetric metric = new SeasonalMetric();
+        metric.season = season;
+        metric.averagePriceChange = priceChange;
+        metric.averageDaysOnMarket = dom;
+        metric.inventoryChange = inventoryChange;
+        metric.notes = notes;
+        return metric;
+    }
+
+    private static ValuationComparison buildValuationComparison(Property__c subject) {
+        ValuationComparison valuations = new ValuationComparison();
+        Decimal price = subject.Price__c != null ? subject.Price__c : 850000;
+
+        valuations.zestimate = (price * Decimal.valueOf(1.03 + Math.random() * 0.02)).setScale(0);
+        valuations.redfinEstimate = (price * Decimal.valueOf(0.98 + Math.random() * 0.02)).setScale(0);
+        valuations.customValue = (price * Decimal.valueOf(1.01 + Math.random() * 0.015)).setScale(0);
+        valuations.narrative = 'Multiple AVMs suggest value clustering around list price with modest variance. Custom valuation leans on recent comps, property condition, and neighborhood uplift signals.';
+
+        valuations.details = new List<ValuationDetail>();
+        valuations.details.add(valuationDetail('Zillow Zestimate', valuations.zestimate, 'Hedonic model leveraging national comparables, user-submitted data, tax records.', 'Medium Confidence'));
+        valuations.details.add(valuationDetail('Redfin Estimate', valuations.redfinEstimate, 'MLS-driven regression with weight on in-market comparables and local absorption rates.', 'High Confidence in active MLS areas'));
+        valuations.details.add(valuationDetail('Custom AVM', valuations.customValue, 'Blend of comparable sales, renovation adjustments, and neighborhood risk premium.', 'Adjust with inspection findings'));
+        return valuations;
+    }
+
+    private static ValuationDetail valuationDetail(String source, Decimal amount, String methodology, String confidence) {
+        ValuationDetail detail = new ValuationDetail();
+        detail.source = source;
+        detail.amount = amount;
+        detail.methodology = methodology;
+        detail.confidence = confidence;
+        return detail;
     }
 }
