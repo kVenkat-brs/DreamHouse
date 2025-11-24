@@ -38,6 +38,65 @@
                 class="property-review__media-uploader"
                 onmediaready={handleMediaReady}
             ></c-visual-review-uploader>
+            <div class="property-review__filters slds-box slds-theme_shade">
+                <div class="slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-6">
+                        <lightning-combobox
+                            label="Sentiment"
+                            value={sentimentFilter}
+                            options={sentimentOptions}
+                            onchange={handleSentimentChange}
+                        ></lightning-combobox>
+                    </div>
+                    <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-6">
+                        <lightning-input
+                            type="number"
+                            label="Min Rating"
+                            value={ratingMin}
+                            min="1"
+                            max="5"
+                            onchange={handleRatingMinChange}
+                        ></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-6">
+                        <lightning-input
+                            type="number"
+                            label="Max Rating"
+                            value={ratingMax}
+                            min="1"
+                            max="5"
+                            onchange={handleRatingMaxChange}
+                        ></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-6">
+                        <lightning-combobox
+                            label="Length"
+                            value={lengthFilter}
+                            options={lengthOptions}
+                            onchange={handleLengthChange}
+                        ></lightning-combobox>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-6">
+                        <lightning-combobox
+                            label="Verified"
+                            value={verificationFilter}
+                            options={verificationOptions}
+                            onchange={handleVerificationChange}
+                        ></lightning-combobox>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-6">
+                        <lightning-input
+                            type="text"
+                            label="Feature keyword"
+                            value={featureKeyword}
+                            onchange={handleFeatureKeywordChange}
+                        ></lightning-input>
+                    </div>
+                </div>
+                <div class="slds-m-top_small">
+                    <lightning-button label="Reset Filters" variant="neutral" onclick={resetFilters}></lightning-button>
+                </div>
+            </div>
             <template lwc:if={reviews.length}>
                 <h3 id="reviews-list" class="slds-text-title_bold slds-m-bottom_small">Recent Reviews</h3>
                 <div class="property-review__list" aria-live="polite" aria-labelledby="reviews-list">

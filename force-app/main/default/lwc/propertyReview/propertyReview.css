@@ -18,6 +18,15 @@
     grid-column: 1 / -1;
 }
 
+.property-review__media-uploader {
+    grid-column: 1 / -1;
+}
+
+.property-review__filters {
+    grid-column: 1 / -1;
+    border-radius: 0.75rem;
+}
+
 /* Inherit the same font for descendants to ensure consistency */
 /*
  * Typography inheritance

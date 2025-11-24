@@ -160,7 +160,8 @@ export default class PropertyReview extends LightningElement {
         // eslint-disable-next-line no-console
         console.log('[PropertyReview] @wire getPropertyReviews propertyId:', this.propertyIdForWire);
         if (data) {
-            this.reviews = this.transformReviews(data);
+            this.allReviews = this.transformReviews(data);
+            this.applyFilters();
         } else if (error) {
             this.reviews = [];
             this.showToast(
@@ -234,7 +235,10 @@ export default class PropertyReview extends LightningElement {
             fraudAssistive: this.formatFraudAssistive(suspicious, fraudRisk, fraudReasons),
             fraudReasonSummary: fraudReasons.join('; '),
             hasDivider: index < total - 1,
-            dividerKey: `${record.id}-divider`
+            dividerKey: `${record.id}-divider`,
+            commentLength: (record.comment || '').length,
+            verified: !suspicious,
+            ratingValue: Number(record.rating) || 0
         };
     }
 
@@ -376,7 +380,8 @@ export default class PropertyReview extends LightningElement {
         console.log('[PropertyReview] Loading reviews for propertyId:', activePropertyId);
         return getPropertyReviews({ propertyId: activePropertyId })
             .then((records) => {
-                this.reviews = this.transformReviews(records);
+                this.allReviews = this.transformReviews(records);
+                this.applyFilters();
                 // Notify the user about the result of loading reviews
                 if (this.reviewCount === 0) {
                     this.showToast('No reviews found', 'There are no reviews for this property yet.', 'info');
