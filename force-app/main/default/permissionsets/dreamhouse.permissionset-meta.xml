@@ -40,6 +40,10 @@
         <apexClass>RealEstateService</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <classAccesses>
+        <apexClass>SentimentService</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <fieldPermissions>
         <editable>true</editable>
         <field>Broker__c.Broker_Id__c</field>

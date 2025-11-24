@@ -62,6 +62,16 @@
                                         class="property-review__rating"
                                     ></c-rating-picker>
                                 </div>
+                                <div class="property-review__sentiment-row">
+                                    <span class={review.sentimentClass} title={review.sentimentAssistive}>
+                                        {review.sentimentLabel}
+                                    </span>
+                                    <template lwc:if={review.sentimentKeywordSummary}>
+                                        <span class="property-review__sentiment-keywords slds-text-color_weak slds-text-body_small">
+                                            {review.sentimentKeywordSummary}
+                                        </span>
+                                    </template>
+                                </div>
                                 <template lwc:if={review.title}>
                                     <h3 class="slds-text-heading_small slds-text-color_default slds-text-title_bold slds-m-bottom_x-small">
                                         {review.title}

@@ -142,21 +142,7 @@ public with sharing class PropertyController {
                 'LIMIT 200'
             );
 
-            for (Property_Review__c review : rawReviews) {
-                PropertyReviewDTO dtoInstance = new PropertyReviewDTO();
-                dtoInstance.id = review.Id;
-                dtoInstance.propertyId = review.Property__c;
-                dtoInstance.rating = review.Rating__c;
-                dtoInstance.comment = hasCommentField
-                    ? (String)review.get('Comment__c')
-                    : null;
-                dtoInstance.title = hasTitleField
-                    ? (String)review.get('Title__c')
-                    : null;
-                dtoInstance.createdDate = review.CreatedDate;
-                dtoInstance.reviewerName = review.CreatedBy?.Name;
-                dtos.add(dtoInstance);
-            }
+            dtos.addAll(mapReviewsWithSentiment(rawReviews, hasCommentField, hasTitleField));
         } catch (Exception ex) {
             System.debug(LoggingLevel.WARN, 'Failed to load comments/title fields: ' + ex.getMessage());
 
@@ -173,17 +159,7 @@ public with sharing class PropertyController {
                 LIMIT 200
             ];
 
-            for (Property_Review__c review : fallbackReviews) {
-                PropertyReviewDTO dtoInstance = new PropertyReviewDTO();
-                dtoInstance.id = review.Id;
-                dtoInstance.propertyId = review.Property__c;
-                dtoInstance.rating = review.Rating__c;
-                dtoInstance.comment = null;
-                dtoInstance.title = null;
-                dtoInstance.createdDate = review.CreatedDate;
-                dtoInstance.reviewerName = review.CreatedBy?.Name;
-                dtos.add(dtoInstance);
-            }
+            dtos.addAll(mapBasicReviews(fallbackReviews));
         }
 
         return dtos;
@@ -196,7 +172,7 @@ public with sharing class PropertyController {
      * @param comment Body of the review text.
      */
     @AuraEnabled
-    public static Id savePropertyReview(Id propertyId, Decimal rating, String comment) {
+    public static Id savePropertyReview(Id propertyId, Decimal rating, String comment, String title) {
         if (propertyId == null) {
             throw new AuraHandledException('Property Id is required.');
         }
@@ -218,8 +194,9 @@ public with sharing class PropertyController {
         review.Rating__c = normalizedRating;
         if (hasCommentField) {
             review.put('Comment__c', comment);
-        } else if (hasTitleField) {
-            review.put('Title__c', comment.length() > 255 ? comment.substring(0, 255) : comment);
+        }
+        if (hasTitleField && !String.isBlank(title)) {
+            review.put('Title__c', title.length() > 255 ? title.substring(0, 255) : title);
         }
 
         insert review;
@@ -234,9 +211,70 @@ public with sharing class PropertyController {
         @AuraEnabled public String title;
         @AuraEnabled public Datetime createdDate;
         @AuraEnabled public String reviewerName;
+        @AuraEnabled public Decimal sentimentScore;
+        @AuraEnabled public String sentimentLabel;
+        @AuraEnabled public List<String> keywords;
     }
 
     private static Boolean hasReviewField(String apiName) {
         return Property_Review__c.SObjectType.getDescribe().fields.getMap().containsKey(apiName);
+    }
+
+    private static PropertyReviewDTO mapReview(Property_Review__c review, Boolean includeComment, Boolean includeTitle) {
+        PropertyReviewDTO dtoInstance = new PropertyReviewDTO();
+        dtoInstance.id = review.Id;
+        dtoInstance.propertyId = review.Property__c;
+        dtoInstance.rating = review.Rating__c;
+        dtoInstance.comment = includeComment ? (String)review.get('Comment__c') : null;
+        dtoInstance.title = includeTitle ? (String)review.get('Title__c') : null;
+        dtoInstance.createdDate = review.CreatedDate;
+        dtoInstance.reviewerName = review.CreatedBy?.Name;
+        dtoInstance.sentimentScore = 0;
+        dtoInstance.sentimentLabel = 'Neutral';
+        dtoInstance.keywords = new List<String>();
+        return dtoInstance;
+    }
+
+    private static List<PropertyReviewDTO> mapBasicReviews(List<Property_Review__c> reviews) {
+        List<PropertyReviewDTO> dtos = new List<PropertyReviewDTO>();
+        for (Property_Review__c review : reviews) {
+            PropertyReviewDTO dtoInstance = mapReview(review, false, false);
+            dtos.add(dtoInstance);
+        }
+        return dtos;
+    }
+
+    private static List<PropertyReviewDTO> mapReviewsWithSentiment(
+        List<Property_Review__c> reviews,
+        Boolean includeComment,
+        Boolean includeTitle
+    ) {
+        List<PropertyReviewDTO> dtos = new List<PropertyReviewDTO>();
+        if (reviews.isEmpty()) {
+            return dtos;
+        }
+
+        Map<Id, String> commentMap = new Map<Id, String>();
+        for (Property_Review__c review : reviews) {
+            PropertyReviewDTO dtoInstance = mapReview(review, includeComment, includeTitle);
+            dtos.add(dtoInstance);
+            if (!String.isBlank(dtoInstance.comment)) {
+                commentMap.put(dtoInstance.id, dtoInstance.comment);
+            }
+        }
+
+        if (!commentMap.isEmpty()) {
+            SentimentService.BatchResult batch = SentimentService.analyzeBatch(commentMap);
+            for (PropertyReviewDTO dtoInstance : dtos) {
+                if (batch.results != null && batch.results.containsKey(dtoInstance.id)) {
+                    SentimentService.Analysis analysis = batch.results.get(dtoInstance.id);
+                    dtoInstance.sentimentScore = analysis.score;
+                    dtoInstance.sentimentLabel = analysis.label;
+                    dtoInstance.keywords = analysis.keywords;
+                }
+            }
+        }
+
+        return dtos;
     }
 }

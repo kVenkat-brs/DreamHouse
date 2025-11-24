@@ -160,18 +160,7 @@ export default class PropertyReview extends LightningElement {
         // eslint-disable-next-line no-console
         console.log('[PropertyReview] @wire getPropertyReviews propertyId:', this.propertyIdForWire);
         if (data) {
-            const items = data || [];
-            this.reviews = items.map((record, index) => ({
-                id: record.id,
-                propertyId: record.propertyId,
-                rating: record.rating,
-                comment: record.comment,
-                reviewer: record.reviewerName || 'Anonymous',
-                createdDate: record.createdDate,
-                title: record.title,
-                hasDivider: index < items.length - 1,
-                dividerKey: record.id + '-divider'
-            }));
+            this.reviews = this.transformReviews(data);
         } else if (error) {
             this.reviews = [];
             this.showToast(
@@ -197,6 +186,86 @@ export default class PropertyReview extends LightningElement {
 
     get reviewCount() {
         return this.reviews.length;
+    }
+
+    transformReviews(records) {
+        if (!Array.isArray(records)) {
+            return [];
+        }
+        const total = records.length;
+        return records.map((record, index) => this.buildReviewView(record, index, total));
+    }
+
+    buildReviewView(record, index, total) {
+        const reviewer = this.normalizeReviewerName(record.reviewerName || 'Anonymous');
+        const keywords = this.normalizeKeywords(record.keywords);
+        const sentimentLabel = record.sentimentLabel || 'Neutral';
+        const sentimentScore = this.normalizeScore(record.sentimentScore);
+
+        return {
+            id: record.id,
+            propertyId: record.propertyId,
+            rating: record.rating,
+            comment: record.comment,
+            reviewer,
+            createdDate: record.createdDate,
+            title: record.title,
+            sentimentLabel,
+            sentimentScore,
+            sentimentKeywords: keywords,
+            sentimentKeywordSummary: keywords.join(', '),
+            sentimentClass: this.resolveSentimentClass(sentimentLabel),
+            sentimentAssistive: this.formatSentimentAssistive(sentimentLabel, sentimentScore),
+            hasDivider: index < total - 1,
+            dividerKey: `${record.id}-divider`
+        };
+    }
+
+    normalizeReviewerName(name) {
+        if (!name) {
+            return 'Anonymous';
+        }
+        return name
+            .split(/\s+/)
+            .filter(Boolean)
+            .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
+            .join(' ');
+    }
+
+    normalizeKeywords(rawKeywords) {
+        if (!Array.isArray(rawKeywords)) {
+            return [];
+        }
+        const cleaned = rawKeywords
+            .filter((keyword) => typeof keyword === 'string' && keyword.trim().length)
+            .map((keyword) => keyword.trim());
+        return Array.from(new Set(cleaned));
+    }
+
+    normalizeScore(score) {
+        const numeric = Number(score);
+        return Number.isFinite(numeric) ? Number(numeric.toFixed(2)) : null;
+    }
+
+    resolveSentimentClass(label) {
+        const normalized = (label || 'Neutral').toLowerCase();
+        const base = 'slds-badge property-review__sentiment';
+        if (normalized === 'positive') {
+            return `${base} property-review__sentiment--positive`;
+        }
+        if (normalized === 'negative') {
+            return `${base} property-review__sentiment--negative`;
+        }
+        return `${base} property-review__sentiment--neutral`;
+    }
+
+    formatSentimentAssistive(label, score) {
+        const normalizedLabel = (label || 'Neutral').toLowerCase();
+        if (score === null || score === undefined || Number.isNaN(score)) {
+            return `Sentiment ${normalizedLabel}`;
+        }
+        const formattedScore = score >= 0 ? `+${score.toFixed(2)}` : score.toFixed(2);
+        return `Sentiment ${normalizedLabel} (${formattedScore})`;
     }
 
     /**
@@ -243,18 +312,7 @@ export default class PropertyReview extends LightningElement {
         console.log('[PropertyReview] Loading reviews for propertyId:', activePropertyId);
         return getPropertyReviews({ propertyId: activePropertyId })
             .then((records) => {
-                const items = records || [];
-            this.reviews = items.map((record, index) => ({
-                id: record.id,
-                propertyId: record.propertyId,
-                rating: record.rating,
-                comment: record.comment,
-                reviewer: record.reviewerName || 'Anonymous',
-                createdDate: record.createdDate,
-                title: record.title,
-                hasDivider: index < items.length - 1,
-                dividerKey: record.id + '-divider'
-            }));
+                this.reviews = this.transformReviews(records);
                 // Notify the user about the result of loading reviews
                 if (this.reviewCount === 0) {
                     this.showToast('No reviews found', 'There are no reviews for this property yet.', 'info');
