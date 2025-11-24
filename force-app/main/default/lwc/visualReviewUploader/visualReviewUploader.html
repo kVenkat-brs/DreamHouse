@@ -1,0 +1,43 @@
+<template>
+    <section class="uploader" aria-label="Visual Review Upload">
+        <div
+            class="uploader__dropzone"
+            ondragover={handleDragOver}
+            ondragleave={handleDragLeave}
+            ondrop={handleDrop}
+            tabindex="0"
+            onkeydown={handleKeyPress}
+        >
+            <lightning-icon icon-name="utility:upload" alternative-text="Upload"></lightning-icon>
+            <p class="uploader__prompt">Drag &amp; drop photos or videos, or click to select files</p>
+            <input class="uploader__input" type="file" accept="image/*,video/*" multiple onchange={handleFileChange} />
+        </div>
+
+        <template if:true={items.length}>
+            <ul class="uploader__list">
+                <template for:each={items} for:item="item">
+                    <li key={item.id} class="uploader__item">
+                        <div class="uploader__preview" style={item.previewStyle}></div>
+                        <div class="uploader__meta">
+                            <p class="uploader__filename">{item.fileName}</p>
+                            <p class="uploader__status">{item.statusLabel}</p>
+                            <template if:true={item.summary}>
+                                <p class="uploader__summary">{item.summary}</p>
+                            </template>
+                            <template if:true={item.tags}>
+                                <div class="uploader__tags">
+                                    <template for:each={item.tags} for:item="tag">
+                                        <span key={tag} class="uploader__tag">{tag}</span>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                        <template if:true={item.downloadUrl}>
+                            <lightning-button-icon icon-name="utility:new_window" alternative-text="Open" onclick={handleOpen} data-id={item.id}></lightning-button-icon>
+                        </template>
+                    </li>
+                </template>
+            </ul>
+        </template>
+    </section>
+</template>

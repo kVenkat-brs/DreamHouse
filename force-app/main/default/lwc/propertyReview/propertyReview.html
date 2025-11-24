@@ -32,6 +32,12 @@
                 record-id={activePropertyId}
                 class="property-review__timeline"
             ></c-property-review-timeline>
+            <c-visual-review-uploader
+                if:true={activePropertyId}
+                property-id={activePropertyId}
+                class="property-review__media-uploader"
+                onmediaready={handleMediaReady}
+            ></c-visual-review-uploader>
             <template lwc:if={reviews.length}>
                 <h3 id="reviews-list" class="slds-text-title_bold slds-m-bottom_small">Recent Reviews</h3>
                 <div class="property-review__list" aria-live="polite" aria-labelledby="reviews-list">

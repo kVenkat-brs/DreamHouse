@@ -575,4 +575,9 @@ export default class PropertyReview extends LightningElement {
         this.comment = '';
         this.lastTouchedField = undefined;
     }
+
+    handleMediaReady(event) {
+        // eslint-disable-next-line no-console
+        console.log('[PropertyReview] Visual media processed:', event.detail);
+    }
 }
