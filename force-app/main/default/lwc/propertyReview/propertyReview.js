@@ -30,6 +30,7 @@ import LightningConfirm from 'lightning/confirm';
 import getPropertyReviews from '@salesforce/apex/PropertyController.getPropertyReviews';
 // Apex method that saves a new review when the form is submitted.
 import savePropertyReview from '@salesforce/apex/PropertyController.savePropertyReview';
+import getSuggestions from '@salesforce/apex/AIWritingAssistantService.getSuggestions';
 
 // Lightning Message Channel that notifies this component when a property is selected elsewhere.
 import PROPERTY_SELECTED from '@salesforce/messageChannel/PropertySelected__c';
@@ -45,11 +46,22 @@ export default class PropertyReview extends LightningElement {
     @api recordId;
     @api canSubmit;
 
+    allReviews = [];
     @track reviews = []; // List of review view-model items rendered in the UI
     showForm = false; // Whether the review submission form is visible
     draftRating = 0; // Current star rating selected in the form
     title = ''; // Draft review title entered by the user
     comment = ''; // Draft review comment entered by the user
+    draftHtml = '';
+    autoSaveTimer;
+    lastAutoSave = null;
+    suggestions = [];
+    sentimentFilter = 'all';
+    ratingMin = 1;
+    ratingMax = 5;
+    lengthFilter = 'all';
+    verificationFilter = 'all';
+    featureKeyword = '';
     subscription; // LMS subscription reference for cleanup
     selectedPropertyId; // Active property context Id for which reviews are shown
     isSubmitting = false; // True while a review submission is in-flight
@@ -100,6 +112,7 @@ export default class PropertyReview extends LightningElement {
         }
         // eslint-disable-next-line no-console
         console.log('[PropertyReview] disconnectedCallback: component destroyed');
+        this.clearAutoSaveTimer();
     }
 
     /**
@@ -455,6 +468,7 @@ export default class PropertyReview extends LightningElement {
     handleRatingChange(event) {
         this.draftRating = Number(event.detail.value);
         this.lastTouchedField = 'rating';
+        this.scheduleAutoSave();
     }
 
     /**
@@ -464,6 +478,7 @@ export default class PropertyReview extends LightningElement {
     handleCommentChange(event) {
         this.comment = event.target.value;
         this.lastTouchedField = 'comment';
+        this.scheduleAutoSave();
     }
 
     /**
@@ -473,6 +488,7 @@ export default class PropertyReview extends LightningElement {
     handleTitleChange(event) {
         this.title = event.target.value;
         this.lastTouchedField = 'title';
+        this.scheduleAutoSave();
     }
 
     /**
