@@ -7,6 +7,8 @@ public with sharing class RecommendationService {
         @AuraEnabled public String tags; // comma or space separated
         @AuraEnabled public Map<String, Decimal> weights; // e.g., { price: 0.4, beds: 0.3, baths: 0.3 }
         @AuraEnabled public List<Id> recentViewed; // optional: boost familiar items
+        @AuraEnabled public Map<String, Decimal> sentimentPreferences; // e.g., { security: 0.3, location: 0.2 }
+        @AuraEnabled public Id anchorPropertyId; // optional property to mirror sentiments
     }
 
     public class Recommendation {
@@ -86,6 +88,13 @@ public with sharing class RecommendationService {
             reviewAverages.put((Id)ar.get('pid'), (Decimal)ar.get('avgRate'));
         }
 
+        // Sentiment theme digestion
+        Map<Id, SentimentProfile> sentimentProfiles = buildSentimentProfiles(props);
+        SentimentProfile anchorProfile = null;
+        if (prefs != null && prefs.anchorPropertyId != null) {
+            anchorProfile = sentimentProfiles.get(prefs.anchorPropertyId);
+        }
+
         // Prepare recent viewed set for a small familiarity boost
         Set<Id> recent = new Set<Id>();
         if (prefs != null && prefs.recentViewed != null) recent.addAll(prefs.recentViewed);
@@ -149,6 +158,15 @@ public with sharing class RecommendationService {
                 score += star;
             }
 
+            // Sentiment similarity: compare theme vectors or anchor property
+            SentimentProfile profile = sentimentProfiles.get(p.Id);
+            if (anchorProfile != null && profile != null) {
+                score += computeSentimentSimilarity(anchorProfile, profile) * 0.1;
+            }
+            if (prefs != null && prefs.sentimentPreferences != null && profile != null) {
+                score += applySentimentPreferences(profile, prefs.sentimentPreferences) * 0.1;
+            }
+
             // Familiarity boost if recently viewed
             if (!recent.isEmpty() && recent.contains(p.Id)) {
                 score += 0.03;
@@ -169,6 +187,139 @@ public with sharing class RecommendationService {
         out.sort(new ComparatorDesc());
         if (out.size() > lim) out.removeRange(lim, out.size());
         return out;
+    }
+
+    // Helper data structure representing aggregated sentiment insights
+    private class SentimentProfile {
+        Map<String, Decimal> themes = new Map<String, Decimal>();
+        Decimal averageRating;
+        Integer reviewCount;
+    }
+
+    private Map<Id, SentimentProfile> buildSentimentProfiles(List<Property__c> props) {
+        Map<Id, SentimentProfile> profiles = new Map<Id, SentimentProfile>();
+        if (props.isEmpty()) {
+            return profiles;
+        }
+
+        Set<Id> propertyIds = new Set<Id>();
+        for (Property__c p : props) {
+            propertyIds.add(p.Id);
+        }
+
+        // Collect review comments to repurpose existing sentiment service
+        List<Property_Review__c> reviews = [
+            SELECT Id, Property__c, Rating__c, Comment__c, Title__c
+            FROM Property_Review__c
+            WHERE Property__c IN :propertyIds
+            LIMIT 1000
+        ];
+
+        Map<Id, ReviewFraudService.ReviewInfo> stub = new Map<Id, ReviewFraudService.ReviewInfo>();
+        Map<Id, SentimentService.Analysis> analyses = new Map<Id, SentimentService.Analysis>();
+        Map<Id, Property_Review__c> reviewById = new Map<Id, Property_Review__c>();
+        for (Property_Review__c review : reviews) {
+            reviewById.put(review.Id, review);
+        }
+
+        Map<Id, String> commentMap = new Map<Id, String>();
+        for (Property_Review__c review : reviews) {
+            commentMap.put(review.Id, review.Comment__c);
+        }
+
+        if (!commentMap.isEmpty()) {
+            SentimentService.BatchResult batch = SentimentService.analyzeBatch(commentMap);
+            if (batch != null && batch.results != null) {
+                analyses.putAll(batch.results);
+            }
+        }
+
+        for (Property_Review__c review : reviews) {
+            SentimentProfile profile = profiles.get(review.Property__c);
+            if (profile == null) {
+                profile = new SentimentProfile();
+                profiles.put(review.Property__c, profile);
+            }
+            profile.reviewCount = (profile.reviewCount == null ? 0 : profile.reviewCount) + 1;
+            profile.averageRating = accumulateAverage(profile.averageRating, profile.reviewCount, review.Rating__c);
+
+            SentimentService.Analysis analysis = analyses.get(review.Id);
+            if (analysis == null || analysis.keywords == null) {
+                continue;
+            }
+            for (String keyword : analysis.keywords) {
+                if (String.isBlank(keyword)) {
+                    continue;
+                }
+                Decimal current = profile.themes.get(keyword);
+                profile.themes.put(keyword, (current == null ? 0 : current) + 1);
+            }
+        }
+
+        return profiles;
+    }
+
+    private Decimal accumulateAverage(Decimal currentAverage, Integer count, Decimal nextValue) {
+        if (nextValue == null) {
+            return currentAverage;
+        }
+        if (currentAverage == null || count == null || count <= 1) {
+            return nextValue;
+        }
+        // incremental average
+        Decimal total = currentAverage * (count - 1);
+        total += nextValue;
+        return total / count;
+    }
+
+    private Decimal computeSentimentSimilarity(SentimentProfile anchor, SentimentProfile candidate) {
+        if (anchor == null || candidate == null || anchor.themes.isEmpty() || candidate.themes.isEmpty()) {
+            return 0;
+        }
+        Set<String> allThemes = new Set<String>();
+        allThemes.addAll(anchor.themes.keySet());
+        allThemes.addAll(candidate.themes.keySet());
+
+        Decimal dot = 0;
+        Decimal magA = 0;
+        Decimal magB = 0;
+        for (String theme : allThemes) {
+            Decimal a = anchor.themes.get(theme);
+            Decimal b = candidate.themes.get(theme);
+            if (a != null) magA += a * a;
+            if (b != null) magB += b * b;
+            if (a != null && b != null) {
+                dot += a * b;
+            }
+        }
+        if (magA == 0 || magB == 0) {
+            return 0;
+        }
+        Decimal similarity = dot / (Math.sqrt(magA.doubleValue()) * Math.sqrt(magB.doubleValue()));
+        return Math.max(0, Math.min(1, similarity));
+    }
+
+    private Decimal applySentimentPreferences(SentimentProfile profile, Map<String, Decimal> preferences) {
+        if (profile == null || profile.themes.isEmpty() || preferences == null || preferences.isEmpty()) {
+            return 0;
+        }
+        Decimal score = 0;
+        Decimal totalWeights = 0;
+        for (String theme : preferences.keySet()) {
+            Decimal weight = preferences.get(theme);
+            if (weight == null) {
+                continue;
+            }
+            totalWeights += weight;
+            Decimal frequency = profile.themes.get(theme);
+            if (frequency != null) {
+                score += weight * Math.min(1, frequency / 5);
+            }
+        }
+        if (totalWeights == 0) {
+            return 0;
+        }
+        return Math.min(1, score / totalWeights);
     }
 
     public class ComparatorDesc implements System.Comparator {
