@@ -72,6 +72,28 @@
                                         </span>
                                     </template>
                                 </div>
+                                <div class="property-review__meta-row">
+                                    <span class={review.qualityClass} title={review.qualityAssistive}>
+                                        {review.qualityLabel}
+                                    </span>
+                                    <template lwc:if={review.qualityScoreDisplay}>
+                                        <span class="property-review__quality-score slds-text-color_weak">{review.qualityScoreDisplay}</span>
+                                    </template>
+                                    <template lwc:if={review.qualityFactorsSummary}>
+                                        <span class="property-review__quality-factors slds-text-color_weak slds-text-body_small">
+                                            {review.qualityFactorsSummary}
+                                        </span>
+                                    </template>
+                                    <span class={review.fraudBadgeClass} title={review.fraudAssistive}>
+                                        <template lwc:if={review.suspicious}>Review Check</template>
+                                        <template lwc:else>Verified</template>
+                                    </span>
+                                    <template lwc:if={review.fraudReasonSummary}>
+                                        <span class="property-review__fraud-reasons slds-text-color_error slds-text-body_small">
+                                            {review.fraudReasonSummary}
+                                        </span>
+                                    </template>
+                                </div>
                                 <template lwc:if={review.title}>
                                     <h3 class="slds-text-heading_small slds-text-color_default slds-text-title_bold slds-m-bottom_x-small">
                                         {review.title}

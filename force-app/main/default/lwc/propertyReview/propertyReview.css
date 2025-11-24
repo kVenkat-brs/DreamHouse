@@ -171,6 +171,70 @@
     word-break: break-word;
 }
 
+.property-review__meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: var(--lwc-spacingXSmall, 0.5rem);
+}
+
+.property-review__quality-score {
+    font-size: 0.75rem;
+}
+
+.property-review__quality-factors,
+.property-review__fraud-reasons {
+    max-width: 100%;
+    word-break: break-word;
+}
+
+.property-review__quality-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.property-review__quality-badge--insightful {
+    background-color: #2e8540;
+    color: #fff;
+}
+
+.property-review__quality-badge--helpful {
+    background-color: #1b5297;
+    color: #fff;
+}
+
+.property-review__quality-badge--basic {
+    background-color: #85929e;
+    color: #fff;
+}
+
+.property-review__fraud-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.property-review__fraud-badge--clear {
+    background-color: #04844b;
+    color: #fff;
+}
+
+.property-review__fraud-badge--medium {
+    background-color: #ffb75d;
+    color: #1b5297;
+}
+
+.property-review__fraud-badge--high {
+    background-color: #c23934;
+    color: #fff;
+}
+
 /*
  * Reviewer name styling
  * - Slightly larger font for readability

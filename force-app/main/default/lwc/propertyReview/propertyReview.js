@@ -204,6 +204,9 @@ export default class PropertyReview extends LightningElement {
         const qualityScore = this.normalizeScore(record.qualityScore);
         const qualityLabel = record.qualityLabel || 'Basic';
         const qualityFactors = this.normalizeKeywords(record.qualityFactors);
+        const fraudRisk = this.normalizeScore(record.fraudRisk);
+        const fraudReasons = this.normalizeKeywords(record.fraudReasons);
+        const suspicious = Boolean(record.suspicious);
 
         return {
             id: record.id,
@@ -226,6 +229,10 @@ export default class PropertyReview extends LightningElement {
             qualityAssistive: this.formatQualityAssistive(qualityLabel, qualityScore),
             qualityFactors,
             qualityFactorsSummary: qualityFactors.join('; '),
+            suspicious,
+            fraudBadgeClass: this.resolveFraudClass(suspicious, fraudRisk),
+            fraudAssistive: this.formatFraudAssistive(suspicious, fraudRisk, fraudReasons),
+            fraudReasonSummary: fraudReasons.join('; '),
             hasDivider: index < total - 1,
             dividerKey: `${record.id}-divider`
         };
@@ -303,6 +310,26 @@ export default class PropertyReview extends LightningElement {
             return `Quality ${normalizedLabel}`;
         }
         return `Quality ${normalizedLabel} (${score.toFixed(2)})`;
+    }
+
+    resolveFraudClass(suspicious, score) {
+        const base = 'slds-badge property-review__fraud-badge';
+        if (!suspicious) {
+            return `${base} property-review__fraud-badge--clear`;
+        }
+        if (score >= 0.7) {
+            return `${base} property-review__fraud-badge--high`;
+        }
+        return `${base} property-review__fraud-badge--medium`;
+    }
+
+    formatFraudAssistive(suspicious, score, reasons) {
+        if (!suspicious) {
+            return 'Fraud check: clear';
+        }
+        const formattedScore = score === null || Number.isNaN(score) ? '' : ` (${score.toFixed(2)})`;
+        const details = Array.isArray(reasons) && reasons.length ? ` Reasons: ${reasons.join('; ')}` : '';
+        return `Flagged as suspicious${formattedScore}.${details}`.trim();
     }
 
     /**

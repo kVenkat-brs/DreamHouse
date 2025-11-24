@@ -218,6 +218,9 @@ public with sharing class PropertyController {
         @AuraEnabled public Decimal qualityScore;
         @AuraEnabled public String qualityLabel;
         @AuraEnabled public List<String> qualityFactors;
+        @AuraEnabled public Boolean suspicious;
+        @AuraEnabled public Decimal fraudRisk;
+        @AuraEnabled public List<String> fraudReasons;
     }
 
     private static Boolean hasReviewField(String apiName) {
@@ -240,6 +243,9 @@ public with sharing class PropertyController {
         dtoInstance.qualityScore = 0;
         dtoInstance.qualityLabel = 'Basic';
         dtoInstance.qualityFactors = new List<String>();
+        dtoInstance.suspicious = false;
+        dtoInstance.fraudRisk = 0;
+        dtoInstance.fraudReasons = new List<String>();
         return dtoInstance;
     }
 
@@ -264,6 +270,7 @@ public with sharing class PropertyController {
 
         Map<Id, String> commentMap = new Map<Id, String>();
         Map<Id, ReviewQualityService.ReviewInput> qualityInputs = new Map<Id, ReviewQualityService.ReviewInput>();
+        List<ReviewFraudService.ReviewInfo> fraudInputs = new List<ReviewFraudService.ReviewInfo>();
         for (Property_Review__c review : reviews) {
             PropertyReviewDTO dtoInstance = mapReview(review, includeComment, includeTitle);
             dtos.add(dtoInstance);
@@ -274,6 +281,16 @@ public with sharing class PropertyController {
                 input.title = dtoInstance.title;
                 input.rating = dtoInstance.rating;
                 qualityInputs.put(dtoInstance.id, input);
+
+                ReviewFraudService.ReviewInfo fraudInfo = new ReviewFraudService.ReviewInfo();
+                fraudInfo.reviewId = dtoInstance.id;
+                fraudInfo.propertyId = dtoInstance.propertyId;
+                fraudInfo.rating = dtoInstance.rating;
+                fraudInfo.comment = dtoInstance.comment;
+                fraudInfo.title = dtoInstance.title;
+                fraudInfo.reviewerName = dtoInstance.reviewerName;
+                fraudInfo.createdDate = dtoInstance.createdDate;
+                fraudInputs.add(fraudInfo);
             }
         }
 
@@ -303,6 +320,18 @@ public with sharing class PropertyController {
                 }
             }
             dtos.sort(new ReviewQualityComparator());
+        }
+
+        if (!fraudInputs.isEmpty()) {
+            Map<Id, ReviewFraudService.FraudSignal> fraudSignals = ReviewFraudService.evaluateBatch(fraudInputs);
+            for (PropertyReviewDTO dtoInstance : dtos) {
+                if (fraudSignals.containsKey(dtoInstance.id)) {
+                    ReviewFraudService.FraudSignal signal = fraudSignals.get(dtoInstance.id);
+                    dtoInstance.suspicious = signal.suspicious;
+                    dtoInstance.fraudRisk = signal.riskScore;
+                    dtoInstance.fraudReasons = signal.reasons;
+                }
+            }
         }
 
         attachSummaries(dtos, batch);
