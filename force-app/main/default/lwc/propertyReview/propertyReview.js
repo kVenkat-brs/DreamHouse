@@ -99,6 +99,20 @@ export default class PropertyReview extends LightningElement {
         // Debug trace to indicate component initialization lifecycle
         // eslint-disable-next-line no-console
         console.log('[PropertyReview] connectedCallback: component initialized');
+
+        if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+            this.supportsServiceWorker = true;
+            navigator.serviceWorker
+                .register('/resource/reviewServiceWorker.js')
+                .then(() => {
+                    // eslint-disable-next-line no-console
+                    console.log('[PropertyReview] Service worker registered');
+                })
+                .catch((error) => {
+                    // eslint-disable-next-line no-console
+                    console.error('Service worker registration failed', error);
+                });
+        }
     }
 
     /**
@@ -601,4 +615,25 @@ export default class PropertyReview extends LightningElement {
         // eslint-disable-next-line no-console
         console.log('[PropertyReview] Visual media processed:', event.detail);
     }
+
+    async enableNotifications() {
+        if (!('Notification' in window) || !this.supportsServiceWorker) {
+            this.showToast('Unsupported', 'Notifications require a compatible browser.', 'warning');
+            return;
+        }
+        if (Notification.permission === 'granted') {
+            this.notificationsEnabled = true;
+            this.showToast('Notifications enabled', 'You will receive alerts for new reviews.', 'success');
+            return;
+        }
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+            this.notificationsEnabled = true;
+            this.showToast('Notifications enabled', 'You will receive alerts for new reviews.', 'success');
+        } else {
+            this.showToast('Permission denied', 'Enable notifications in your browser settings if you change your mind.', 'warning');
+        }
+    }
 }
+    supportsServiceWorker = false;
+    notificationsEnabled = false;
