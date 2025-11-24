@@ -214,6 +214,7 @@ public with sharing class PropertyController {
         @AuraEnabled public Decimal sentimentScore;
         @AuraEnabled public String sentimentLabel;
         @AuraEnabled public List<String> keywords;
+        @AuraEnabled public String summary;
     }
 
     private static Boolean hasReviewField(String apiName) {
@@ -232,6 +233,7 @@ public with sharing class PropertyController {
         dtoInstance.sentimentScore = 0;
         dtoInstance.sentimentLabel = 'Neutral';
         dtoInstance.keywords = new List<String>();
+        dtoInstance.summary = null;
         return dtoInstance;
     }
 
@@ -263,10 +265,13 @@ public with sharing class PropertyController {
             }
         }
 
-        if (!commentMap.isEmpty()) {
-            SentimentService.BatchResult batch = SentimentService.analyzeBatch(commentMap);
+        SentimentService.BatchResult batch = commentMap.isEmpty()
+            ? null
+            : SentimentService.analyzeBatch(commentMap);
+
+        if (batch != null && batch.results != null) {
             for (PropertyReviewDTO dtoInstance : dtos) {
-                if (batch.results != null && batch.results.containsKey(dtoInstance.id)) {
+                if (batch.results.containsKey(dtoInstance.id)) {
                     SentimentService.Analysis analysis = batch.results.get(dtoInstance.id);
                     dtoInstance.sentimentScore = analysis.score;
                     dtoInstance.sentimentLabel = analysis.label;
@@ -275,6 +280,67 @@ public with sharing class PropertyController {
             }
         }
 
+        attachSummaries(dtos, batch);
+
         return dtos;
+    }
+
+    private static void attachSummaries(List<PropertyReviewDTO> reviews, SentimentService.BatchResult batch) {
+        if (reviews == null || reviews.isEmpty() || batch == null) {
+            return;
+        }
+
+        String summary = buildSummary(batch);
+        if (String.isBlank(summary)) {
+            return;
+        }
+
+        for (PropertyReviewDTO dto : reviews) {
+            dto.summary = summary;
+        }
+    }
+
+    private static String buildSummary(SentimentService.BatchResult batch) {
+        if (batch == null) {
+            return null;
+        }
+
+        List<String> highlightPhrases = summarizeThemes(batch.praises);
+        List<String> cautionPhrases = summarizeThemes(batch.complaints);
+        List<String> generalThemes = summarizeThemes(batch.themes);
+
+        List<String> segments = new List<String>();
+        if (!highlightPhrases.isEmpty()) {
+            segments.add('Loved: ' + String.join(highlightPhrases, ', '));
+        }
+        if (!cautionPhrases.isEmpty()) {
+            segments.add('Concerns: ' + String.join(cautionPhrases, ', '));
+        }
+        if (!generalThemes.isEmpty()) {
+            segments.add('Themes: ' + String.join(generalThemes, ', '));
+        }
+
+        return segments.isEmpty() ? null : String.join(segments, ' | ');
+    }
+
+    private static List<String> summarizeThemes(List<SentimentService.AggregateTheme> themes) {
+        List<String> phrases = new List<String>();
+        if (themes == null || themes.isEmpty()) {
+            return phrases;
+        }
+
+        Integer limit = Math.min(3, themes.size());
+        for (Integer i = 0; i < limit; i++) {
+            SentimentService.AggregateTheme theme = themes[i];
+            if (theme == null || String.isBlank(theme.label)) {
+                continue;
+            }
+            String phrase = theme.label;
+            if (theme.mentions > 1) {
+                phrase += ' (' + theme.mentions + ')';
+            }
+            phrases.add(phrase);
+        }
+        return phrases;
     }
 }
