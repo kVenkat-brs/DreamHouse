@@ -201,6 +201,9 @@ export default class PropertyReview extends LightningElement {
         const keywords = this.normalizeKeywords(record.keywords);
         const sentimentLabel = record.sentimentLabel || 'Neutral';
         const sentimentScore = this.normalizeScore(record.sentimentScore);
+        const qualityScore = this.normalizeScore(record.qualityScore);
+        const qualityLabel = record.qualityLabel || 'Basic';
+        const qualityFactors = this.normalizeKeywords(record.qualityFactors);
 
         return {
             id: record.id,
@@ -216,6 +219,13 @@ export default class PropertyReview extends LightningElement {
             sentimentKeywordSummary: keywords.join(', '),
             sentimentClass: this.resolveSentimentClass(sentimentLabel),
             sentimentAssistive: this.formatSentimentAssistive(sentimentLabel, sentimentScore),
+            qualityLabel,
+            qualityScore,
+            qualityScoreDisplay: this.formatQualityScore(qualityScore),
+            qualityClass: this.resolveQualityClass(qualityLabel),
+            qualityAssistive: this.formatQualityAssistive(qualityLabel, qualityScore),
+            qualityFactors,
+            qualityFactorsSummary: qualityFactors.join('; '),
             hasDivider: index < total - 1,
             dividerKey: `${record.id}-divider`
         };
@@ -266,6 +276,33 @@ export default class PropertyReview extends LightningElement {
         }
         const formattedScore = score >= 0 ? `+${score.toFixed(2)}` : score.toFixed(2);
         return `Sentiment ${normalizedLabel} (${formattedScore})`;
+    }
+
+    resolveQualityClass(label) {
+        const normalized = (label || 'Basic').toLowerCase();
+        const base = 'slds-badge property-review__quality-badge';
+        if (normalized === 'insightful') {
+            return `${base} property-review__quality-badge--insightful`;
+        }
+        if (normalized === 'helpful') {
+            return `${base} property-review__quality-badge--helpful`;
+        }
+        return `${base} property-review__quality-badge--basic`;
+    }
+
+    formatQualityScore(score) {
+        if (score === null || score === undefined || Number.isNaN(score)) {
+            return '—';
+        }
+        return score.toFixed(2);
+    }
+
+    formatQualityAssistive(label, score) {
+        const normalizedLabel = label || 'Basic';
+        if (score === null || score === undefined || Number.isNaN(score)) {
+            return `Quality ${normalizedLabel}`;
+        }
+        return `Quality ${normalizedLabel} (${score.toFixed(2)})`;
     }
 
     /**

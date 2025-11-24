@@ -215,6 +215,9 @@ public with sharing class PropertyController {
         @AuraEnabled public String sentimentLabel;
         @AuraEnabled public List<String> keywords;
         @AuraEnabled public String summary;
+        @AuraEnabled public Decimal qualityScore;
+        @AuraEnabled public String qualityLabel;
+        @AuraEnabled public List<String> qualityFactors;
     }
 
     private static Boolean hasReviewField(String apiName) {
@@ -234,6 +237,9 @@ public with sharing class PropertyController {
         dtoInstance.sentimentLabel = 'Neutral';
         dtoInstance.keywords = new List<String>();
         dtoInstance.summary = null;
+        dtoInstance.qualityScore = 0;
+        dtoInstance.qualityLabel = 'Basic';
+        dtoInstance.qualityFactors = new List<String>();
         return dtoInstance;
     }
 
@@ -257,11 +263,17 @@ public with sharing class PropertyController {
         }
 
         Map<Id, String> commentMap = new Map<Id, String>();
+        Map<Id, ReviewQualityService.ReviewInput> qualityInputs = new Map<Id, ReviewQualityService.ReviewInput>();
         for (Property_Review__c review : reviews) {
             PropertyReviewDTO dtoInstance = mapReview(review, includeComment, includeTitle);
             dtos.add(dtoInstance);
             if (!String.isBlank(dtoInstance.comment)) {
                 commentMap.put(dtoInstance.id, dtoInstance.comment);
+                ReviewQualityService.ReviewInput input = new ReviewQualityService.ReviewInput();
+                input.comment = dtoInstance.comment;
+                input.title = dtoInstance.title;
+                input.rating = dtoInstance.rating;
+                qualityInputs.put(dtoInstance.id, input);
             }
         }
 
@@ -280,9 +292,45 @@ public with sharing class PropertyController {
             }
         }
 
+        if (!qualityInputs.isEmpty()) {
+            Map<Id, ReviewQualityService.QualityResult> quality = ReviewQualityService.evaluateBatch(qualityInputs);
+            for (PropertyReviewDTO dtoInstance : dtos) {
+                if (quality.containsKey(dtoInstance.id)) {
+                    ReviewQualityService.QualityResult q = quality.get(dtoInstance.id);
+                    dtoInstance.qualityScore = q.score;
+                    dtoInstance.qualityLabel = q.label;
+                    dtoInstance.qualityFactors = q.factors;
+                }
+            }
+            dtos.sort(new ReviewQualityComparator());
+        }
+
         attachSummaries(dtos, batch);
 
         return dtos;
+    }
+
+    private class ReviewQualityComparator implements System.Comparator<PropertyReviewDTO> {
+        public Integer compare(PropertyReviewDTO a, PropertyReviewDTO b) {
+            Decimal scoreA = a == null ? 0 : a.qualityScore;
+            Decimal scoreB = b == null ? 0 : b.qualityScore;
+            Integer comparison = scoreB.compareTo(scoreA);
+            if (comparison != 0) {
+                return comparison;
+            }
+            Datetime dateA = a == null ? null : a.createdDate;
+            Datetime dateB = b == null ? null : b.createdDate;
+            if (dateA == null && dateB == null) {
+                return 0;
+            }
+            if (dateA == null) {
+                return 1;
+            }
+            if (dateB == null) {
+                return -1;
+            }
+            return dateB.compareTo(dateA);
+        }
     }
 
     private static void attachSummaries(List<PropertyReviewDTO> reviews, SentimentService.BatchResult batch) {
