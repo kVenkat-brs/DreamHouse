@@ -28,6 +28,10 @@
 
         <!-- Region displaying existing reviews -->
         <div class="slds-card__body slds-p-around_medium property-review">
+            <c-property-review-timeline
+                record-id={activePropertyId}
+                class="property-review__timeline"
+            ></c-property-review-timeline>
             <template lwc:if={reviews.length}>
                 <h3 id="reviews-list" class="slds-text-title_bold slds-m-bottom_small">Recent Reviews</h3>
                 <div class="property-review__list" aria-live="polite" aria-labelledby="reviews-list">

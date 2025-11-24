@@ -14,6 +14,10 @@
     margin-right: auto;
 }
 
+.property-review__timeline {
+    grid-column: 1 / -1;
+}
+
 /* Inherit the same font for descendants to ensure consistency */
 /*
  * Typography inheritance

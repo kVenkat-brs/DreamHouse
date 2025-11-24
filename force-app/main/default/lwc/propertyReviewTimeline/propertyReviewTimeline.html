@@ -1,0 +1,48 @@
+<template>
+    <section class="timeline" aria-label="Review Timeline">
+        <div class="timeline__controls slds-grid slds-wrap slds-gutters slds-m-bottom_medium">
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                <lightning-combobox
+                    label="Rating Filter"
+                    value={ratingFilter}
+                    options={ratingOptions}
+                    onchange={handleRatingFilterChange}
+                ></lightning-combobox>
+            </div>
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                <lightning-combobox
+                    label="Season"
+                    value={seasonFilter}
+                    options={seasonOptions}
+                    onchange={handleSeasonFilterChange}
+                ></lightning-combobox>
+            </div>
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 timeline__speed-control">
+                <lightning-slider
+                    label="Animation Speed"
+                    value={speed}
+                    min="1"
+                    max="5"
+                    onchange={handleSpeedChange}
+                ></lightning-slider>
+            </div>
+        </div>
+
+        <template if:true={hasData}>
+            <div class="timeline__legend">
+                <span class="timeline__legend-item timeline__legend-item--rating">Rating Bands</span>
+                <template for:each={displayEvents} for:item="event">
+                    <span key={event.key} class="timeline__legend-item timeline__legend-item--event">
+                        {event.label} · {event.date}
+                    </span>
+                </template>
+            </div>
+            <div class="timeline__viewport">
+                <div class="timeline__bars" lwc:dom="manual"></div>
+            </div>
+        </template>
+        <template if:false={hasData}>
+            <div class="timeline__empty slds-text-color_weak">No reviews available for this timeline.</div>
+        </template>
+    </section>
+</template>

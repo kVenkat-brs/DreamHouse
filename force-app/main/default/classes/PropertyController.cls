@@ -362,6 +362,140 @@ public with sharing class PropertyController {
         }
     }
 
+    @AuraEnabled(cacheable=true)
+    public static ReviewTimelineResponse getReviewTimeline(Id propertyId) {
+        if (propertyId == null) {
+            return new ReviewTimelineResponse();
+        }
+
+        ReviewTimelineResponse response = new ReviewTimelineResponse();
+        response.events = buildPropertyEvents(propertyId);
+
+        List<Property_Review__c> reviews = [
+            SELECT Id, Property__c, Rating__c, CreatedDate, Comment__c
+            FROM Property_Review__c
+            WHERE Property__c = :propertyId
+            ORDER BY CreatedDate ASC
+            LIMIT 1000
+        ];
+
+        Map<String, ReviewBucket> bucketMap = new Map<String, ReviewBucket>();
+        for (Property_Review__c review : reviews) {
+            String keyMonth = review.CreatedDate == null ? 'unknown' : review.CreatedDate.format('YYYY-MM');
+            ReviewBucket bucket = bucketMap.get(keyMonth);
+            if (bucket == null) {
+                bucket = new ReviewBucket();
+                bucket.bucketKey = keyMonth;
+                bucket.year = review.CreatedDate == null ? null : review.CreatedDate.year();
+                bucket.month = review.CreatedDate == null ? null : review.CreatedDate.month();
+                bucket.season = deriveSeason(review.CreatedDate);
+                bucketMap.put(keyMonth, bucket);
+                response.buckets.add(bucket);
+            }
+            bucket.totalCount++;
+            Integer ratingIndex = adjustRatingIndex(review.Rating__c);
+            if (ratingIndex >= 0 && ratingIndex < bucket.ratingCounts.size()) {
+                bucket.ratingCounts[ratingIndex] = bucket.ratingCounts[ratingIndex] + 1;
+            }
+        }
+
+        response.buckets.sort(new ReviewBucketComparator());
+        return response;
+    }
+
+    private static String deriveSeason(Datetime value) {
+        if (value == null) {
+            return 'Unknown';
+        }
+        Integer month = value.month();
+        if (month == 12 || month == 1 || month == 2) {
+            return 'Winter';
+        }
+        if (month >= 3 && month <= 5) {
+            return 'Spring';
+        }
+        if (month >= 6 && month <= 8) {
+            return 'Summer';
+        }
+        return 'Autumn';
+    }
+
+    private static Integer adjustRatingIndex(Decimal rating) {
+        if (rating == null) {
+            return -1;
+        }
+        Integer rounded = Integer.valueOf(Math.round(rating.doubleValue()));
+        Integer index = rounded - 1;
+        if (index < 0 || index >= 5) {
+            return -1;
+        }
+        return index;
+    }
+
+    private static List<PropertyEvent> buildPropertyEvents(Id propertyId) {
+        List<PropertyEvent> events = new List<PropertyEvent>();
+        Property__c property = [
+            SELECT Id, Date_Listed__c, Date_Agreement__c, Date_Closed__c
+            FROM Property__c
+            WHERE Id = :propertyId
+            LIMIT 1
+        ];
+
+        if (property.Date_Listed__c != null) {
+            events.add(propertyEvent('Listed', DateTime.newInstance(property.Date_Listed__c, Time.newInstance(9, 0, 0, 0)), 'Property went live on market.'));
+        }
+        if (property.Date_Agreement__c != null) {
+            events.add(propertyEvent('Agreement', DateTime.newInstance(property.Date_Agreement__c, Time.newInstance(9, 0, 0, 0)), 'Offer accepted / under contract.'));
+        }
+        if (property.Date_Closed__c != null) {
+            events.add(propertyEvent('Closed', DateTime.newInstance(property.Date_Closed__c, Time.newInstance(9, 0, 0, 0)), 'Transaction closed.'));
+        }
+
+        return events;
+    }
+
+    private static PropertyEvent propertyEvent(String label, Datetime date, String detail) {
+        PropertyEvent evt = new PropertyEvent();
+        evt.label = label;
+        evt.date = date;
+        evt.detail = detail;
+        return evt;
+    }
+
+    public class ReviewTimelineResponse {
+        @AuraEnabled public List<ReviewBucket> buckets = new List<ReviewBucket>();
+        @AuraEnabled public List<PropertyEvent> events = new List<PropertyEvent>();
+    }
+
+    public class ReviewBucket {
+        @AuraEnabled public String bucketKey;
+        @AuraEnabled public Integer year;
+        @AuraEnabled public Integer month;
+        @AuraEnabled public String season;
+        @AuraEnabled public Integer totalCount = 0;
+        @AuraEnabled public List<Integer> ratingCounts = new List<Integer>{0, 0, 0, 0, 0};
+    }
+
+    public class PropertyEvent {
+        @AuraEnabled public String label;
+        @AuraEnabled public Datetime date;
+        @AuraEnabled public String detail;
+    }
+
+    private class ReviewBucketComparator implements System.Comparator<ReviewBucket> {
+        public Integer compare(ReviewBucket a, ReviewBucket b) {
+            if (a == null && b == null) return 0;
+            if (a == null) return -1;
+            if (b == null) return 1;
+            String keyA = a.bucketKey;
+            String keyB = b.bucketKey;
+            if (keyA == null && keyB == null) return 0;
+            if (keyA == null) return -1;
+            if (keyB == null) return 1;
+            return keyA.compareTo(keyB);
+        }
+    }
+
     private static void attachSummaries(List<PropertyReviewDTO> reviews, SentimentService.BatchResult batch) {
         if (reviews == null || reviews.isEmpty() || batch == null) {
             return;
