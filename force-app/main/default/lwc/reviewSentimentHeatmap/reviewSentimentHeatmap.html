@@ -1,0 +1,24 @@
+<template>
+    <section class="heatmap" aria-label="Sentiment Heatmap">
+        <div class="heatmap__controls slds-grid slds-wrap slds-gutters">
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                <lightning-combobox
+                    label="Group by"
+                    value={grouping}
+                    options={groupingOptions}
+                    onchange={handleGroupingChange}
+                ></lightning-combobox>
+            </div>
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                <lightning-button label="Refresh" onclick={handleRefresh}></lightning-button>
+            </div>
+        </div>
+
+        <lightning-map
+            map-markers={mapMarkers}
+            markers-title="Review Sentiment"
+            zoom-level="10"
+            list-view="visible"
+        ></lightning-map>
+    </section>
+</template>
