@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Session__c</fullName>
+    <description>Related session.</description>
+    <externalId>false</externalId>
+    <label>Session</label>
+    <referenceTo>Shared_Review_Session__c</referenceTo>
+    <relationshipLabel>Comments</relationshipLabel>
+    <relationshipName>Comments</relationshipName>
+    <required>true</required>
+    <type>Lookup</type>
+</CustomField>

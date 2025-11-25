@@ -1,0 +1,52 @@
+<template>
+    <section class="comparison" aria-label="Review Comparison">
+        <div class="comparison__controls slds-grid slds-wrap slds-gutters">
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                <lightning-input
+                    type="text"
+                    label="Competitor IDs (comma separated)"
+                    value={competitorInput}
+                    onchange={handleCompetitorChange}
+                ></lightning-input>
+            </div>
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-4">
+                <lightning-button label="Compare" onclick={handleCompare}></lightning-button>
+            </div>
+        </div>
+
+        <template if:true={hasData}>
+            <div class="comparison__charts">
+                <div class="comparison__chart" lwc:dom="manual"></div>
+                <div class="comparison__chart comparison__chart--sentiment" lwc:dom="manual"></div>
+            </div>
+            <div class="comparison__table">
+                <table class="slds-table slds-table_cell-buffer slds-table_bordered">
+                    <thead>
+                        <tr>
+                            <th>Property</th>
+                            <th>Avg Rating</th>
+                            <th>Positive</th>
+                            <th>Neutral</th>
+                            <th>Negative</th>
+                            <th>Review Volume</th>
+                            <th>Detail Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template for:each={metrics} for:item="metric">
+                            <tr key={metric.propertyId}>
+                                <td>{metric.name}</td>
+                                <td>{metric.averageRating}</td>
+                                <td>{metric.sentimentPositive}</td>
+                                <td>{metric.sentimentNeutral}</td>
+                                <td>{metric.sentimentNegative}</td>
+                                <td>{metric.reviewVolume}</td>
+                                <td>{metric.detailScore}</td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </template>
+    </section>
+</template>

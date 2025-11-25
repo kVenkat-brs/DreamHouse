@@ -1,0 +1,53 @@
+<template>
+    <section class="shared-review" aria-label="Collaborative Review Session">
+        <template if:true={sessionLoaded}>
+            <header class="shared-review__header">
+                <h2 class="slds-text-heading_medium">Collaborative Review</h2>
+                <p class="slds-text-body_small">Status: {session.status}</p>
+            </header>
+
+            <div class="shared-review__layout">
+                <div class="shared-review__editor">
+                    <lightning-input-rich-text
+                        value={draftHtml}
+                        onchange={handleDraftChange}
+                        formats="['bold','italic','underline','strike','link','list','align','undo','redo']"
+                        aria-label="Collaborative draft editor"
+                    ></lightning-input-rich-text>
+                    <div class="shared-review__actions slds-m-top_small">
+                        <lightning-button label="Save Draft" onclick={handleSave}></lightning-button>
+                        <lightning-button label="Publish" variant="brand" onclick={handlePublish}></lightning-button>
+                    </div>
+                </div>
+                <aside class="shared-review__sidebar">
+                    <h3 class="slds-text-title_caps">Participants</h3>
+                    <ul class="shared-review__participants">
+                        <template for:each={participants} for:item="participant">
+                            <li key={participant.participantId} class={participantClass(participant)}>
+                                <span>{participant.name}</span>
+                                <span class="shared-review__role">{participant.role}</span>
+                            </li>
+                        </template>
+                    </ul>
+                    <h3 class="slds-text-title_caps slds-m-top_medium">Comments</h3>
+                    <div class="shared-review__comments">
+                        <template for:each={comments} for:item="comment">
+                            <article key={comment.id} class="shared-review__comment">
+                                <header>{comment.authorName}</header>
+                                <p>{comment.body}</p>
+                                <footer>{comment.createdDate}</footer>
+                            </article>
+                        </template>
+                        <lightning-textarea label="Add comment" value={commentDraft} onchange={handleCommentChange}></lightning-textarea>
+                        <lightning-button label="Post Comment" onclick={handleCommentPost}></lightning-button>
+                    </div>
+                </aside>
+            </div>
+        </template>
+        <template if:false={sessionLoaded}>
+            <div class="shared-review__empty">
+                <lightning-spinner alternative-text="Loading"></lightning-spinner>
+            </div>
+        </template>
+    </section>
+</template>

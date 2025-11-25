@@ -1,0 +1,15 @@
+<template>
+    <section class="share-panel" aria-label="Share Reviews">
+        <h2 class="slds-text-heading_small">Share Reviews</h2>
+        <div class="share-panel__buttons">
+            <lightning-button-icon icon-name="utility:share" alternative-text="Copy Share Link" onclick={handleCopy}></lightning-button-icon>
+            <lightning-button-icon icon-name="utility:connected_apps" alternative-text="Share to Twitter" onclick={shareTwitter}></lightning-button-icon>
+            <lightning-button-icon icon-name="utility:share_file" alternative-text="Generate Report" onclick={handleReport}></lightning-button-icon>
+        </div>
+        <template if:true={reportUrl}>
+            <div class="share-panel__report slds-m-top_small">
+                <a href={reportUrl} target="_blank">Download PDF Report</a>
+            </div>
+        </template>
+    </section>
+</template>

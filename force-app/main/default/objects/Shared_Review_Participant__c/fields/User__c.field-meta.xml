@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>User__c</fullName>
+    <description>Participant user.</description>
+    <externalId>false</externalId>
+    <label>User</label>
+    <referenceTo>User</referenceTo>
+    <relationshipLabel>Shared Review Participants</relationshipLabel>
+    <relationshipName>Shared_Review_Participants</relationshipName>
+    <required>true</required>
+    <trackHistory>false</trackHistory>
+    <type>Lookup</type>
+</CustomField>

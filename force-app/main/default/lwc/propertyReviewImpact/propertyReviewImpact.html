@@ -1,0 +1,17 @@
+<template>
+    <section class="impact" aria-label="Review Impact Analytics">
+        <template if:true={impact}>
+            <div class="impact__summary">
+                <h2 class="slds-text-heading_small">Review Impact</h2>
+                <p>Market Positioning: <strong>{impact.positioning}</strong></p>
+                <p>Value Adjustment: <strong>{impact.valueAdjustment}</strong></p>
+                <p>Rental Adjustment: <strong>{impact.rentalAdjustment}</strong></p>
+                <p>Conversion Lift: <strong>{impact.conversionLift}</strong></p>
+                <p>Confidence: <strong>{impact.confidence}</strong></p>
+            </div>
+        </template>
+        <template if:false={impact}>
+            <lightning-spinner alternative-text="Loading"></lightning-spinner>
+        </template>
+    </section>
+</template>

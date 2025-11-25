@@ -38,6 +38,14 @@
                 class="property-review__media-uploader"
                 onmediaready={handleMediaReady}
             ></c-visual-review-uploader>
+            <c-property-review-comparison
+                if:true={activePropertyId}
+                property-id={activePropertyId}
+            ></c-property-review-comparison>
+            <c-property-review-impact
+                if:true={activePropertyId}
+                property-id={activePropertyId}
+            ></c-property-review-impact>
             <div class="property-review__filters slds-box slds-theme_shade">
                 <div class="slds-grid slds-wrap slds-gutters">
                     <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-6">

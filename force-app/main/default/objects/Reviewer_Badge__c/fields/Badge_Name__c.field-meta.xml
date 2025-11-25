@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Badge_Name__c</fullName>
+    <description>Badge type.</description>
+    <externalId>false</externalId>
+    <label>Badge Name</label>
+    <required>true</required>
+    <trackHistory>false</trackHistory>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>true</sorted>
+            <value>
+                <fullName>Trailblazer</fullName>
+                <default>true</default>
+                <label>Trailblazer</label>
+            </value>
+            <value>
+                <fullName>Community Mentor</fullName>
+                <default>false</default>
+                <label>Community Mentor</label>
+            </value>
+            <value>
+                <fullName>Detailed Critic</fullName>
+                <default>false</default>
+                <label>Detailed Critic</label>
+            </value>
+            <value>
+                <fullName>Local Expert</fullName>
+                <default>false</default>
+                <label>Local Expert</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

@@ -1,0 +1,9 @@
+.share-panel {
+    border: 1px solid #d8dde6;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    background: rgba(1, 118, 211, 0.04);
+}
+.share-panel__buttons lightning-button-icon {
+    margin-right: 0.5rem;
+}
