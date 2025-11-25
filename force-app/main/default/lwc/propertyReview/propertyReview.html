@@ -157,13 +157,22 @@
                                         <template lwc:if={review.suspicious}>Review Check</template>
                                         <template lwc:else>Verified</template>
                                     </span>
-                                    <template lwc:if={review.fraudReasonSummary}>
-                                        <span class="property-review__fraud-reasons slds-text-color_error slds-text-body_small">
-                                            {review.fraudReasonSummary}
-                                        </span>
-                                    </template>
-                                </div>
-                                <template lwc:if={review.title}>
+                        <template lwc:if={review.fraudReasonSummary}>
+                            <span class="property-review__fraud-reasons slds-text-color_error slds-text-body_small">
+                                {review.fraudReasonSummary}
+                            </span>
+                        </template>
+                    </div>
+                    <div class="property-review__vote-row">
+                        <div class="property-review__vote-buttons">
+                            <lightning-button-icon icon-name="utility:like" alternative-text="Helpful" onclick={handleHelpfulVote} data-id={review.id}></lightning-button-icon>
+                            <lightning-button-icon icon-name="utility:dislike" alternative-text="Unhelpful" onclick={handleUnhelpfulVote} data-id={review.id}></lightning-button-icon>
+                        </div>
+                        <div class="property-review__vote-summary">
+                            Helpful score: {review.helpfulScore} · Helpful: {review.helpfulVotes} · Unhelpful: {review.unhelpfulVotes}
+                        </div>
+                    </div>
+                    <template lwc:if={review.title}>
                                     <h3 class="slds-text-heading_small slds-text-color_default slds-text-title_bold slds-m-bottom_x-small">
                                         {review.title}
                                     </h3>

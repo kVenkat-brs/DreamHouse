@@ -253,6 +253,22 @@
     color: #fff;
 }
 
+.property-review__vote-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0.5rem 0;
+}
+
+.property-review__vote-buttons lightning-button-icon {
+    margin-right: 0.25rem;
+}
+
+.property-review__vote-summary {
+    font-size: 0.8rem;
+    color: #475467;
+}
+
 /*
  * Reviewer name styling
  * - Slightly larger font for readability

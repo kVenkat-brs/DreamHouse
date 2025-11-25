@@ -31,6 +31,7 @@ import getPropertyReviews from '@salesforce/apex/PropertyController.getPropertyR
 // Apex method that saves a new review when the form is submitted.
 import savePropertyReview from '@salesforce/apex/PropertyController.savePropertyReview';
 import getSuggestions from '@salesforce/apex/AIWritingAssistantService.getSuggestions';
+import castVote from '@salesforce/apex/ReviewVoteService.castVote';
 
 // Lightning Message Channel that notifies this component when a property is selected elsewhere.
 import PROPERTY_SELECTED from '@salesforce/messageChannel/PropertySelected__c';
@@ -608,7 +609,10 @@ export default class PropertyReview extends LightningElement {
         this.draftRating = 0;
         this.title = '';
         this.comment = '';
+        this.draftHtml = '';
         this.lastTouchedField = undefined;
+        this.lastAutoSave = null;
+        this.clearAutoSaveTimer();
     }
 
     handleMediaReady(event) {
@@ -633,6 +637,37 @@ export default class PropertyReview extends LightningElement {
         } else {
             this.showToast('Permission denied', 'Enable notifications in your browser settings if you change your mind.', 'warning');
         }
+    }
+
+    handleHelpfulVote(event) {
+        this.castVote(event.currentTarget.dataset.id, 'Helpful');
+    }
+
+    handleUnhelpfulVote(event) {
+        this.castVote(event.currentTarget.dataset.id, 'Unhelpful');
+    }
+
+    castVote(reviewId, type) {
+        if (!reviewId) {
+            return;
+        }
+        castVote({ request: { reviewId, voteType: type } })
+            .then((response) => {
+                this.reviews = this.reviews.map((review) => {
+                    if (review.id === reviewId) {
+                        return {
+                            ...review,
+                            helpfulScore: response.helpfulScore,
+                            helpfulVotes: response.helpfulVotes,
+                            unhelpfulVotes: response.unhelpfulVotes
+                        };
+                    }
+                    return review;
+                });
+            })
+            .catch((error) => {
+                this.showToast('Vote failed', error?.body?.message || error?.message || 'Try again later.', 'error');
+            });
     }
 }
     supportsServiceWorker = false;

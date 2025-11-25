@@ -221,6 +221,9 @@ public with sharing class PropertyController {
         @AuraEnabled public Boolean suspicious;
         @AuraEnabled public Decimal fraudRisk;
         @AuraEnabled public List<String> fraudReasons;
+        @AuraEnabled public Decimal helpfulScore;
+        @AuraEnabled public Integer helpfulVotes;
+        @AuraEnabled public Integer unhelpfulVotes;
     }
 
     private static Boolean hasReviewField(String apiName) {
@@ -246,6 +249,9 @@ public with sharing class PropertyController {
         dtoInstance.suspicious = false;
         dtoInstance.fraudRisk = 0;
         dtoInstance.fraudReasons = new List<String>();
+        dtoInstance.helpfulScore = 0;
+        dtoInstance.helpfulVotes = 0;
+        dtoInstance.unhelpfulVotes = 0;
         return dtoInstance;
     }
 
@@ -334,9 +340,81 @@ public with sharing class PropertyController {
             }
         }
 
+        Map<Id, VoteAggregate> votes = aggregateVotes(reviews);
+        for (PropertyReviewDTO dtoInstance : dtos) {
+            VoteAggregate aggregate = votes.get(dtoInstance.id);
+            if (aggregate != null) {
+                dtoInstance.helpfulScore = aggregate.score;
+                dtoInstance.helpfulVotes = aggregate.helpful;
+                dtoInstance.unhelpfulVotes = aggregate.unhelpful;
+            }
+        }
+
         attachSummaries(dtos, batch);
 
         return dtos;
+    }
+
+    private class VoteAggregate {
+        Decimal score;
+        Integer helpful;
+        Integer unhelpful;
+    }
+
+    private Map<Id, VoteAggregate> aggregateVotes(List<Property_Review__c> reviews) {
+        Map<Id, VoteAggregate> aggregates = new Map<Id, VoteAggregate>();
+        if (reviews.isEmpty()) {
+            return aggregates;
+        }
+        Set<Id> reviewIds = new Set<Id>();
+        for (Property_Review__c review : reviews) {
+            reviewIds.add(review.Id);
+        }
+
+        List<Review_Vote__c> rawVotes = [
+            SELECT Id, Property_Review__c, Vote_Type__c, Weight__c, CreatedById
+            FROM Review_Vote__c
+            WHERE Property_Review__c IN :reviewIds
+        ];
+
+        Map<Id, Decimal> credibilityMap = buildCredibility(rawVotes);
+
+        for (Review_Vote__c vote : rawVotes) {
+            VoteAggregate aggregate = aggregates.get(vote.Property_Review__c);
+            if (aggregate == null) {
+                aggregate = new VoteAggregate();
+                aggregate.score = 0;
+                aggregate.helpful = 0;
+                aggregate.unhelpful = 0;
+                aggregates.put(vote.Property_Review__c, aggregate);
+            }
+            Decimal weight = vote.Weight__c == null ? 1 : vote.Weight__c;
+            Decimal credibility = credibilityMap.get(vote.CreatedById) == null ? 1 : credibilityMap.get(vote.CreatedById);
+            Decimal influence = weight * credibility;
+            if ('Helpful'.equalsIgnoreCase(vote.Vote_Type__c)) {
+                aggregate.helpful++;
+                aggregate.score += influence;
+            } else {
+                aggregate.unhelpful++;
+                aggregate.score -= influence;
+            }
+        }
+        return aggregates;
+    }
+
+    private Map<Id, Decimal> buildCredibility(List<Review_Vote__c> votes) {
+        Map<Id, Decimal> credibility = new Map<Id, Decimal>();
+        for (Review_Vote__c vote : votes) {
+            if (vote.CreatedById == null) {
+                continue;
+            }
+            Decimal current = credibility.get(vote.CreatedById);
+            if (current == null) {
+                credibility.put(vote.CreatedById, 1);
+            }
+            credibility.put(vote.CreatedById, credibility.get(vote.CreatedById) + 0.05);
+        }
+        return credibility;
     }
 
     private class ReviewQualityComparator implements System.Comparator<PropertyReviewDTO> {

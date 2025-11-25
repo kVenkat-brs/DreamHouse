@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Vote_Type__c</fullName>
+    <description>Helpful or unhelpful vote.</description>
+    <externalId>false</externalId>
+    <label>Vote Type</label>
+    <required>true</required>
+    <trackHistory>false</trackHistory>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>true</sorted>
+            <value>
+                <fullName>Helpful</fullName>
+                <default>true</default>
+                <label>Helpful</label>
+            </value>
+            <value>
+                <fullName>Unhelpful</fullName>
+                <default>false</default>
+                <label>Unhelpful</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>
