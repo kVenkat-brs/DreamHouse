@@ -1,0 +1,18 @@
+<template>
+    <section class="dispute" aria-label="Dispute Review">
+        <lightning-button label="File Dispute" onclick={toggleForm}></lightning-button>
+        <template if:true={showForm}>
+            <lightning-textarea label="Reason" value={reason} onchange={handleReasonChange}></lightning-textarea>
+            <lightning-input label="Evidence Links (comma separated)" value={evidenceInput} onchange={handleEvidenceChange}></lightning-input>
+            <lightning-button label="Submit" variant="brand" onclick={handleSubmit}></lightning-button>
+        </template>
+        <template if:true={disputes.length}>
+            <h3 class="slds-text-title_caps slds-m-top_medium">Your Disputes</h3>
+            <ul class="slds-list_dotted">
+                <template for:each={disputes} for:item="item">
+                    <li key={item.Id}>{item.Status__c} · {item.CreatedDate}</li>
+                </template>
+            </ul>
+        </template>
+    </section>
+</template>

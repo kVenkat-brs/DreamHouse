@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>File_Link__c</fullName>
+    <description>Supporting document link.</description>
+    <label>File Link</label>
+    <length>255</length>
+    <type>Text</type>
+</CustomField>
