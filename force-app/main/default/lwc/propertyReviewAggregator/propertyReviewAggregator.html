@@ -1,0 +1,18 @@
+<template>
+    <section class="aggregator" aria-label="Aggregated Reviews">
+        <template if:true={reviews.length}>
+            <h2 class="slds-text-heading_small">Blended Rating: {blendedRating}</h2>
+            <ul class="slds-list_dotted">
+                <template for:each={reviews} for:item="review">
+                    <li key={review.key}>
+                        <p><strong>{review.source}</strong> ({review.rating}) - {review.author}</p>
+                        <p>{review.comment}</p>
+                    </li>
+                </template>
+            </ul>
+        </template>
+        <template if:false={reviews.length}>
+            <p class="slds-text-color_weak">No aggregated reviews available.</p>
+        </template>
+    </section>
+</template>
