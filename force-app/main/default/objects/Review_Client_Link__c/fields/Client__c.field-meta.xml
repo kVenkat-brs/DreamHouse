@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Client__c</fullName>
+    <description>Linked contact or lead.</description>
+    <label>Client</label>
+    <referenceTo>Contact</referenceTo>
+    <relationshipLabel>Review Client Links</relationshipLabel>
+    <relationshipName>Review_Client_Links</relationshipName>
+    <required>true</required>
+    <type>Lookup</type>
+</CustomField>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Automated follow-up tasks for reviews.</description>
+    <enableActivities>true</enableActivities>
+    <enableReports>true</enableReports>
+    <label>Review Follow-up</label>
+    <pluralLabel>Review Follow-ups</pluralLabel>
+    <sharingModel>ReadWrite</sharingModel>
+</CustomObject>

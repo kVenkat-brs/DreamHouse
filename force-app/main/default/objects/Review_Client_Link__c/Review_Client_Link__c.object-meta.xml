@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Links reviews to CRM contacts or leads.</description>
+    <enableActivities>false</enableActivities>
+    <enableReports>true</enableReports>
+    <label>Review Client Link</label>
+    <pluralLabel>Review Client Links</pluralLabel>
+    <sharingModel>ReadWrite</sharingModel>
+</CustomObject>
