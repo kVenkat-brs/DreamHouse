@@ -33,6 +33,7 @@ import savePropertyReview from '@salesforce/apex/PropertyController.saveProperty
 import getSuggestions from '@salesforce/apex/AIWritingAssistantService.getSuggestions';
 import castVote from '@salesforce/apex/ReviewVoteService.castVote';
 import moderate from '@salesforce/apex/ReviewModerationService.moderate';
+import assessCompliance from '@salesforce/apex/ReviewComplianceService.assessCompliance';
 
 // Lightning Message Channel that notifies this component when a property is selected elsewhere.
 import PROPERTY_SELECTED from '@salesforce/messageChannel/PropertySelected__c';
@@ -560,7 +561,10 @@ export default class PropertyReview extends LightningElement {
             return;
         }
 
-        const moderation = await moderate({ text: cleanedComment });
+        const [moderation, compliance] = await Promise.all([
+            moderate({ text: cleanedComment }),
+            assessCompliance({ text: cleanedComment })
+        ]);
         if (moderation?.flagged) {
             this.moderationFlagged = true;
             this.moderationReasons = moderation.reasons;
@@ -573,6 +577,22 @@ export default class PropertyReview extends LightningElement {
             if (moderation.escalate) {
                 // eslint-disable-next-line no-console
                 console.warn('Escalate to admins. Confidence:', moderation.confidence);
+            }
+            return;
+        }
+
+        if (compliance != null && !compliance.compliant) {
+            this.moderationFlagged = true;
+            this.moderationReasons = compliance.violations;
+            this.moderationConfidence = compliance.confidence;
+            this.showToast(
+                'Compliance alert',
+                `Review needs updates: ${compliance.violations != null ? String.join(compliance.violations, '; ') : 'Policy issue.'}`,
+                'error'
+            );
+            if (compliance.escalate) {
+                // eslint-disable-next-line no-console
+                console.warn('Compliance escalation required.');
             }
             return;
         }

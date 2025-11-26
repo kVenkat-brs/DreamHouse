@@ -1,0 +1,14 @@
+<template>
+    <template if:false={compliant}>
+        <div class="compliance">
+            <h3 class="slds-text-title_caps">Compliance Review</h3>
+            <p class="slds-text-body_small">Violations detected:</p>
+            <ul class="slds-list_dotted">
+                <template for:each={violations} for:item="violation">
+                    <li key={violation}>{violation}</li>
+                </template>
+            </ul>
+            <p class="slds-text-body_small">Confidence: {confidence}</p>
+        </div>
+    </template>
+</template>
