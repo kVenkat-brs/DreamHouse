@@ -1,0 +1,15 @@
+<template>
+    <section class="archive" aria-label="Review Archive">
+        <lightning-input type="text" label="Search Archive" value={query} onchange={handleQueryChange}></lightning-input>
+        <lightning-button label="Search" onclick={handleSearch}></lightning-button>
+        <template if:true={archives.length}>
+            <ul class="slds-list_dotted slds-m-top_medium">
+                <template for:each={archives} for:item="archive">
+                    <li key={archive.Id}>
+                        <p>{archive.Archive_Date__c} · {archive.Archived_Body__c}</p>
+                    </li>
+                </template>
+            </ul>
+        </template>
+    </section>
+</template>

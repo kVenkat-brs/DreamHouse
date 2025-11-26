@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Stores archived reviews for compliance retention.</description>
+    <enableActivities>false</enableActivities>
+    <enableHistory>false</enableHistory>
+    <enableReports>true</enableReports>
+    <label>Review Archive</label>
+    <pluralLabel>Review Archives</pluralLabel>
+    <sharingModel>ReadWrite</sharingModel>
+</CustomObject>
