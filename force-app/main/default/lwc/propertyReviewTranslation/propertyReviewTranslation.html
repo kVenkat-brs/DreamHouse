@@ -1,0 +1,17 @@
+<template>
+    <section class="translation" aria-label="Translation">
+        <lightning-combobox
+            label="Language"
+            value={targetLanguage}
+            options={languageOptions}
+            onchange={handleLanguageChange}
+        ></lightning-combobox>
+        <lightning-button label="Translate" onclick={handleTranslate}></lightning-button>
+        <template if:true={translation}
+            ><div class="translation__result">
+                <p class="slds-text-title_caps">Translated ({translation.targetLanguage}):</p>
+                <p>{translation.translated}</p>
+            </div>
+        </template>
+    </section>
+</template>
