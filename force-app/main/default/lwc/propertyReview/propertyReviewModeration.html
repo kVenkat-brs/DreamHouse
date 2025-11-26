@@ -1,0 +1,13 @@
+<template>
+    <template if:true={flagged}>
+        <div class="moderation">
+            <h3 class="slds-text-title_caps">Content flagged</h3>
+            <p class="slds-text-body_small">Review contains:
+                <template for:each={reasons} for:item="reason">
+                    <span key={reason}>{reason}</span>
+                </template>
+            </p>
+            <p class="slds-text-body_small">Confidence: {confidence}</p>
+        </div>
+    </template>
+</template>
