@@ -1,0 +1,14 @@
+<template>
+    <template if:true={flagged}>
+        <div class="moderation">
+            <h3 class="slds-text-title_caps">Review Flagged</h3>
+            <p class="slds-text-body_small">Reasons:</p>
+            <ul class="slds-list_dotted">
+                <template for:each={reasons} for:item="reason">
+                    <li key={reason}>{reason}</li>
+                </template>
+            </ul>
+            <p class="slds-text-body_small">Confidence: {confidence}</p>
+        </div>
+    </template>
+</template>

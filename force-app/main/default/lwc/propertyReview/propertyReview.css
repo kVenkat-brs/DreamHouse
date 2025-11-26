@@ -31,6 +31,10 @@
     border-radius: 0.75rem;
 }
 
+.property-review__moderation {
+    grid-column: 1 / -1;
+}
+
 .property-review__pwa {
     grid-column: 1 / -1;
     border-radius: 0.75rem;

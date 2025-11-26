@@ -68,6 +68,10 @@
         <apexClass>SharedReviewSessionService</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <classAccesses>
+        <apexClass>ReviewModerationService</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <fieldPermissions>
         <editable>true</editable>
         <field>Broker__c.Broker_Id__c</field>

@@ -32,6 +32,7 @@ import getPropertyReviews from '@salesforce/apex/PropertyController.getPropertyR
 import savePropertyReview from '@salesforce/apex/PropertyController.savePropertyReview';
 import getSuggestions from '@salesforce/apex/AIWritingAssistantService.getSuggestions';
 import castVote from '@salesforce/apex/ReviewVoteService.castVote';
+import moderate from '@salesforce/apex/ReviewModerationService.moderate';
 
 // Lightning Message Channel that notifies this component when a property is selected elsewhere.
 import PROPERTY_SELECTED from '@salesforce/messageChannel/PropertySelected__c';
@@ -63,6 +64,9 @@ export default class PropertyReview extends LightningElement {
     lengthFilter = 'all';
     verificationFilter = 'all';
     featureKeyword = '';
+    @track moderationFlagged = false;
+    @track moderationReasons = [];
+    moderationConfidence = 0;
     subscription; // LMS subscription reference for cleanup
     selectedPropertyId; // Active property context Id for which reviews are shown
     isSubmitting = false; // True while a review submission is in-flight
@@ -556,6 +560,27 @@ export default class PropertyReview extends LightningElement {
             return;
         }
 
+        const moderation = await moderate({ text: cleanedComment });
+        if (moderation?.flagged) {
+            this.moderationFlagged = true;
+            this.moderationReasons = moderation.reasons;
+            this.moderationConfidence = moderation.confidence;
+            this.showToast(
+                'Review flagged',
+                `Content requires revision: ${moderation.reasons != null ? String.join(moderation.reasons, '; ') : 'Policy violation.'}`,
+                'error'
+            );
+            if (moderation.escalate) {
+                // eslint-disable-next-line no-console
+                console.warn('Escalate to admins. Confidence:', moderation.confidence);
+            }
+            return;
+        }
+
+        this.moderationFlagged = false;
+        this.moderationReasons = [];
+        this.moderationConfidence = 0;
+
         // Lock the UI before opening confirmation to avoid multiple submissions
         this.isSubmitting = true;
 
@@ -613,6 +638,9 @@ export default class PropertyReview extends LightningElement {
         this.lastTouchedField = undefined;
         this.lastAutoSave = null;
         this.clearAutoSaveTimer();
+        this.moderationFlagged = false;
+        this.moderationReasons = [];
+        this.moderationConfidence = 0;
     }
 
     handleMediaReady(event) {
