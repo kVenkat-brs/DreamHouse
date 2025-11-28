@@ -109,6 +109,42 @@
                         </div>
                     </article>
                 </div>
+                <div class="slds-col slds-size_1-of-1">
+                    <article class="slds-card dashboard__card">
+                        <div class="slds-card__header slds-grid slds-grid_vertical-align-center">
+                            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                                <div class="slds-media__figure">
+                                    <lightning-icon icon-name="utility:text_background_color" size="small"></lightning-icon>
+                                </div>
+                                <div class="slds-media__body">
+                                    <h2 class="slds-text-heading_small">Review Word Cloud</h2>
+                                    <p class="slds-text-body_small slds-text-color_weak">Most-mentioned terms with sentiment and trend indicators</p>
+                                </div>
+                            </header>
+                        </div>
+                        <div class="slds-card__body">
+                            <c-review-word-cloud property-id={recordId}></c-review-word-cloud>
+                        </div>
+                    </article>
+                </div>
+                <div class="slds-col slds-size_1-of-1">
+                    <article class="slds-card dashboard__card">
+                        <div class="slds-card__header slds-grid slds-grid_vertical-align-center">
+                            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                                <div class="slds-media__figure">
+                                    <lightning-icon icon-name="utility:groups" size="small"></lightning-icon>
+                                </div>
+                                <div class="slds-media__body">
+                                    <h2 class="slds-text-heading_small">Reviewer Segments</h2>
+                                    <p class="slds-text-body_small slds-text-color_weak">Demographics, behavior, and satisfaction correlations</p>
+                                </div>
+                            </header>
+                        </div>
+                        <div class="slds-card__body">
+                            <c-review-segmentation property-id={recordId}></c-review-segmentation>
+                        </div>
+                    </article>
+                </div>
             </div>
 
             <template if:true={mediaAvailable}>
@@ -284,7 +320,7 @@
             </div>
 
             <div class="slds-grid slds-wrap slds-gutters dashboard__section">
-                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
                     <article class="slds-card dashboard__card">
                         <div class="slds-card__header slds-grid slds-grid_vertical-align-center">
                             <header class="slds-media slds-media_center slds-has-flexi-truncate">

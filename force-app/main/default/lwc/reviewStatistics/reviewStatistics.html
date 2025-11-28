@@ -1,0 +1,62 @@
+<template>
+    <article class="slds-card review-statistics" aria-label="Review Statistics">
+        <div class="slds-card__header slds-grid slds-grid_vertical-align-center">
+            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                <div class="slds-media__figure">
+                    <lightning-icon icon-name="utility:chart" size="small"></lightning-icon>
+                </div>
+                <div class="slds-media__body">
+                    <h2 class="slds-text-heading_small">Review Statistics</h2>
+                    <p class="slds-text-body_small slds-text-color_weak">Distribution, trend correlation, and benchmark significance</p>
+                </div>
+            </header>
+            <div class="slds-no-flex">
+                <lightning-button-group>
+                    <lightning-button-icon icon-name="utility:refresh" alternative-text="Refresh" onclick={refresh}></lightning-button-icon>
+                </lightning-button-group>
+            </div>
+        </div>
+        <div class="slds-card__body">
+            <template if:true={loading}>
+                <div class="slds-is-relative slds-p-vertical_large">
+                    <lightning-spinner alternative-text="Loading statistics" size="small"></lightning-spinner>
+                </div>
+            </template>
+            <template if:true={error}>
+                <c-error-panel friendly-message="Unable to load statistics" detail={error}></c-error-panel>
+            </template>
+            <template if:true={hasData}>
+                <div class="review-statistics__grid">
+                    <section class="review-statistics__panel">
+                        <h3 class="slds-text-title_caps">Rating Distribution</h3>
+                        <canvas data-id="distribution"></canvas>
+                    </section>
+                    <section class="review-statistics__panel">
+                        <h3 class="slds-text-title_caps">Trend Correlation</h3>
+                        <canvas data-id="correlation"></canvas>
+                    </section>
+                    <section class="review-statistics__panel">
+                        <h3 class="slds-text-title_caps">Significance Summary</h3>
+                        <ul class="slds-list_dotted">
+                            <template for:each={distributionSummary} for:item="row">
+                                <li key={row.label}>
+                                    <strong>{row.label}</strong>: {row.value}
+                                </li>
+                            </template>
+                        </ul>
+                        <p class="slds-text-body_small slds-text-color_weak slds-m-top_small">Correlation (primary vs benchmark): {correlationLabel}</p>
+                    </section>
+                </div>
+            </template>
+            <template if:true={noData}>
+                <div class="review-statistics__empty slds-align_absolute-center slds-p-around_large">
+                    <div class="slds-text-align_center">
+                        <lightning-icon icon-name="utility:warning" size="small"></lightning-icon>
+                        <p class="slds-text-heading_small slds-m-top_small">Not enough review data</p>
+                        <p class="slds-text-body_small slds-text-color_weak">Collect more reviews or adjust filters to view statistical analysis.</p>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </article>
+</template>

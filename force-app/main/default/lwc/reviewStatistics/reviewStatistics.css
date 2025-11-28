@@ -1,0 +1,23 @@
+.review-statistics__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+    gap: 1.5rem;
+}
+
+.review-statistics__panel {
+    background: var(--lwc-colorBackgroundAlt, #f3f2f2);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.review-statistics__panel canvas {
+    width: 100%;
+    min-height: 240px;
+}
+
+.review-statistics__empty {
+    background: linear-gradient(135deg, rgba(240, 240, 240, 0.9), rgba(230, 230, 230, 0.8));
+    border-radius: 0.75rem;
+    min-height: 12rem;
+}

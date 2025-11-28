@@ -201,6 +201,13 @@ public with sharing class PropertyController {
 
         insert review;
 
+        // Integrate with blockchain audit trail (anchoring) asynchronously.
+        try {
+            BlockchainAuditService.enqueueReviewForAnchoring(review, hasCommentField ? comment : null);
+        } catch (Exception auditEx) {
+            System.debug(LoggingLevel.WARN, 'Blockchain anchoring enqueue failed: ' + auditEx.getMessage());
+        }
+
         return review.Id;
     }
     public class PropertyReviewDTO {

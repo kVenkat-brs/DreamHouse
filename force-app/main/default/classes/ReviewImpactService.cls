@@ -23,6 +23,7 @@ public with sharing class ReviewImpactService {
             SELECT Id, Rating__c, Comment__c, CreatedDate
             FROM Property_Review__c
             WHERE Property__c = :propertyId
+            WITH SECURITY_ENFORCED
         ];
         if (reviews.isEmpty()) {
             ImpactResponse emptyResponse = new ImpactResponse();

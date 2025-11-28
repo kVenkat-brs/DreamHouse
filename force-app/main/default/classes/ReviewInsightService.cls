@@ -18,6 +18,7 @@ public with sharing class ReviewInsightService {
             FROM Property_Review__c
             WHERE Property__c = :propertyId
             ORDER BY CreatedDate ASC
+            WITH SECURITY_ENFORCED
         ];
 
         InsightResponse response = new InsightResponse();

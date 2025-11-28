@@ -1,0 +1,87 @@
+<template>
+    <article class="slds-card review-word-cloud" aria-label="Review Word Cloud">
+        <div class="slds-card__header slds-grid slds-grid_vertical-align-center">
+            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                <div class="slds-media__body">
+                    <h2 class="slds-text-heading_small">Top Review Themes</h2>
+                    <p class="slds-text-body_small slds-text-color_weak">Most mentioned words with sentiment and trends</p>
+                </div>
+            </header>
+            <div class="slds-no-flex">
+                <lightning-button-group>
+                    <lightning-combobox
+                        label="Time Window"
+                        value={windowValue}
+                        options={windowOptions}
+                        onchange={handleWindowChange}
+                        variant="label-hidden"
+                        title="Select analysis window"
+                    ></lightning-combobox>
+                    <lightning-button-icon icon-name="utility:refresh" alternative-text="Refresh" onclick={handleRefresh}></lightning-button-icon>
+                </lightning-button-group>
+            </div>
+        </div>
+        <div class="slds-card__body">
+            <template if:true={loading}>
+                <div class="slds-is-relative slds-p-vertical_large">
+                    <lightning-spinner alternative-text="Loading word cloud" size="small"></lightning-spinner>
+                </div>
+            </template>
+            <template if:true={hasWords}>
+                <div class="review-word-cloud__cloud" role="img" aria-label="Word cloud visualization">
+                    <template for:each={wordNodes} for:item="node">
+                        <span
+                            key={node.term}
+                            class={node.className}
+                            style={node.styleAttribute}
+                            data-term={node.term}
+                            onclick={handleWordClick}
+                            title={node.tooltip}
+                        >
+                            {node.term}
+                        </span>
+                    </template>
+                </div>
+                <template if:true={selectedWord}>
+                    <div class="review-word-cloud__details slds-box slds-m-top_medium">
+                        <h3 class="slds-text-title_caps">{selectedWord.term}</h3>
+                        <dl class="slds-grid slds-wrap slds-gutters_small">
+                            <div class="slds-col slds-size_1-of-2">
+                                <dt>Total mentions</dt>
+                                <dd>{selectedWord.totalCount}</dd>
+                            </div>
+                            <div class="slds-col slds-size_1-of-2">
+                                <dt>Recent share</dt>
+                                <dd>{selectedWord.recentShareDisplay}</dd>
+                            </div>
+                            <div class="slds-col slds-size_1-of-2">
+                                <dt>Sentiment</dt>
+                                <dd>{selectedWord.sentimentDisplay}</dd>
+                            </div>
+                            <div class="slds-col slds-size_1-of-2">
+                                <dt>Trend</dt>
+                                <dd>{selectedWord.trendDisplay}</dd>
+                            </div>
+                            <div class="slds-col slds-size_1-of-2">
+                                <dt>Last mentioned</dt>
+                                <dd>{selectedWord.lastMentioned}</dd>
+                            </div>
+                        </dl>
+                    </div>
+                </template>
+            </template>
+            <template if:true={error}>
+                <c-error-panel friendly-message="Unable to load review word cloud" detail={error}></c-error-panel>
+            </template>
+            <template if:true={noData}>
+                <div class="review-word-cloud__empty slds-align_absolute-center slds-p-around_large">
+                    <div class="slds-text-align_center">
+                        <lightning-icon icon-name="utility:text_background_color" size="small"></lightning-icon>
+                        <p class="slds-text-heading_small slds-m-top_small">No review data yet</p>
+                        <p class="slds-text-body_small slds-text-color_weak">Collect more feedback to unlock word cloud insights.</p>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </article>
+</template>
