@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>Review Response</label>
+    <pluralLabel>Review Responses</pluralLabel>
+    <nameField>
+        <label>Review Response Name</label>
+        <type>Text</type>
+    </nameField>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <sharingModel>ReadWrite</sharingModel>
+    <fields>
+        <fullName>Review__c</fullName>
+        <description>Reference to the source review.</description>
+        <externalId>false</externalId>
+        <label>Review</label>
+        <referenceTo>Property_Review__c</referenceTo>
+        <relationshipLabel>Responses</relationshipLabel>
+        <relationshipName>Responses</relationshipName>
+        <required>true</required>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>DraftText__c</fullName>
+        <description>Suggested draft response text from AI.</description>
+        <externalId>false</externalId>
+        <label>Draft Text</label>
+        <length>32768</length>
+        <type>LongTextArea</type>
+        <visibleLines>10</visibleLines>
+    </fields>
+    <fields>
+        <fullName>FinalText__c</fullName>
+        <description>Final response text that was posted.</description>
+        <externalId>false</externalId>
+        <label>Final Text</label>
+        <length>32768</length>
+        <type>LongTextArea</type>
+        <visibleLines>10</visibleLines>
+    </fields>
+    <fields>
+        <fullName>Status__c</fullName>
+        <description>Status of the response (Draft, Posted, Rejected).</description>
+        <externalId>false</externalId>
+        <label>Status</label>
+        <picklist>
+            <picklistValues>
+                <fullName>Draft</fullName>
+                <default>true</default>
+            </picklistValues>
+            <picklistValues>
+                <fullName>Posted</fullName>
+                <default>false</default>
+            </picklistValues>
+            <picklistValues>
+                <fullName>Rejected</fullName>
+                <default>false</default>
+            </picklistValues>
+        </picklist>
+        <type>Picklist</type>
+    </fields>
+    <fields>
+        <fullName>Tone__c</fullName>
+        <description>Brand tone used for the response.</description>
+        <externalId>false</externalId>
+        <label>Tone</label>
+        <length>50</length>
+        <type>Text</type>
+    </fields>
+    <fields>
+        <fullName>Confidence__c</fullName>
+        <description>AI confidence score for the suggestion (0-1).</description>
+        <externalId>false</externalId>
+        <label>Confidence</label>
+        <precision>3</precision>
+        <scale>2</scale>
+        <type>Number</type>
+    </fields>
+    <fields>
+        <fullName>PostedAt__c</fullName>
+        <description>Date/time when the response was posted.</description>
+        <externalId>false</externalId>
+        <label>Posted At</label>
+        <type>DateTime</type>
+    </fields>
+    <fields>
+        <fullName>PostedBy__c</fullName>
+        <description>User who posted the response.</description>
+        <externalId>false</externalId>
+        <label>Posted By</label>
+        <referenceTo>User</referenceTo>
+        <relationshipLabel>Review Responses</relationshipLabel>
+        <relationshipName>PostedResponses</relationshipName>
+        <required>false</required>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>Provider__c</fullName>
+        <description>AI provider that generated the suggestion.</description>
+        <externalId>false</externalId>
+        <label>Provider</label>
+        <length>80</length>
+        <type>Text</type>
+    </fields>
+    <fields>
+        <fullName>RawMetadata__c</fullName>
+        <description>Raw metadata returned by the AI provider (JSON).</description>
+        <externalId>false</externalId>
+        <label>Raw Metadata</label>
+        <length>32768</length>
+        <type>LongTextArea</type>
+        <visibleLines>5</visibleLines>
+    </fields>
+</CustomObject>

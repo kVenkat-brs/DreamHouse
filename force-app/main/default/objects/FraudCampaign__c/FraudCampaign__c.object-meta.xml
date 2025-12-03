@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>Fraud Campaign</label>
+    <pluralLabel>Fraud Campaigns</pluralLabel>
+    <nameField>
+        <label>Fraud Campaign Name</label>
+        <type>Text</type>
+    </nameField>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <sharingModel>ReadWrite</sharingModel>
+    <fields>
+        <fullName>Score__c</fullName>
+        <description>Coordinated risk score (0-1).</description>
+        <externalId>false</externalId>
+        <label>Score</label>
+        <precision>3</precision>
+        <scale>2</scale>
+        <type>Number</type>
+    </fields>
+    <fields>
+        <fullName>Status__c</fullName>
+        <description>Status of the investigation (New, Under Review, Confirmed, Cleared).</description>
+        <externalId>false</externalId>
+        <label>Status</label>
+        <picklist>
+            <picklistValues>
+                <fullName>New</fullName>
+                <default>true</default>
+            </picklistValues>
+            <picklistValues>
+                <fullName>Under Review</fullName>
+                <default>false</default>
+            </picklistValues>
+            <picklistValues>
+                <fullName>Confirmed</fullName>
+                <default>false</default>
+            </picklistValues>
+            <picklistValues>
+                <fullName>Cleared</fullName>
+                <default>false</default>
+            </picklistValues>
+        </picklist>
+        <type>Picklist</type>
+    </fields>
+    <fields>
+        <fullName>AffectedProperties__c</fullName>
+        <description>List of properties impacted.</description>
+        <externalId>false</externalId>
+        <label>Affected Properties</label>
+        <length>32768</length>
+        <type>LongTextArea</type>
+        <visibleLines>4</visibleLines>
+    </fields>
+    <fields>
+        <fullName>InvolvedReviewers__c</fullName>
+        <description>List of reviewer identifiers involved.</description>
+        <externalId>false</externalId>
+        <label>Involved Reviewers</label>
+        <length>32768</length>
+        <type>LongTextArea</type>
+        <visibleLines>4</visibleLines>
+    </fields>
+    <fields>
+        <fullName>DetectionDate__c</fullName>
+        <description>Date the campaign was detected.</description>
+        <externalId>false</externalId>
+        <label>Detection Date</label>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>Notes__c</fullName>
+        <description>Investigation notes and evidence summary.</description>
+        <externalId>false</externalId>
+        <label>Notes</label>
+        <length>32768</length>
+        <type>LongTextArea</type>
+        <visibleLines>5</visibleLines>
+    </fields>
+</CustomObject>

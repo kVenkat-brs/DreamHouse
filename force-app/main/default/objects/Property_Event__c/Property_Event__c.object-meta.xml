@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>Property Event</label>
+    <pluralLabel>Property Events</pluralLabel>
+    <nameField>
+        <label>Property Event Name</label>
+        <type>Text</type>
+    </nameField>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <sharingModel>ReadWrite</sharingModel>
+    <fields>
+        <fullName>Property__c</fullName>
+        <description>Property impacted by this event.</description>
+        <externalId>false</externalId>
+        <label>Property</label>
+        <referenceTo>Property__c</referenceTo>
+        <relationshipLabel>Property Events</relationshipLabel>
+        <relationshipName>PropertyEvents</relationshipName>
+        <required>true</required>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>Type__c</fullName>
+        <description>Type of event (Improvement, Management Change, Market Event).</description>
+        <externalId>false</externalId>
+        <label>Type</label>
+        <picklist>
+            <picklistValues>
+                <fullName>Improvement</fullName>
+                <default>true</default>
+            </picklistValues>
+            <picklistValues>
+                <fullName>Management Change</fullName>
+                <default>false</default>
+            </picklistValues>
+            <picklistValues>
+                <fullName>Market Event</fullName>
+                <default>false</default>
+            </picklistValues>
+        </picklist>
+        <type>Picklist</type>
+    </fields>
+    <fields>
+        <fullName>StartDate__c</fullName>
+        <description>Start date of the event.</description>
+        <externalId>false</externalId>
+        <label>Start Date</label>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>EndDate__c</fullName>
+        <description>End date of the event.</description>
+        <externalId>false</externalId>
+        <label>End Date</label>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>Description__c</fullName>
+        <description>Summary of what occurred.</description>
+        <externalId>false</externalId>
+        <label>Description</label>
+        <length>32768</length>
+        <type>LongTextArea</type>
+        <visibleLines>6</visibleLines>
+    </fields>
+    <fields>
+        <fullName>Cost__c</fullName>
+        <description>Cost of the event or improvement.</description>
+        <externalId>false</externalId>
+        <label>Cost</label>
+        <precision>18</precision>
+        <scale>2</scale>
+        <type>Currency</type>
+    </fields>
+    <fields>
+        <fullName>ExpectedSentimentChange__c</fullName>
+        <description>Expected change in sentiment (e.g., +0.2 for positive).</description>
+        <externalId>false</externalId>
+        <label>Expected Sentiment Change</label>
+        <precision>4</precision>
+        <scale>2</scale>
+        <type>Number</type>
+    </fields>
+    <fields>
+        <fullName>ExternalSource__c</fullName>
+        <description>External system or API providing this event.</description>
+        <externalId>false</externalId>
+        <label>External Source</label>
+        <length>80</length>
+        <type>Text</type>
+    </fields>
+</CustomObject>

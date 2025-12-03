@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>Property Sentiment Snapshot</label>
+    <pluralLabel>Property Sentiment Snapshots</pluralLabel>
+    <nameField>
+        <label>Sentiment Snapshot Name</label>
+        <type>Text</type>
+    </nameField>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <sharingModel>ReadWrite</sharingModel>
+    <fields>
+        <fullName>Property__c</fullName>
+        <description>Property associated with this snapshot.</description>
+        <externalId>false</externalId>
+        <label>Property</label>
+        <referenceTo>Property__c</referenceTo>
+        <relationshipLabel>Sentiment Snapshots</relationshipLabel>
+        <relationshipName>SentimentSnapshots</relationshipName>
+        <required>true</required>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>PeriodStart__c</fullName>
+        <description>Start date of the aggregated period.</description>
+        <externalId>false</externalId>
+        <label>Period Start</label>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>PeriodType__c</fullName>
+        <description>Granularity of the period (Week, Month).</description>
+        <externalId>false</externalId>
+        <label>Period Type</label>
+        <picklist>
+            <picklistValues>
+                <fullName>Week</fullName>
+                <default>true</default>
+            </picklistValues>
+            <picklistValues>
+                <fullName>Month</fullName>
+                <default>false</default>
+            </picklistValues>
+        </picklist>
+        <type>Picklist</type>
+    </fields>
+    <fields>
+        <fullName>AverageSentiment__c</fullName>
+        <description>Average sentiment score for the period.</description>
+        <externalId>false</externalId>
+        <label>Average Sentiment</label>
+        <precision>4</precision>
+        <scale>2</scale>
+        <type>Number</type>
+    </fields>
+    <fields>
+        <fullName>PositiveCount__c</fullName>
+        <description>Number of positive reviews in the period.</description>
+        <externalId>false</externalId>
+        <label>Positive Count</label>
+        <type>Number</type>
+        <precision>9</precision>
+        <scale>0</scale>
+    </fields>
+    <fields>
+        <fullName>NeutralCount__c</fullName>
+        <description>Number of neutral reviews in the period.</description>
+        <externalId>false</externalId>
+        <label>Neutral Count</label>
+        <type>Number</type>
+        <precision>9</precision>
+        <scale>0</scale>
+    </fields>
+    <fields>
+        <fullName>NegativeCount__c</fullName>
+        <description>Number of negative reviews in the period.</description>
+        <externalId>false</externalId>
+        <label>Negative Count</label>
+        <type>Number</type>
+        <precision>9</precision>
+        <scale>0</scale>
+    </fields>
+    <fields>
+        <fullName>ReviewVolume__c</fullName>
+        <description>Total reviews in the period.</description>
+        <externalId>false</externalId>
+        <label>Review Volume</label>
+        <type>Number</type>
+        <precision>9</precision>
+        <scale>0</scale>
+    </fields>
+    <fields>
+        <fullName>RollingAverageSentiment__c</fullName>
+        <description>Rolling average sentiment across periods.</description>
+        <externalId>false</externalId>
+        <label>Rolling Average Sentiment</label>
+        <precision>4</precision>
+        <scale>2</scale>
+        <type>Number</type>
+    </fields>
+</CustomObject>

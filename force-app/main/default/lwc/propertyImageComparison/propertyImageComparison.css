@@ -9,3 +9,16 @@
 .image-compare__card .slds-card__body {
     padding: 0;
 }
+
+.image-compare__title {
+    margin: 0;
+}
+
+.image-compare__slider {
+    min-width: 12rem;
+}
+
+.image-compare__card-header {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}

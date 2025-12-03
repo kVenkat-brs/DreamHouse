@@ -28,12 +28,13 @@ import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import LightningConfirm from 'lightning/confirm';
 // Apex method that retrieves existing reviews for the active property.
 import getPropertyReviews from '@salesforce/apex/PropertyController.getPropertyReviews';
+import { refreshApex } from '@salesforce/apex';
 // Apex method that saves a new review when the form is submitted.
 import savePropertyReview from '@salesforce/apex/PropertyController.savePropertyReview';
-import getSuggestions from '@salesforce/apex/AIWritingAssistantService.getSuggestions';
 import castVote from '@salesforce/apex/ReviewVoteService.castVote';
 import moderate from '@salesforce/apex/ReviewModerationService.moderate';
 import assessCompliance from '@salesforce/apex/ReviewComplianceService.assessCompliance';
+import { eventHandler, createDebounce } from 'c/utilsDecorators';
 
 // Lightning Message Channel that notifies this component when a property is selected elsewhere.
 import PROPERTY_SELECTED from '@salesforce/messageChannel/PropertySelected__c';
@@ -65,6 +66,7 @@ export default class PropertyReview extends LightningElement {
     lengthFilter = 'all';
     verificationFilter = 'all';
     featureKeyword = '';
+    debouncedFeatureFilter = createDebounce(250)(() => this.applyFilters());
     @track moderationFlagged = false;
     @track moderationReasons = [];
     moderationConfidence = 0;
@@ -83,6 +85,11 @@ export default class PropertyReview extends LightningElement {
         this.dispatchEvent(
             new ShowToastEvent({ title, message, variant })
         );
+    }
+
+    handleSectionError(event) {
+        const message = event?.detail?.message || 'Unexpected error loading section.';
+        this.showToast('Section error', message, 'error');
     }
 
     @wire(getRecord, { recordId: '$propertyIdForWire', fields: PROPERTY_FIELDS })
@@ -189,7 +196,9 @@ export default class PropertyReview extends LightningElement {
      * using the reactive getter `propertyIdForWire`.
      */
     @wire(getPropertyReviews, { propertyId: '$propertyIdForWire' })
-    wiredReviews({ data, error }) {
+    wiredReviews(result) {
+        this.wiredReviewsResult = result;
+        const { data, error } = result;
         // eslint-disable-next-line no-console
         console.log('[PropertyReview] @wire getPropertyReviews propertyId:', this.propertyIdForWire);
         if (data) {
@@ -231,6 +240,7 @@ export default class PropertyReview extends LightningElement {
     }
 
     buildReviewView(record, index, total) {
+        const uniqueKey = `${record.id}-${record.createdDate || index}`;
         const reviewer = this.normalizeReviewerName(record.reviewerName || 'Anonymous');
         const keywords = this.normalizeKeywords(record.keywords);
         const sentimentLabel = record.sentimentLabel || 'Neutral';
@@ -268,7 +278,8 @@ export default class PropertyReview extends LightningElement {
             fraudAssistive: this.formatFraudAssistive(suspicious, fraudRisk, fraudReasons),
             fraudReasonSummary: fraudReasons.join('; '),
             hasDivider: index < total - 1,
-            dividerKey: `${record.id}-divider`,
+            uniqueKey,
+            dividerKey: `${uniqueKey}-divider`,
             commentLength: (record.comment || '').length,
             verified: !suspicious,
             ratingValue: Number(record.rating) || 0
@@ -411,11 +422,23 @@ export default class PropertyReview extends LightningElement {
 
         // eslint-disable-next-line no-console
         console.log('[PropertyReview] Loading reviews for propertyId:', activePropertyId);
-        return getPropertyReviews({ propertyId: activePropertyId })
-            .then((records) => {
-                this.allReviews = this.transformReviews(records);
-                this.applyFilters();
-                // Notify the user about the result of loading reviews
+        const refreshPromise = this.wiredReviewsResult
+            ? refreshApex(this.wiredReviewsResult)
+            : getPropertyReviews({ propertyId: activePropertyId }).then((records) => {
+                  this.allReviews = this.transformReviews(records);
+                  this.applyFilters();
+              });
+
+        return refreshPromise
+            .catch((error) => {
+                this.reviews = [];
+                this.showToast(
+                    'Unable to load reviews',
+                    error?.body?.message || error?.message || 'Try again later.',
+                    'error'
+                );
+            })
+            .then(() => {
                 if (this.reviewCount === 0) {
                     this.showToast('No reviews found', 'There are no reviews for this property yet.', 'info');
                 } else {
@@ -425,14 +448,6 @@ export default class PropertyReview extends LightningElement {
                         'success'
                     );
                 }
-            })
-            .catch((error) => {
-                this.reviews = [];
-                this.showToast(
-                    'Unable to load reviews',
-                    error?.body?.message || error?.message || 'Try again later.',
-                    'error'
-                );
             })
             .finally(() => {
                 this.isLoading = false;
@@ -485,6 +500,7 @@ export default class PropertyReview extends LightningElement {
      * Captures updates from the rating picker control.
      * @param {CustomEvent} event - Contains the selected rating in event.detail.value.
      */
+    @eventHandler
     handleRatingChange(event) {
         this.draftRating = Number(event.detail.value);
         this.lastTouchedField = 'rating';
@@ -495,6 +511,7 @@ export default class PropertyReview extends LightningElement {
      * Tracks changes to the free-form comment textarea.
      * @param {Event} event - Standard input event carrying the textarea value.
      */
+    @eventHandler
     handleCommentChange(event) {
         this.comment = event.target.value;
         this.lastTouchedField = 'comment';
@@ -505,10 +522,17 @@ export default class PropertyReview extends LightningElement {
      * Tracks changes to the optional review title input.
      * @param {Event} event - Standard input event carrying the title value.
      */
+    @eventHandler
     handleTitleChange(event) {
         this.title = event.target.value;
         this.lastTouchedField = 'title';
         this.scheduleAutoSave();
+    }
+
+    @eventHandler
+    handleFeatureKeywordInput(event) {
+        this.featureKeyword = event.target.value;
+        this.debouncedFeatureFilter();
     }
 
     /**
@@ -687,35 +711,43 @@ export default class PropertyReview extends LightningElement {
         }
     }
 
-    handleHelpfulVote(event) {
-        this.castVote(event.currentTarget.dataset.id, 'Helpful');
-    }
-
-    handleUnhelpfulVote(event) {
-        this.castVote(event.currentTarget.dataset.id, 'Unhelpful');
+    handleVoteClick(event) {
+        const button = event.target.closest('[data-vote]');
+        if (!button) {
+            return;
+        }
+        const reviewId = button.dataset.id;
+        const voteType = button.dataset.vote;
+        if (!reviewId || !voteType || this.isSubmittingVote) {
+            return;
+        }
+        this.isSubmittingVote = true;
+        this.castVote(reviewId, voteType)
+            .catch((error) => {
+                this.showToast('Vote failed', error?.body?.message || error?.message || 'Try again later.', 'error');
+            })
+            .finally(() => {
+                this.isSubmittingVote = false;
+            });
     }
 
     castVote(reviewId, type) {
         if (!reviewId) {
-            return;
+            return Promise.resolve();
         }
-        castVote({ request: { reviewId, voteType: type } })
-            .then((response) => {
-                this.reviews = this.reviews.map((review) => {
-                    if (review.id === reviewId) {
-                        return {
-                            ...review,
-                            helpfulScore: response.helpfulScore,
-                            helpfulVotes: response.helpfulVotes,
-                            unhelpfulVotes: response.unhelpfulVotes
-                        };
-                    }
-                    return review;
-                });
-            })
-            .catch((error) => {
-                this.showToast('Vote failed', error?.body?.message || error?.message || 'Try again later.', 'error');
+        return castVote({ request: { reviewId, voteType: type } }).then((response) => {
+            this.reviews = this.reviews.map((review) => {
+                if (review.id === reviewId) {
+                    return {
+                        ...review,
+                        helpfulScore: response.helpfulScore,
+                        helpfulVotes: response.helpfulVotes,
+                        unhelpfulVotes: response.unhelpfulVotes
+                    };
+                }
+                return review;
             });
+        });
     }
 }
     supportsServiceWorker = false;

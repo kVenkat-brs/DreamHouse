@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomLabels xmlns="http://soap.sforce.com/2006/04/metadata">
+    <labels>
+        <fullName>ReviewTranslationSectionAria</fullName>
+        <categories>PropertyReview</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Section aria label for translation tools</shortDescription>
+        <value>Translation tools</value>
+    </labels>
+    <labels>
+        <fullName>ReviewTranslationTranslateTo</fullName>
+        <categories>PropertyReview</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Label for target language combobox</shortDescription>
+        <value>Translate to</value>
+    </labels>
+    <labels>
+        <fullName>ReviewTranslationActionTranslate</fullName>
+        <categories>PropertyReview</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Translate button text</shortDescription>
+        <value>Translate</value>
+    </labels>
+    <labels>
+        <fullName>ReviewTranslationTranslationLabel</fullName>
+        <categories>PropertyReview</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Heading for translated content</shortDescription>
+        <value>Translation</value>
+    </labels>
+    <labels>
+        <fullName>ReviewTranslationSentimentLabel</fullName>
+        <categories>PropertyReview</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Label for sentiment descriptor</shortDescription>
+        <value>Sentiment</value>
+    </labels>
+    <labels>
+        <fullName>ReviewTranslationConfidenceLabel</fullName>
+        <categories>PropertyReview</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Label for confidence display</shortDescription>
+        <value>Confidence</value>
+    </labels>
+    <labels>
+        <fullName>ReviewTranslationCulturalHeading</fullName>
+        <categories>PropertyReview</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Heading for cultural adjustments</shortDescription>
+        <value>Cultural adjustments</value>
+    </labels>
+    <labels>
+        <fullName>ReviewTranslationToneHeading</fullName>
+        <categories>PropertyReview</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Heading for tone adjustments</shortDescription>
+        <value>Tone adjustments</value>
+    </labels>
+    <labels>
+        <fullName>ReviewTranslationSpinnerAltText</fullName>
+        <categories>PropertyReview</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Spinner alternative text shown while translating</shortDescription>
+        <value>Translating review</value>
+    </labels>
+    <labels>
+        <fullName>PropertyImageCompareSectionAria</fullName>
+        <categories>PropertyComparison</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Aria label for comparison section</shortDescription>
+        <value>Property visual comparison</value>
+    </labels>
+    <labels>
+        <fullName>PropertyImageCompareTitle</fullName>
+        <categories>PropertyComparison</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Title for visual comparison section</shortDescription>
+        <value>Visual Comparison</value>
+    </labels>
+    <labels>
+        <fullName>PropertyImageCompareSliderLabel</fullName>
+        <categories>PropertyComparison</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Slider label to sync comparison views</shortDescription>
+        <value>Synchronize view</value>
+    </labels>
+    <labels>
+        <fullName>PropertyImageCompareNoMedia</fullName>
+        <categories>PropertyComparison</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Fallback text when no media is available</shortDescription>
+        <value>No comparison media available.</value>
+    </labels>
+    <labels>
+        <fullName>PropertyImageCompareLoadingAlt</fullName>
+        <categories>PropertyComparison</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Alternative text for loading state</shortDescription>
+        <value>Loading comparison media</value>
+    </labels>
+    <labels>
+        <fullName>PropertyImageCompareErrorTitle</fullName>
+        <categories>PropertyComparison</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Toast title when media fails to load</shortDescription>
+        <value>Media load issue</value>
+    </labels>
+    <labels>
+        <fullName>PropertyImageCompareErrorMessage</fullName>
+        <categories>PropertyComparison</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Toast message when media fails to load</shortDescription>
+        <value>We couldn’t load the comparison images. Try again later.</value>
+    </labels>
+    <labels>
+        <fullName>ReviewTranslationErrorTitle</fullName>
+        <categories>PropertyReview</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Toast title when translation fails</shortDescription>
+        <value>Translation unavailable</value>
+    </labels>
+    <labels>
+        <fullName>ReviewTranslationErrorMessage</fullName>
+        <categories>PropertyReview</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Toast message when translation fails</shortDescription>
+        <value>We couldn’t translate this review right now. Please try again later.</value>
+    </labels>
+</CustomLabels>

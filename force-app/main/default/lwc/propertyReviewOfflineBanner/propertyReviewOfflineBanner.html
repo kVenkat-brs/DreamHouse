@@ -1,0 +1,17 @@
+<template>
+    <div class="offline-banner" role="status" aria-live="polite">
+        <lightning-icon
+            icon-name={iconName}
+            alternative-text="Connectivity status"
+            size="x-small"
+            class="offline-banner__icon"
+        ></lightning-icon>
+        <div class="offline-banner__content">
+            <p class="offline-banner__title">{statusLabel}</p>
+            <p class="offline-banner__help">{statusHelp}</p>
+            <template if:true={isOffline}>
+                <p class="offline-banner__queue">Pending reviews: {pendingCount}</p>
+            </template>
+        </div>
+    </div>
+</template>

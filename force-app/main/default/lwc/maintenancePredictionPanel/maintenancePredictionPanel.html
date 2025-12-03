@@ -1,0 +1,58 @@
+<template>
+    <section class="slds-card maintenance-panel" aria-label="Predictive maintenance insights">
+        <div class="slds-card__header slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                <div class="slds-media__figure">
+                    <lightning-icon icon-name="utility:warning" size="x-small" alternative-text="Maintenance alert"></lightning-icon>
+                </div>
+                <div class="slds-media__body">
+                    <h2 class="slds-card__header-title">Maintenance Predictions</h2>
+                    <p class="slds-text-color_weak slds-text-body_small">AI anticipates issues before they disrupt guests.</p>
+                </div>
+            </header>
+            <lightning-input type="toggle" label="Auto-create alerts" checked={generateAlerts} onchange={handleToggleChange}></lightning-input>
+        </div>
+        <div class="slds-card__body slds-p-around_medium">
+            <template if:true={loading}>
+                <lightning-spinner alternative-text="Loading predictions"></lightning-spinner>
+            </template>
+            <template if:true={error}>
+                <div class="slds-box slds-theme_error" role="alert">
+                    <p class="slds-text-color_inverse">{error}</p>
+                </div>
+            </template>
+            <template if:true={predictions}>
+                <template if:true={predictions.length}>
+                    <div class="slds-grid slds-wrap slds-gutters">
+                        <template for:each={predictions} for:item="prediction">
+                            <div key={prediction.predictionId} class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                <article class="slds-box slds-theme_default maintenance-panel__card">
+                                    <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                                        <span class="slds-text-title_caps">{prediction.category}</span>
+                                        <lightning-badge label={riskLabel(prediction.riskScore)}></lightning-badge>
+                                    </div>
+                                    <p class="slds-text-body_small slds-text-color_weak">Risk: {prediction.riskScore} · Confidence: {prediction.confidence}</p>
+                                    <p class="slds-m-top_small">{prediction.recommendedAction}</p>
+                                    <template if:true={prediction.windowStart}>
+                                        <p class="slds-text-body_small slds-text-color_weak slds-m-top_x-small">
+                                            Expected window: {prediction.windowStart} – {prediction.windowEnd}
+                                        </p>
+                                    </template>
+                                    <template if:true={prediction.evidence}>
+                                        <details class="slds-m-top_small">
+                                            <summary>Supporting feedback</summary>
+                                            <p class="slds-text-body_small slds-text-color_weak">{prediction.evidence}</p>
+                                        </details>
+                                    </template>
+                                </article>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+                <template if:false={predictions.length}>
+                    <p class="slds-text-color_weak">No maintenance risks detected from recent reviews.</p>
+                </template>
+            </template>
+        </div>
+    </section>
+</template>

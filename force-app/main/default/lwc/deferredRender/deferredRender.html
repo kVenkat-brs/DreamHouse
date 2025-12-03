@@ -1,0 +1,12 @@
+<template>
+    <div class={wrapperClass} aria-busy={isLoading} aria-live="polite">
+        <template lwc:if={hasBeenRendered}>
+            <slot></slot>
+        </template>
+        <template lwc:else>
+            <slot name="placeholder">
+                <span class="deferred-render__placeholder">{placeholderText}</span>
+            </slot>
+        </template>
+    </div>
+</template>

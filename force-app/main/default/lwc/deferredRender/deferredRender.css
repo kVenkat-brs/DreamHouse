@@ -1,0 +1,3 @@
+.deferred-render[aria-busy="true"] {
+    min-height: 3rem;
+}

@@ -1,0 +1,22 @@
+<template>
+    <article class="ar-overlay" aria-label="Augmented reality review overlay preview">
+        <template if:false={isSupported}>
+            <div class="ar-overlay__unsupported">
+                <lightning-icon icon-name="utility:warning" alternative-text="AR unsupported" size="small"></lightning-icon>
+                <p>Your device or browser does not support WebXR. Showing static preview instead.</p>
+                <div class="ar-overlay__preview">
+                    <template for:each={overlays} for:item="overlay">
+                        <div key={overlay.id} class="ar-overlay__card">
+                            <p class="ar-overlay__label">{overlay.label}</p>
+                            <p class="ar-overlay__value">{overlay.value}</p>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+        <template if:true={isSupported}>
+            <div class="ar-overlay__canvas" lwc:dom="manual"></div>
+            <p class="ar-overlay__hint">Move your device to detect surfaces. Tap markers to view review highlights.</p>
+        </template>
+    </article>
+</template>

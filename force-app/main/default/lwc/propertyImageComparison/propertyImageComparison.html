@@ -2,27 +2,40 @@
     <!-- Presents synchronized before/after imagery to reveal renovation or condition differences across properties -->
     <section class="image-compare" aria-label="Property visual comparison">
         <div class="image-compare__header slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
-            <h2 class="slds-text-heading_small">Visual Comparison</h2>
-            <lightning-slider min="0" max="100" value={syncedPosition} label="Synchronize view" onchange={handleSliderChange}></lightning-slider>
+            <h2 class="image-compare__title slds-text-heading_small">Visual Comparison</h2>
+            <lightning-slider
+                class="image-compare__slider"
+                min="0"
+                max="100"
+                value={syncedPosition}
+                label="Synchronize view"
+                onchange={handleSliderChange}
+            ></lightning-slider>
         </div>
 
-        <template if:true={hasSections}>
-            <div class="slds-grid slds-wrap slds-gutters">
+        <template lwc:if={hasSections}>
+            <lightning-layout multiple-rows class="image-compare__layout">
                 <template for:each={sections} for:item="section">
-                    <div key={section.key} class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                    <lightning-layout-item key={section.key} size="12" medium-device-size="6" large-device-size="4">
                         <article class="image-compare__card slds-card">
-                            <header class="slds-card__header slds-grid slds-grid_vertical-align-center">
-                                <span class="slds-text-title_caps">{section.label}</span>
+                            <header class="image-compare__card-header slds-card__header slds-grid slds-grid_vertical-align-center">
+                                <span class="image-compare__card-title slds-text-title_caps">{section.label}</span>
                             </header>
                             <div class="slds-card__body">
-                                <c-image-compare-slider before-src={section.before} after-src={section.after} label={section.label} position={syncedPosition} onpositionchange={handleChildPosition}></c-image-compare-slider>
+                                <c-image-compare-slider
+                                    before-src={section.before}
+                                    after-src={section.after}
+                                    label={section.label}
+                                    position={syncedPosition}
+                                    onpositionchange={handleChildPosition}
+                                ></c-image-compare-slider>
                             </div>
                         </article>
-                    </div>
+                    </lightning-layout-item>
                 </template>
-            </div>
+            </lightning-layout>
         </template>
-        <template if:false={hasSections}>
+        <template lwc:else>
             <p class="slds-text-color_weak">No comparison media available.</p>
         </template>
     </section>

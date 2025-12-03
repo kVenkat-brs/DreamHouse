@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <StaticResource xmlns="http://soap.sforce.com/2006/04/metadata">
     <cacheControl>Public</cacheControl>
-    <contentType>application/javascript</contentType>
+    <contentType>text/javascript</contentType>
+    <description>Service worker enabling offline review caching and queueing.</description>
 </StaticResource>

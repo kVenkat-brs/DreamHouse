@@ -1,0 +1,6 @@
+.render-boundary__fallback {
+    padding: 0.75rem;
+    border: 1px solid #c23934;
+    border-radius: 0.25rem;
+    background-color: #fbeaea;
+}

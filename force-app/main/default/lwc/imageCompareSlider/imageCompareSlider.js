@@ -28,14 +28,29 @@ export default class ImageCompareSlider extends LightningElement {
 
     renderImages() {
         if (!this.stageElement) return;
+        const before = this.normalizeMedia(this.beforeSrc);
+        const after = this.normalizeMedia(this.afterSrc);
         this.stageElement.innerHTML = `
             <div class="compare__image compare__image--before">
-                <img src="${this.beforeSrc || ''}" alt="Before view">
+                <img src="${before.url || ''}" ${before.srcset ? `srcset="${before.srcset}"` : ''} alt="Before view" loading="lazy">
             </div>
             <div class="compare__image compare__image--after">
-                <img src="${this.afterSrc || ''}" alt="After view">
+                <img src="${after.url || ''}" ${after.srcset ? `srcset="${after.srcset}"` : ''} alt="After view" loading="lazy">
             </div>
         `;
+    }
+
+    normalizeMedia(raw) {
+        if (!raw) {
+            return { url: null, srcset: null };
+        }
+        if (typeof raw === 'string') {
+            return { url: raw, srcset: null };
+        }
+        return {
+            url: raw.url || raw.fallback || null,
+            srcset: raw.srcset || null
+        };
     }
 
     updateMask() {

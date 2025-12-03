@@ -1,17 +1,64 @@
 <template>
-    <section class="translation" aria-label="Translation">
-        <lightning-combobox
-            label="Language"
-            value={targetLanguage}
-            options={languageOptions}
-            onchange={handleLanguageChange}
-        ></lightning-combobox>
-        <lightning-button label="Translate" onclick={handleTranslate}></lightning-button>
-        <template if:true={translation}
-            ><div class="translation__result">
-                <p class="slds-text-title_caps">Translated ({translation.targetLanguage}):</p>
-                <p>{translation.translated}</p>
+    <c-render-boundary onsectionerror={handleTranslationError}>
+        <section
+            class="property-review-translation slds-box slds-theme_default"
+            aria-label={labels.translationSectionLabel}
+        >
+        <lightning-layout multiple-rows horizontal-align="space" vertical-align="end" class="slds-m-bottom_x-small">
+            <lightning-layout-item size="12" medium-device-size="8">
+                <lightning-combobox
+                    label={labels.translateToLabel}
+                    value={targetLanguage}
+                    options={languageOptions}
+                    onchange={handleLanguageChange}
+                ></lightning-combobox>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="4" class="slds-align_absolute-center">
+                <lightning-button
+                    label={labels.translateButtonLabel}
+                    variant="neutral"
+                    onclick={handleTranslate}
+                    disabled={isTranslating}
+                ></lightning-button>
+            </lightning-layout-item>
+        </lightning-layout>
+        <template lwc:if={isTranslating}>
+            <div class="slds-align_absolute-center slds-m-vertical_small">
+                <lightning-spinner alternative-text={labels.translatingAltText} size="small"></lightning-spinner>
             </div>
         </template>
-    </section>
+        <template lwc:if={translation}>
+            <div class="translation__summary slds-m-bottom_small">
+                <p class="translation-summary__line slds-text-title_caps">
+                    {labels.translationHeadingLabel} ({translation.targetLanguage}) · {labels.sentimentLabel}
+                    {translation.sentimentLabel}
+                </p>
+                <p class="translation-summary__line">{translation.translated}</p>
+                <p class="translation-summary__line slds-text-color_weak slds-text-body_small">
+                    {labels.confidenceLabel}: {translation.confidence}
+                </p>
+            </div>
+            <template lwc:if={culturalNotes.length}>
+                <div class="translation__notes slds-m-bottom_x-small">
+                    <p class="slds-text-title_caps">{labels.culturalHeadingLabel}</p>
+                    <ul class="translation-notes__list">
+                        <template for:each={culturalNotes} for:item="note">
+                            <li key={note.key} class="translation-notes__item">{note.value}</li>
+                        </template>
+                    </ul>
+                </div>
+            </template>
+            <template lwc:if={toneNotes.length}>
+                <div class="translation__notes">
+                    <p class="slds-text-title_caps">{labels.toneHeadingLabel}</p>
+                    <ul class="translation-notes__list">
+                        <template for:each={toneNotes} for:item="note">
+                            <li key={note.key} class="translation-notes__item">{note.value}</li>
+                        </template>
+                    </ul>
+                </div>
+            </template>
+        </template>
+        </section>
+    </c-render-boundary>
 </template>

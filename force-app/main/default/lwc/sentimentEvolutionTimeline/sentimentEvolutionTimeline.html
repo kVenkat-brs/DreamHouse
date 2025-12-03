@@ -1,0 +1,52 @@
+<template>
+    <section class="slds-card sentiment-timeline" aria-label="Sentiment evolution timeline">
+        <div class="slds-card__header slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                <div class="slds-media__figure">
+                    <lightning-icon icon-name="utility:trend" size="x-small" alternative-text="Sentiment trend"></lightning-icon>
+                </div>
+                <div class="slds-media__body">
+                    <h2 class="slds-card__header-title">Sentiment Evolution</h2>
+                    <p class="slds-text-color_weak slds-text-body_small">Track how sentiment shifts around key property events.</p>
+                </div>
+            </header>
+            <lightning-combobox
+                label="Time Range"
+                value={range}
+                options="[{\"label\":\"13 Weeks\",\"value\":13},{\"label\":\"26 Weeks\",\"value\":26},{\"label\":\"52 Weeks\",\"value\":52}]"
+                onchange={handleRangeChange}
+            ></lightning-combobox>
+        </div>
+        <div class="slds-card__body slds-p-around_medium">
+            <template if:true={loading}>
+                <lightning-spinner alternative-text="Loading sentiment timeline"></lightning-spinner>
+            </template>
+            <template if:true={error}>
+                <div class="slds-box slds-theme_error" role="alert">
+                    <p class="slds-text-color_inverse">{error}</p>
+                </div>
+            </template>
+            <template if:true={timeline}>
+                <canvas class="sentiment-timeline__chart"></canvas>
+                <template if:true={timeline.events}>
+                    <ul class="slds-list_horizontal slds-wrap slds-m-top_medium sentiment-timeline__events">
+                        <template for:each={timeline.events} for:item="event">
+                            <li key={event.eventId} class="sentiment-timeline__event">
+                                <article class="slds-box slds-theme_shade">
+                                    <p class="slds-text-title_caps">{event.type}</p>
+                                    <h3 class="slds-text-heading_small">{event.name}</h3>
+                                    <p class="slds-text-body_small slds-text-color_weak">
+                                        {event.startDate}
+                                    </p>
+                                    <template if:true={event.expectedChange}>
+                                        <p class="slds-text-body_small">Expected Δ Sentiment: {event.expectedChange}</p>
+                                    </template>
+                                </article>
+                            </li>
+                        </template>
+                    </ul>
+                </template>
+            </template>
+        </div>
+    </section>
+</template>

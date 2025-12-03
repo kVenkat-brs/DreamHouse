@@ -1,0 +1,12 @@
+<template>
+    <template lwc:if={hasError}>
+        <div class="render-boundary__fallback slds-text-color_error slds-text-body_small" role="alert">
+            <slot name="error">
+                Something went wrong while loading this section.
+            </slot>
+        </div>
+    </template>
+    <template lwc:else>
+        <slot></slot>
+    </template>
+</template>

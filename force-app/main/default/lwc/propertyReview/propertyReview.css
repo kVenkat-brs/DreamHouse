@@ -3,15 +3,24 @@
  * - Sets a grid layout with spacing, consistent font, and centered max width on desktop
  */
 .property-review {
+    --property-review-brand-color: #0176d3;
+    --property-review-sentiment-positive: #0f9d58;
+    --property-review-sentiment-negative: #d32f2f;
+    --property-review-sentiment-neutral: #85929e;
+    --property-review-quality-insightful: #2e8540;
+    --property-review-quality-helpful: #1b5297;
+    --property-review-quality-basic: #85929e;
+    --property-review-fraud-clear: #04844b;
+    --property-review-fraud-medium: #ffb75d;
+    --property-review-fraud-high: #c23934;
     display: grid;
     gap: var(--lwc-spacingLarge, 1.5rem);
     margin-bottom: var(--lwc-spacingXLarge, 2rem);
-    /* Ensure consistent Salesforce Sans typography within this section */
     font-family: var(--lwc-fontFamily, "Salesforce Sans", Arial, sans-serif);
-    /* Constrain width on desktop and center the container */
-    max-width: 800px;
+    max-width: 50rem;
     margin-left: auto;
     margin-right: auto;
+    contain: layout paint;
 }
 
 .property-review__timeline {
@@ -69,7 +78,7 @@
 }
 
 /* Thin divider line between reviews using border-bottom */
-.property-review__list .slds-divider {
+.property-review__list-divider {
     height: 0;
     border: 0;
     border-bottom: 1px solid var(--lwc-colorBorder, #d8dde6);
@@ -78,7 +87,7 @@
 
 /* WebKit-based browsers (Chrome, Edge, Safari) */
 .property-review__list::-webkit-scrollbar {
-    width: 8px;
+    width: 0.5rem;
 }
 
 .property-review__list::-webkit-scrollbar-track {
@@ -87,8 +96,8 @@
 
 .property-review__list::-webkit-scrollbar-thumb {
     background-color: var(--lwc-colorBorder, #c9c9c9);
-    border-radius: 8px;
-    border: 2px solid transparent;
+    border-radius: 0.5rem;
+    border: 0.125rem solid transparent;
     background-clip: padding-box;
 }
 
@@ -133,6 +142,7 @@
  * - Rounded card with gradient, brand highlights, and subtle entrance animation
  */
 .property-review__tile {
+    position: relative;
     border: 1px solid var(--lwc-colorBorder, #d8dde6);
     border-radius: var(--lwc-borderRadiusMedium, 0.5rem);
     padding: var(--lwc-spacingMedium, 1rem);
@@ -145,11 +155,26 @@
         var(--lwc-colorBackgroundAlt2, #f3f6f9) 100%
     );
     /* Add brand-colored top and left highlights using inset shadows */
-    box-shadow: inset 3px 0 0 #0176d3, inset 0 3px 0 #0176d3,
-        var(--lwc-shadowInset, inset 0 0 0 rgba(0, 0, 0, 0));
-    transition: background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease-out;
+    box-shadow: inset 0.1875rem 0 0 var(--property-review-brand-color), inset 0 0.1875rem 0 var(--property-review-brand-color);
+    overflow: hidden;
+    transition: transform 0.15s ease-out;
     /* Light fade-in on initial render */
     animation: property-review-fade-in 180ms ease-out both;
+}
+
+.property-review__tile::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--lwc-colorBackgroundAlt2, #f3f6f9);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 0;
+}
+
+.property-review__tile > * {
+    position: relative;
+    z-index: 1;
 }
 
 .property-review__sentiment {
@@ -162,17 +187,17 @@
 }
 
 .property-review__sentiment--positive {
-    background-color: #0f9d58;
+    background-color: var(--property-review-sentiment-positive);
     color: #ffffff;
 }
 
 .property-review__sentiment--negative {
-    background-color: #d32f2f;
+    background-color: var(--property-review-sentiment-negative);
     color: #ffffff;
 }
 
 .property-review__sentiment--neutral {
-    background-color: #85929e;
+    background-color: var(--property-review-sentiment-neutral);
     color: #ffffff;
 }
 
@@ -192,8 +217,8 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.5rem;
-    margin: var(--lwc-spacingXSmall, 0.5rem) 0;
+    column-gap: 0.5rem;
+    row-gap: var(--lwc-spacingXSmall, 0.5rem);
 }
 
 .property-review__sentiment-keywords {
@@ -205,8 +230,8 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.5rem;
-    margin-bottom: var(--lwc-spacingXSmall, 0.5rem);
+    column-gap: 0.5rem;
+    row-gap: var(--lwc-spacingXSmall, 0.5rem);
 }
 
 .property-review__quality-score {
@@ -228,17 +253,17 @@
 }
 
 .property-review__quality-badge--insightful {
-    background-color: #2e8540;
+    background-color: var(--property-review-quality-insightful);
     color: #fff;
 }
 
 .property-review__quality-badge--helpful {
-    background-color: #1b5297;
+    background-color: var(--property-review-quality-helpful);
     color: #fff;
 }
 
 .property-review__quality-badge--basic {
-    background-color: #85929e;
+    background-color: var(--property-review-quality-basic);
     color: #fff;
 }
 
@@ -251,25 +276,25 @@
 }
 
 .property-review__fraud-badge--clear {
-    background-color: #04844b;
+    background-color: var(--property-review-fraud-clear);
     color: #fff;
 }
 
 .property-review__fraud-badge--medium {
-    background-color: #ffb75d;
+    background-color: var(--property-review-fraud-medium);
     color: #1b5297;
 }
 
 .property-review__fraud-badge--high {
-    background-color: #c23934;
+    background-color: var(--property-review-fraud-high);
     color: #fff;
 }
 
 .property-review__vote-row {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    margin: 0.5rem 0;
+    column-gap: 0.75rem;
+    row-gap: 0.5rem;
 }
 
 .property-review__vote-buttons lightning-button-icon {
@@ -295,11 +320,11 @@
  * - Elevates card while preserving brand highlights
  */
 .property-review__tile:hover {
-    background: var(--lwc-colorBackgroundAlt2, #f3f6f9);
-    /* Preserve top + left highlights and add elevation on hover */
-    box-shadow: inset 3px 0 0 #0176d3, inset 0 3px 0 #0176d3,
-        0 2px 6px rgba(0, 0, 0, 0.08);
-    transform: translateY(-1px);
+    transform: translateY(-0.125rem);
+}
+
+.property-review__tile:hover::after {
+    opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -343,7 +368,7 @@ c-rating-picker.property-review__rating:hover {
 }
 
 /* Do not scale read-only ratings shown inside tiles */
-.property-review__tile c-rating-picker.property-review__rating:hover {
+.property-review__tile .property-review__rating:hover {
     transform: none;
     cursor: default;
 }
@@ -382,16 +407,16 @@ c-rating-picker.property-review__rating:hover {
 
 /* Reduce internal form padding on small screens */
 @media (max-width: 30rem) { /* ~480px */
-    .property-review__form .slds-form {
-        padding: var(--lwc-spacingSmall, 0.75rem) !important;
-    }
-    .property-review__form .slds-p-horizontal_medium {
-        padding-left: var(--lwc-spacingSmall, 0.75rem) !important;
-        padding-right: var(--lwc-spacingSmall, 0.75rem) !important;
-    }
-    .property-review__form .slds-p-top_medium {
-        padding-top: var(--lwc-spacingSmall, 0.75rem) !important;
-    }
+.property-review__form-stack {
+    padding: var(--lwc-spacingSmall, 0.75rem) !important;
+}
+.property-review__form-pad-horizontal {
+    padding-left: var(--lwc-spacingSmall, 0.75rem) !important;
+    padding-right: var(--lwc-spacingSmall, 0.75rem) !important;
+}
+.property-review__form-pad-top {
+    padding-top: var(--lwc-spacingSmall, 0.75rem) !important;
+}
 }
 
 /* Responsive: ensure single-column layout on small screens */
@@ -407,11 +432,9 @@ c-rating-picker.property-review__rating:hover {
  * - Card-like container with border, radius, and soft shadow
  */
 .property-review__form {
-    /* Use a slightly darker border for better contrast */
     border: 1px solid var(--lwc-colorBorder, #c2c8d0);
     background: var(--lwc-colorBackgroundAlt, #f3f6f9);
     border-radius: 1rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .property-review__draft-status {

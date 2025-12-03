@@ -1,0 +1,103 @@
+<template>
+    <section class="response-panel slds-card slds-m-top_small">
+        <div class="slds-card__header slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+            <div class="slds-media slds-media_center slds-has-flexi-truncate">
+                <div class="slds-media__figure">
+                    <lightning-icon icon-name="utility:chat" size="x-small" alternative-text="AI response"></lightning-icon>
+                </div>
+                <div class="slds-media__body">
+                    <h3 class="slds-text-heading_small">AI Response Assistant</h3>
+                    <p class="slds-text-color_weak slds-text-body_small">Generate on-brand replies tailored to this review.</p>
+                </div>
+            </div>
+            <lightning-button variant="brand" label="Generate Suggestion" onclick={generateSuggestion} disabled={loading}></lightning-button>
+        </div>
+        <div class="slds-card__body slds-p-around_medium">
+            <lightning-layout multiple-rows>
+                <lightning-layout-item size="12" medium-device-size="6">
+                    <lightning-combobox
+                        name="tone"
+                        label="Brand Tone"
+                        value={tone}
+                        options={toneOptions}
+                        onchange={handleToneChange}
+                    ></lightning-combobox>
+                </lightning-layout-item>
+                <lightning-layout-item size="12" medium-device-size="6" class="slds-m-top_small">
+                    <lightning-input
+                        type="checkbox"
+                        label="Include follow-up invitation"
+                        checked={includeFollowUp}
+                        onchange={handleFollowUpChange}
+                    ></lightning-input>
+                </lightning-layout-item>
+            </lightning-layout>
+
+            <template if:true={loading}>
+                <div class="slds-m-top_medium slds-text-align_center">
+                    <lightning-spinner alternative-text="Generating response"></lightning-spinner>
+                </div>
+            </template>
+
+            <template if:true={error}>
+                <div class="slds-box slds-theme_error slds-m-top_medium" role="alert">
+                    <p class="slds-text-color_inverse">{error}</p>
+                </div>
+            </template>
+
+            <template if:true={hasSuggestion}>
+                <article class="slds-box slds-theme_default slds-m-top_medium">
+                    <header class="slds-grid slds-grid_vertical-align-center slds-grid_align-spread">
+                        <div>
+                            <span class="slds-badge">Tone: {suggestion.tone}</span>
+                            <span class="slds-badge slds-m-left_x-small">Confidence: {suggestion.confidence}</span>
+                        </div>
+                        <div class="slds-text-normal slds-text-color_weak">Provider: {suggestion.provider}</div>
+                    </header>
+                    <p class="slds-m-top_small">{suggestion.draftText}</p>
+                    <template if:true={suggestion.keyPoints}>
+                        <ul class="slds-list_dotted slds-m-top_small">
+                            <template for:each={suggestion.keyPoints} for:item="point">
+                                <li key={point}>{point}</li>
+                            </template>
+                        </ul>
+                    </template>
+                    <div class="slds-m-top_medium slds-grid slds-grid_align-end slds-grid_vertical-align-center">
+                        <lightning-button variant="neutral" label="Edit" onclick={openEditor}></lightning-button>
+                        <lightning-button variant="brand" class="slds-m-left_small" label="Post Response" onclick={publishResponse} disabled={loading}></lightning-button>
+                    </div>
+                </article>
+            </template>
+
+            <template if:true={hasPosted}>
+                <div class="slds-notify_alert slds-alert_success slds-m-top_medium" role="status">
+                    <span class="slds-assistive-text">Success</span>
+                    <div>Response posted successfully.</div>
+                </div>
+            </template>
+        </div>
+
+        <template if:true={showEditor}>
+            <section class="slds-modal slds-fade-in-open">
+                <div class="slds-modal__container">
+                    <header class="slds-modal__header">
+                        <h2 class="slds-text-heading_medium">Edit Response</h2>
+                    </header>
+                    <div class="slds-modal__content slds-p-around_medium">
+                        <lightning-textarea
+                            label="Response text"
+                            value={draftText}
+                            onchange={handleDraftChange}
+                            maxlength="5000"
+                        ></lightning-textarea>
+                    </div>
+                    <footer class="slds-modal__footer">
+                        <lightning-button label="Cancel" onclick={closeEditor}></lightning-button>
+                        <lightning-button variant="brand" class="slds-m-left_small" label="Post" onclick={publishResponse}></lightning-button>
+                    </footer>
+                </div>
+            </section>
+            <div class="slds-backdrop slds-backdrop_open"></div>
+        </template>
+    </section>
+</template>
