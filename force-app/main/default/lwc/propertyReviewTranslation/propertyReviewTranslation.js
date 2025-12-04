@@ -68,7 +68,7 @@ export default class PropertyReviewTranslation extends LightningElement {
                 console.error('Translation failed', error);
                 this.dispatchToast(
                     this.labels.errorToastTitle,
-                    this.labels.errorToastMessage,
+                    this.extractErrorMessage(error),
                     'error'
                 );
             })
@@ -91,6 +91,26 @@ export default class PropertyReviewTranslation extends LightningElement {
     handleTranslationError(event) {
         const message = event?.detail?.message || this.labels.errorToastMessage;
         this.dispatchToast(this.labels.errorToastTitle, message, 'error');
+    }
+
+    extractErrorMessage(error) {
+        if (!error) {
+            return this.labels.errorToastMessage;
+        }
+
+        if (Array.isArray(error.body) && error.body.length) {
+            return error.body[0]?.message || this.labels.errorToastMessage;
+        }
+
+        if (typeof error.body?.message === 'string') {
+            return error.body.message;
+        }
+
+        if (typeof error.message === 'string') {
+            return error.message;
+        }
+
+        return this.labels.errorToastMessage;
     }
 
     dispatchToast(title, message, variant) {
