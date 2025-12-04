@@ -51,7 +51,7 @@ export default class PropertyReview extends LightningElement {
     @api canSubmit;
 
     allReviews = [];
-    @track reviews = []; // List of review view-model items rendered in the UI
+    filteredReviews = [];
     showForm = false; // Whether the review submission form is visible
     draftRating = 0; // Current star rating selected in the form
     title = ''; // Draft review title entered by the user
@@ -66,7 +66,7 @@ export default class PropertyReview extends LightningElement {
     lengthFilter = 'all';
     verificationFilter = 'all';
     featureKeyword = '';
-    debouncedFeatureFilter = createDebounce(250)(() => this.applyFilters());
+    debouncedFeatureFilter = createDebounce(250)(() => this.updateFilteredReviews());
     @track moderationFlagged = false;
     @track moderationReasons = [];
     moderationConfidence = 0;
@@ -203,9 +203,9 @@ export default class PropertyReview extends LightningElement {
         console.log('[PropertyReview] @wire getPropertyReviews propertyId:', this.propertyIdForWire);
         if (data) {
             this.allReviews = this.transformReviews(data);
-            this.applyFilters();
+            this.updateFilteredReviews();
         } else if (error) {
-            this.reviews = [];
+            this.filteredReviews = [];
             this.showToast(
                 'Unable to load reviews',
                 error?.body?.message || error?.message || 'Try again later.',
@@ -221,6 +221,10 @@ export default class PropertyReview extends LightningElement {
 
     get activePropertyId() {
         return this.propertyIdForWire;
+    }
+
+    get reviews() {
+        return this.filteredReviews;
     }
 
     get hasReviews() {
@@ -415,7 +419,7 @@ export default class PropertyReview extends LightningElement {
         const activePropertyId = this.activePropertyId;
         this.isLoading = true;
         if (!activePropertyId) {
-            this.reviews = [];
+            this.filteredReviews = [];
             this.isLoading = false;
             return Promise.resolve();
         }
@@ -426,12 +430,12 @@ export default class PropertyReview extends LightningElement {
             ? refreshApex(this.wiredReviewsResult)
             : getPropertyReviews({ propertyId: activePropertyId }).then((records) => {
                   this.allReviews = this.transformReviews(records);
-                  this.applyFilters();
+                  this.updateFilteredReviews();
               });
 
         return refreshPromise
             .catch((error) => {
-                this.reviews = [];
+                this.filteredReviews = [];
                 this.showToast(
                     'Unable to load reviews',
                     error?.body?.message || error?.message || 'Try again later.',
@@ -736,7 +740,7 @@ export default class PropertyReview extends LightningElement {
             return Promise.resolve();
         }
         return castVote({ request: { reviewId, voteType: type } }).then((response) => {
-            this.reviews = this.reviews.map((review) => {
+            this.filteredReviews = this.reviews.map((review) => {
                 if (review.id === reviewId) {
                     return {
                         ...review,
