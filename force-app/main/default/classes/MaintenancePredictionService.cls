@@ -43,7 +43,11 @@ public with sharing class MaintenancePredictionService {
         MaintenanceAIProvider provider = MaintenanceAIProviderFactory.getProvider();
         List<MaintenanceAIResponse> aiResponses = provider.analyzeReviews(reviews);
 
-        List<PredictionDTO> predictions = new List<PredictionDTO>();
+        if (aiResponses.isEmpty()) {
+            return new List<PredictionDTO>();
+        }
+
+        List<MaintenancePrediction__c> predictionRecords = new List<MaintenancePrediction__c>();
         for (MaintenanceAIResponse aiResponse : aiResponses) {
             MaintenancePrediction__c record = new MaintenancePrediction__c(
                 Property__c = request.propertyId,
@@ -56,12 +60,30 @@ public with sharing class MaintenancePredictionService {
                 PredictedWindowEnd__c = aiResponse.windowEnd,
                 Status__c = 'Open'
             );
-            insert record;
+            predictionRecords.add(record);
+        }
 
-            if (request.generateAlerts && aiResponse.riskScore >= 0.6) {
-                createAlert(record);
+        if (!predictionRecords.isEmpty()) {
+            insert predictionRecords;
+        }
+
+        List<MaintenanceAlert__c> alertsToInsert = new List<MaintenanceAlert__c>();
+        if (request.generateAlerts) {
+            for (Integer i = 0, size = predictionRecords.size(); i < size; i++) {
+                MaintenancePrediction__c record = predictionRecords[i];
+                MaintenanceAIResponse aiResponse = aiResponses[i];
+                if (aiResponse.riskScore >= 0.6) {
+                    alertsToInsert.add(buildAlert(record));
+                }
             }
+        }
 
+        if (!alertsToInsert.isEmpty()) {
+            insert alertsToInsert;
+        }
+
+        List<PredictionDTO> predictions = new List<PredictionDTO>();
+        for (MaintenancePrediction__c record : predictionRecords) {
             PredictionDTO dto = new PredictionDTO();
             dto.predictionId = record.Id;
             dto.category = record.Category__c;
@@ -76,12 +98,11 @@ public with sharing class MaintenancePredictionService {
         return predictions;
     }
 
-    private static void createAlert(MaintenancePrediction__c record) {
-        MaintenanceAlert__c alert = new MaintenanceAlert__c(
+    private static MaintenanceAlert__c buildAlert(MaintenancePrediction__c record) {
+        return new MaintenanceAlert__c(
             Prediction__c = record.Id,
             Status__c = 'New',
             Message__c = 'High risk of ' + record.Category__c + ' issue. Recommended: ' + record.RecommendedAction__c
         );
-        insert alert;
     }
 }
