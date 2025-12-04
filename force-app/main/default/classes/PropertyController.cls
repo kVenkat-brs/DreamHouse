@@ -114,39 +114,40 @@ public with sharing class PropertyController {
      * Retrieves reviews for a property ordered by most recent first.
      */
     @AuraEnabled(cacheable=true)
-    public static List<PropertyReviewDTO> getPropertyReviews(Id propertyId) {
+    public static ReviewPage getPropertyReviews(Id propertyId, Integer pageNumber, Integer pageSize) {
         if (propertyId == null) {
-            return new List<PropertyReviewDTO>();
+            return ReviewPage.emptyPage();
         }
 
-        List<PropertyReviewDTO> dtos = new List<PropertyReviewDTO>();
+        Integer safePageSize = pageSize != null && pageSize > 0 && pageSize <= 200 ? pageSize : 25;
+        Integer safePageNumber = pageNumber != null && pageNumber > 0 ? pageNumber : 1;
+        Integer offsetRows = (safePageNumber - 1) * safePageSize;
 
+        Boolean hasCommentField = hasReviewField('Comment__c');
+        Boolean hasTitleField = hasReviewField('Title__c');
+
+        String fieldList = 'Id, Property__c, Rating__c, CreatedDate, CreatedBy.Name';
+        if (hasCommentField) {
+            fieldList += ', Comment__c';
+        }
+        if (hasTitleField) {
+            fieldList += ', Title__c';
+        }
+
+        List<Property_Review__c> rawReviews;
         try {
-            Boolean hasCommentField = hasReviewField('Comment__c');
-            Boolean hasTitleField = hasReviewField('Title__c');
-
-            String fieldList = 'Id, Property__c, Rating__c, CreatedDate, CreatedBy.Name';
-            if (hasCommentField) {
-                fieldList += ', Comment__c';
-            }
-            if (hasTitleField) {
-                fieldList += ', Title__c';
-            }
-
-            List<Property_Review__c> rawReviews = Database.query(
+            rawReviews = Database.query(
                 'SELECT ' + fieldList + ' ' +
                 'FROM Property_Review__c ' +
                 'WHERE Property__c = :propertyId ' +
                 'WITH USER_MODE ' +
                 'ORDER BY CreatedDate DESC ' +
-                'LIMIT 200'
+                'LIMIT :safePageSize ' +
+                'OFFSET :offsetRows'
             );
-
-            dtos.addAll(mapReviewsWithSentiment(rawReviews, hasCommentField, hasTitleField));
         } catch (Exception ex) {
-            System.debug(LoggingLevel.WARN, 'Failed to load comments/title fields: ' + ex.getMessage());
-
-            List<Property_Review__c> fallbackReviews = [
+            System.debug(LoggingLevel.WARN, 'Failed to load Comment__c/Title__c: ' + ex.getMessage());
+            rawReviews = [
                 SELECT Id,
                     Property__c,
                     Rating__c,
@@ -156,13 +157,27 @@ public with sharing class PropertyController {
                 WHERE Property__c = :propertyId
                 WITH USER_MODE
                 ORDER BY CreatedDate DESC
-                LIMIT 200
+                LIMIT :safePageSize
+                OFFSET :offsetRows
             ];
-
-            dtos.addAll(mapBasicReviews(fallbackReviews));
+            hasCommentField = false;
+            hasTitleField = false;
         }
 
-        return dtos;
+        List<PropertyReviewDTO> dtos = hasCommentField || hasTitleField
+            ? mapReviewsWithSentiment(rawReviews, hasCommentField, hasTitleField)
+            : mapBasicReviews(rawReviews);
+
+        Integer totalCount = (Integer)
+            [SELECT COUNT() FROM Property_Review__c WHERE Property__c = :propertyId WITH USER_MODE];
+
+        ReviewPage page = new ReviewPage();
+        page.records = dtos;
+        page.pageNumber = safePageNumber;
+        page.pageSize = safePageSize;
+        page.totalRecords = totalCount;
+        page.hasMore = offsetRows + dtos.size() < totalCount;
+        return page;
     }
 
     /**
@@ -210,6 +225,24 @@ public with sharing class PropertyController {
 
         return review.Id;
     }
+    public class ReviewPage {
+        @AuraEnabled public List<PropertyReviewDTO> records;
+        @AuraEnabled public Integer pageNumber;
+        @AuraEnabled public Integer pageSize;
+        @AuraEnabled public Integer totalRecords;
+        @AuraEnabled public Boolean hasMore;
+
+        public static ReviewPage emptyPage() {
+            ReviewPage page = new ReviewPage();
+            page.records = new List<PropertyReviewDTO>();
+            page.pageNumber = 1;
+            page.pageSize = 0;
+            page.totalRecords = 0;
+            page.hasMore = false;
+            return page;
+        }
+    }
+
     public class PropertyReviewDTO {
         @AuraEnabled public Id id;
         @AuraEnabled public Id propertyId;
