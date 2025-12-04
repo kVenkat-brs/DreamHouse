@@ -75,6 +75,7 @@ export default class PropertyReview extends LightningElement {
     selectedPropertyId; // Active property context Id for which reviews are shown
     isSubmitting = false; // True while a review submission is in-flight
     isLoading = false; // True while reviews are being fetched from the server
+    reviewLoadToken = 0; // Incrementing token to cancel stale load promises
 
     /**
      * Helper to show toast notifications consistently.
@@ -415,10 +416,13 @@ export default class PropertyReview extends LightningElement {
      */
     async loadReviews() {
         const activePropertyId = this.activePropertyId;
+        const token = ++this.reviewLoadToken;
         this.isLoading = true;
         if (!activePropertyId) {
-            this.filteredReviews = [];
-            this.isLoading = false;
+            if (token === this.reviewLoadToken) {
+                this.filteredReviews = [];
+                this.isLoading = false;
+            }
             return;
         }
 
@@ -427,10 +431,16 @@ export default class PropertyReview extends LightningElement {
                 await refreshApex(this.wiredReviewsResult);
             } else {
                 const records = await getPropertyReviews({ propertyId: activePropertyId });
+                if (token !== this.reviewLoadToken) {
+                    return;
+                }
                 this.allReviews = this.transformReviews(records);
                 this.updateFilteredReviews();
             }
 
+            if (token !== this.reviewLoadToken) {
+                return;
+            }
             if (this.reviewCount === 0) {
                 this.showToast('No reviews found', 'There are no reviews for this property yet.', 'info');
             } else {
@@ -441,6 +451,9 @@ export default class PropertyReview extends LightningElement {
                 );
             }
         } catch (error) {
+            if (token !== this.reviewLoadToken) {
+                return;
+            }
             this.filteredReviews = [];
             this.showToast(
                 'Unable to load reviews',
@@ -448,7 +461,9 @@ export default class PropertyReview extends LightningElement {
                 'error'
             );
         } finally {
-            this.isLoading = false;
+            if (token === this.reviewLoadToken) {
+                this.isLoading = false;
+            }
         }
     }
 
