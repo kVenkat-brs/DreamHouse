@@ -5,6 +5,25 @@ import { extractErrorMessage } from 'c/utilsErrorMessage';
 export default class VisualReviewUploader extends LightningElement {
     @api propertyId;
     items = [];
+    inputElement;
+
+    renderedCallback() {
+        this.cacheInputElement();
+    }
+
+    cacheInputElement() {
+        const element = this.template.querySelector('.uploader__input');
+        if (element && element !== this.inputElement) {
+            this.inputElement = element;
+        }
+    }
+
+    get cachedInput() {
+        if (!this.inputElement || !this.inputElement.isConnected) {
+            this.cacheInputElement();
+        }
+        return this.inputElement;
+    }
 
     handleDragOver(event) {
         event.preventDefault();
@@ -32,7 +51,7 @@ export default class VisualReviewUploader extends LightningElement {
     handleKeyPress(event) {
         if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
-            const input = this.template.querySelector('.uploader__input');
+            const input = this.cachedInput;
             if (input) {
                 input.click();
             }
