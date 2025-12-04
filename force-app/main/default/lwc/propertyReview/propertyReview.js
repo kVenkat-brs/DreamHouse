@@ -413,62 +413,52 @@ export default class PropertyReview extends LightningElement {
     /**
      * Loads the review list for the current property by calling the Apex controller.
      */
-    loadReviews() {
+    async loadReviews() {
         const activePropertyId = this.activePropertyId;
         this.isLoading = true;
         if (!activePropertyId) {
             this.filteredReviews = [];
             this.isLoading = false;
-            return Promise.resolve();
+            return;
         }
 
-        // eslint-disable-next-line no-console
-        console.log('[PropertyReview] Loading reviews for propertyId:', activePropertyId);
-        const refreshPromise = this.wiredReviewsResult
-            ? refreshApex(this.wiredReviewsResult)
-            : getPropertyReviews({ propertyId: activePropertyId }).then((records) => {
-                  this.allReviews = this.transformReviews(records);
-                  this.updateFilteredReviews();
-              });
+        try {
+            if (this.wiredReviewsResult) {
+                await refreshApex(this.wiredReviewsResult);
+            } else {
+                const records = await getPropertyReviews({ propertyId: activePropertyId });
+                this.allReviews = this.transformReviews(records);
+                this.updateFilteredReviews();
+            }
 
-        return refreshPromise
-            .catch((error) => {
-                this.filteredReviews = [];
+            if (this.reviewCount === 0) {
+                this.showToast('No reviews found', 'There are no reviews for this property yet.', 'info');
+            } else {
                 this.showToast(
-                    'Unable to load reviews',
-                    extractErrorMessage(error, 'Try again later.'),
-                    'error'
+                    'Reviews loaded',
+                    `${this.reviewCount} review${this.reviewCount === 1 ? '' : 's'} loaded.`,
+                    'success'
                 );
-            })
-            .then(() => {
-                if (this.reviewCount === 0) {
-                    this.showToast('No reviews found', 'There are no reviews for this property yet.', 'info');
-                } else {
-                    this.showToast(
-                        'Reviews loaded',
-                        `${this.reviewCount} review${this.reviewCount === 1 ? '' : 's'} loaded.`,
-                        'success'
-                    );
-                }
-            })
-            .finally(() => {
-                this.isLoading = false;
-            });
+            }
+        } catch (error) {
+            this.filteredReviews = [];
+            this.showToast(
+                'Unable to load reviews',
+                extractErrorMessage(error, 'Try again later.'),
+                'error'
+            );
+        } finally {
+            this.isLoading = false;
+        }
     }
 
     /**
      * Public helper to refresh the review list and surface a success toast when complete.
      */
     refreshReviews() {
-        const maybePromise = this.loadReviews();
-        if (maybePromise && typeof maybePromise.then === 'function') {
-            return maybePromise.then(() => {
-                this.showToast('Reviews refreshed', 'Latest reviews loaded.', 'success');
-            });
-        }
-        // Fallback if loadReviews didn't return a promise
-        this.showToast('Reviews refreshed', 'Latest reviews loaded.', 'success');
-        return Promise.resolve();
+        return Promise.resolve(this.loadReviews()).then(() => {
+            this.showToast('Reviews refreshed', 'Latest reviews loaded.', 'success');
+        });
     }
 
     /**
@@ -641,28 +631,26 @@ export default class PropertyReview extends LightningElement {
             return;
         }
 
-        savePropertyReview({
+        try {
+            await savePropertyReview({
             propertyId: activePropertyId,
             rating: this.draftRating,
             comment: cleanedComment,
             title: this.title ? this.title.trim() : null
-        })
-            .then(() => {
-                this.showToast('Review submitted', 'Thank you for sharing your feedback!', 'success');
-                this.showForm = false;
-                this.resetDraft();
-                this.loadReviews();
-            })
-            .catch((error) => {
-                this.showToast(
-                    'Unable to submit review',
-                    extractErrorMessage(error, 'Try again later.'),
-                    'error'
-                );
-            })
-            .finally(() => {
-                this.isSubmitting = false;
-            });
+        });
+            this.showToast('Review submitted', 'Thank you for sharing your feedback!', 'success');
+            this.showForm = false;
+            this.resetDraft();
+            await this.loadReviews();
+        } catch (error) {
+            this.showToast(
+                'Unable to submit review',
+                extractErrorMessage(error, 'Try again later.'),
+                'error'
+            );
+        } finally {
+            this.isSubmitting = false;
+        }
     }
 
     /**
