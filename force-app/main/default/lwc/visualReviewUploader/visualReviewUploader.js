@@ -1,5 +1,6 @@
 import { LightningElement, api } from 'lwc';
 import processMedia from '@salesforce/apex/VisualReviewService.processMedia';
+import { extractErrorMessage } from 'c/utilsErrorMessage';
 
 export default class VisualReviewUploader extends LightningElement {
     @api propertyId;
@@ -109,7 +110,7 @@ export default class VisualReviewUploader extends LightningElement {
                 this.dispatchEvent(new CustomEvent('mediaready', { detail: results }));
             })
             .catch((error) => {
-                this.markFailed(previews, error?.body?.message || error?.message || 'Upload failed');
+                this.markFailed(previews, extractErrorMessage(error, 'Upload failed'));
             });
     }
 

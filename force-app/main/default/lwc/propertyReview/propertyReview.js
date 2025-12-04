@@ -35,6 +35,7 @@ import castVote from '@salesforce/apex/ReviewVoteService.castVote';
 import moderate from '@salesforce/apex/ReviewModerationService.moderate';
 import assessCompliance from '@salesforce/apex/ReviewComplianceService.assessCompliance';
 import { eventHandler, createDebounce, memoize } from 'c/utilsDecorators';
+import { extractErrorMessage } from 'c/utilsErrorMessage';
 
 // Lightning Message Channel that notifies this component when a property is selected elsewhere.
 import PROPERTY_SELECTED from '@salesforce/messageChannel/PropertySelected__c';
@@ -208,7 +209,7 @@ export default class PropertyReview extends LightningElement {
             this.filteredReviews = [];
             this.showToast(
                 'Unable to load reviews',
-                error?.body?.message || error?.message || 'Try again later.',
+                extractErrorMessage(error, 'Try again later.'),
                 'error'
             );
         }
@@ -441,7 +442,7 @@ export default class PropertyReview extends LightningElement {
                 this.filteredReviews = [];
                 this.showToast(
                     'Unable to load reviews',
-                    error?.body?.message || error?.message || 'Try again later.',
+                    extractErrorMessage(error, 'Try again later.'),
                     'error'
                 );
             })
@@ -661,7 +662,7 @@ export default class PropertyReview extends LightningElement {
             .catch((error) => {
                 this.showToast(
                     'Unable to submit review',
-                    error?.body?.message || error?.message || 'Try again later.',
+                    extractErrorMessage(error, 'Try again later.'),
                     'error'
                 );
             })
@@ -731,7 +732,7 @@ export default class PropertyReview extends LightningElement {
         this.isSubmittingVote = true;
         this.castVote(reviewId, voteType)
             .catch((error) => {
-                this.showToast('Vote failed', error?.body?.message || error?.message || 'Try again later.', 'error');
+                this.showToast('Vote failed', extractErrorMessage(error, 'Try again later.'), 'error');
             })
             .finally(() => {
                 this.isSubmittingVote = false;

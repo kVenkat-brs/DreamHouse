@@ -13,6 +13,7 @@ import translatingAltText from '@salesforce/label/c.ReviewTranslationSpinnerAltT
 import translationErrorTitle from '@salesforce/label/c.ReviewTranslationErrorTitle';
 import translationErrorMessage from '@salesforce/label/c.ReviewTranslationErrorMessage';
 import { eventHandler } from 'c/utilsDecorators';
+import { extractErrorMessage } from 'c/utilsErrorMessage';
 
 export default class PropertyReviewTranslation extends LightningElement {
     @api text;
@@ -68,7 +69,7 @@ export default class PropertyReviewTranslation extends LightningElement {
                 console.error('Translation failed', error);
                 this.dispatchToast(
                     this.labels.errorToastTitle,
-                    this.extractErrorMessage(error),
+                    extractErrorMessage(error, this.labels.errorToastMessage),
                     'error'
                 );
             })
@@ -91,26 +92,6 @@ export default class PropertyReviewTranslation extends LightningElement {
     handleTranslationError(event) {
         const message = event?.detail?.message || this.labels.errorToastMessage;
         this.dispatchToast(this.labels.errorToastTitle, message, 'error');
-    }
-
-    extractErrorMessage(error) {
-        if (!error) {
-            return this.labels.errorToastMessage;
-        }
-
-        if (Array.isArray(error.body) && error.body.length) {
-            return error.body[0]?.message || this.labels.errorToastMessage;
-        }
-
-        if (typeof error.body?.message === 'string') {
-            return error.body.message;
-        }
-
-        if (typeof error.message === 'string') {
-            return error.message;
-        }
-
-        return this.labels.errorToastMessage;
     }
 
     dispatchToast(title, message, variant) {
