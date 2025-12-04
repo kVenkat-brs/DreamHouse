@@ -110,10 +110,6 @@ export default class PropertyReview extends LightningElement {
         this.selectedPropertyId = this.propertyId || this.recordId || null;
         // Set loading state; reactive wire will populate reviews when ready
         this.isLoading = true;
-        // Debug trace to indicate component initialization lifecycle
-        // eslint-disable-next-line no-console
-        console.log('[PropertyReview] connectedCallback: component initialized');
-
         if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
             this.supportsServiceWorker = true;
             navigator.serviceWorker
@@ -138,8 +134,6 @@ export default class PropertyReview extends LightningElement {
             unsubscribe(this.subscription);
             this.subscription = null;
         }
-        // eslint-disable-next-line no-console
-        console.log('[PropertyReview] disconnectedCallback: component destroyed');
         this.clearAutoSaveTimer();
     }
 
