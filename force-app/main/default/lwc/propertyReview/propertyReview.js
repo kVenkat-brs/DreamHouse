@@ -34,7 +34,7 @@ import savePropertyReview from '@salesforce/apex/PropertyController.saveProperty
 import castVote from '@salesforce/apex/ReviewVoteService.castVote';
 import moderate from '@salesforce/apex/ReviewModerationService.moderate';
 import assessCompliance from '@salesforce/apex/ReviewComplianceService.assessCompliance';
-import { eventHandler, createDebounce } from 'c/utilsDecorators';
+import { eventHandler, createDebounce, memoize } from 'c/utilsDecorators';
 
 // Lightning Message Channel that notifies this component when a property is selected elsewhere.
 import PROPERTY_SELECTED from '@salesforce/messageChannel/PropertySelected__c';
@@ -301,6 +301,7 @@ export default class PropertyReview extends LightningElement {
             .join(' ');
     }
 
+    @memoize()
     normalizeKeywords(rawKeywords) {
         if (!Array.isArray(rawKeywords)) {
             return [];
@@ -316,6 +317,7 @@ export default class PropertyReview extends LightningElement {
         return Number.isFinite(numeric) ? Number(numeric.toFixed(2)) : null;
     }
 
+    @memoize()
     resolveSentimentClass(label) {
         const normalized = (label || 'Neutral').toLowerCase();
         const base = 'slds-badge property-review__sentiment';
@@ -337,6 +339,7 @@ export default class PropertyReview extends LightningElement {
         return `Sentiment ${normalizedLabel} (${formattedScore})`;
     }
 
+    @memoize()
     resolveQualityClass(label) {
         const normalized = (label || 'Basic').toLowerCase();
         const base = 'slds-badge property-review__quality-badge';
