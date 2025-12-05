@@ -143,8 +143,12 @@ export default class VisualReviewUploader extends LightningElement {
     }
 
     markFailed(items, message) {
+        const failedIds = new Set((items || []).map((preview) => preview.id));
+        if (!failedIds.size) {
+            return;
+        }
         this.items = this.items.map((item) => {
-            if (items.some((preview) => preview.id === item.id)) {
+            if (failedIds.has(item.id)) {
                 return {
                     ...item,
                     statusLabel: message,
