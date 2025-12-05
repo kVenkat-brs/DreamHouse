@@ -1,5 +1,7 @@
 const handlerMap = new WeakMap();
 const memoStore = new WeakMap();
+const objectTokenStore = new WeakMap();
+let objectTokenCounter = 0;
 
 function getHandler(instance, fn) {
     if (!handlerMap.has(instance)) {
@@ -62,11 +64,12 @@ function defaultKeyResolver(...args) {
                 return 'undefined';
             }
             if (typeof value === 'object') {
-                try {
-                    return `obj:${JSON.stringify(value)}`;
-                } catch (e) {
-                    return `obj:${Object.prototype.toString.call(value)}`;
+                let token = objectTokenStore.get(value);
+                if (!token) {
+                    token = `obj#${++objectTokenCounter}`;
+                    objectTokenStore.set(value, token);
                 }
+                return token;
             }
             return `${typeof value}:${String(value)}`;
         })
